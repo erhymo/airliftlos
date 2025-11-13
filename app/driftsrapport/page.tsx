@@ -266,7 +266,7 @@ export default function DriftsrapportPage() {
 
     const mottakere =
       base === "Bergen"
-        ? "myhre.oyvind@gmail.com,tom.ostrem@airlift.no"
+        ? "myhre.oyvind@gmail.com;tom.ostrem@airlift.no"
         : "";
 
     if (nav.share && canShareFiles) {
@@ -287,7 +287,8 @@ export default function DriftsrapportPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      const mailto = `mailto:${mottakere}?subject=${subject}&body=${body}`;
+      const to = encodeURIComponent(mottakere);
+      const mailto = `mailto:${to}?subject=${subject}&body=${body}`;
       window.location.assign(mailto);
     }
 
