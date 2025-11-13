@@ -96,7 +96,9 @@ export default function DriftsrapportPage() {
   const [oppfolgingTekst, setOppfolgingTekst] = useState("");
   const [alternativ, setAlternativ] = useState("");
   const [signatur, setSignatur] = useState("");
-  const [metarLines, setMetarLines] = useState<string[]>([]);
+  const [metarTafPairs, setMetarTafPairs] = useState<
+    { metar?: string; taf?: string }[]
+  >([]);
   const [selectedMetarLines, setSelectedMetarLines] = useState<string[]>([]);
   const [metarLoading, setMetarLoading] = useState(false);
   const [metarError, setMetarError] = useState<string | null>(null);
@@ -126,7 +128,7 @@ export default function DriftsrapportPage() {
     setOppfolgingTekst("");
     setAlternativ("");
     setSignatur("");
-    setMetarLines([]);
+    setMetarTafPairs([]);
     setSelectedMetarLines([]);
     setMetarLoading(false);
     setMetarError(null);
@@ -144,8 +146,22 @@ export default function DriftsrapportPage() {
         return;
       }
       const data = await res.json();
-      const lines = Array.isArray(data.lines) ? data.lines : [];
-      setMetarLines(lines);
+      const tafLines: string[] = Array.isArray(data.taf) ? data.taf : [];
+      const metarLines: string[] = Array.isArray(data.metar) ? data.metar : [];
+
+      const pairs: { metar?: string; taf?: string }[] = [];
+      const maxPairs = 5;
+
+      for (let i = 0; i < maxPairs; i++) {
+        const taf = tafLines[tafLines.length - 1 - i];
+        const metar = metarLines[metarLines.length - 1 - i];
+        if (!taf && !metar) {
+          break;
+        }
+        pairs.push({ metar, taf });
+      }
+
+      setMetarTafPairs(pairs);
     } catch (err) {
       setMetarError("Klarte ikke å hente METAR/TAF.");
     } finally {
@@ -331,7 +347,7 @@ export default function DriftsrapportPage() {
                     type="button"
                     onClick={() => {
                       setUseMetar("ja");
-                      if (metarLines.length === 0) {
+                      if (metarTafPairs.length === 0) {
                         fetchMetarTaf();
                       }
                     }}
@@ -355,28 +371,48 @@ export default function DriftsrapportPage() {
                     {metarError && (
                       <div className="text-sm text-red-600">{metarError}</div>
                     )}
-                    {!metarLoading && !metarError && metarLines.length > 0 && (
+                    {!metarLoading && !metarError && metarTafPairs.length > 0 && (
                       <>
                         <div className="text-sm text-gray-700">
                           Velg de linjene du vil legge ved:
                         </div>
                         <div className="space-y-2">
-                          {metarLines.map((line, idx) => (
-                            <label
-                              key={idx}
-                              className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedMetarLines.includes(line)}
-                                onChange={() => toggleMetarLine(line)}
-                                className="mt-1"
-                              />
-                              <span className="text-xs whitespace-pre-wrap">
-                                {line}
-                              </span>
-                            </label>
-                          ))}
+                          {metarTafPairs.map((pair, idx) => {
+                            const parts: string[] = [];
+                            if (pair.metar) {
+                              parts.push(`METAR: ${pair.metar}`);
+                            }
+                            if (pair.taf) {
+                              parts.push(`TAF: ${pair.taf}`);
+                            }
+                            const blockText = parts.join("\n");
+
+                            return (
+                              <label
+                                key={idx}
+                                className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedMetarLines.includes(blockText)}
+                                  onChange={() => toggleMetarLine(blockText)}
+                                  className="mt-1"
+                                />
+                                <span className="text-xs whitespace-pre-wrap">
+                                  {pair.metar && (
+                                    <div>
+                                      <b>METAR:</b> {pair.metar}
+                                    </div>
+                                  )}
+                                  {pair.taf && (
+                                    <div>
+                                      <b>TAF:</b> {pair.taf}
+                                    </div>
+                                  )}
+                                </span>
+                              </label>
+                            );
+                          })}
                         </div>
                       </>
                     )}
