@@ -358,7 +358,7 @@ export default function DriftsrapportPage() {
                     {!metarLoading && !metarError && metarLines.length > 0 && (
                       <>
                         <div className="text-sm text-gray-700">
-                          Velg en eller flere linjer (maks 5) du vil legge ved:
+                          Velg de linjene du vil legge ved:
                         </div>
                         <div className="space-y-2">
                           {metarLines.map((line, idx) => (
@@ -581,6 +581,16 @@ export default function DriftsrapportPage() {
                     {alternativ || "(tom)"}
                   </div>
                 </div>
+                {selectedMetarLines.length > 0 && (
+                  <div>
+                    <b>METAR/TAF:</b>
+                    <div className="whitespace-pre-wrap border rounded-lg p-2 mt-1">
+                      {selectedMetarLines.map((line, idx) => (
+                        <div key={idx}>{line}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <b>Signatur:</b> {signatur || "(tom)"}
                 </div>

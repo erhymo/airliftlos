@@ -43,10 +43,26 @@ export async function GET(req: Request) {
       .map((l) => l.trim())
       .filter(Boolean);
 
-    const lastFive = lines.slice(-5);
+    const tafLines: string[] = [];
+    const metarLines: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(/\s+/);
+      // Etter stasjonskode (ENxx) og tidspunkt (DDHHMMZ) kommer gyldighetsperiode for TAF,
+      // som inneholder en "/" (f.eks. 1306/1406). METAR har ikke dette.
+      if (parts.length >= 3 && parts[2].includes("/")) {
+        tafLines.push(line);
+      } else {
+        metarLines.push(line);
+      }
+    }
+
+    const lastTaf = tafLines.slice(-5);
+    const lastMetar = metarLines.slice(-5);
+    const combined = [...lastTaf, ...lastMetar];
 
     return new Response(
-      JSON.stringify({ base, icao, lines: lastFive }),
+      JSON.stringify({ base, icao, lines: combined, taf: lastTaf, metar: lastMetar }),
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
