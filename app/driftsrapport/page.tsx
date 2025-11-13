@@ -258,10 +258,11 @@ export default function DriftsrapportPage() {
       `LOS-helikopter ${base} – driftsrapport ${dato}`
     );
 
-    const body = encodeURIComponent(
+    const plainText =
       linjer.join("\n") +
-        "\n\nVedlagt driftsrapport er lastet ned som PDF (se nedlastinger)."
-    );
+      "\n\nVedlagt driftsrapport som PDF. På PC ligger den i Nedlastinger-mappen.";
+
+    const body = encodeURIComponent(plainText);
 
     const mottakere =
       base === "Bergen"
@@ -272,7 +273,7 @@ export default function DriftsrapportPage() {
       try {
         await nav.share({
           title: `Driftsrapport ${base} ${dato}`,
-          text: "Se vedlagt driftsrapport (PDF).",
+          text: plainText,
           files: [file],
         });
       } catch {
