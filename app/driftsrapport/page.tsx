@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
@@ -295,8 +296,16 @@ export default function DriftsrapportPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 bg-white/80 backdrop-blur border-b text-gray-900">
-        <div className="mx-auto max-w-md p-4">
-          <h1 className="text-xl font-semibold">Driftsrapport</h1>
+        <div className="mx-auto max-w-md p-4 space-y-2">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
+            >
+              Til forsiden
+            </Link>
+            <h1 className="text-xl font-semibold">Driftsrapport</h1>
+          </div>
           <p className="text-sm text-gray-600">
             Stegvis driftsrapport for LOS-helikopter.
           </p>

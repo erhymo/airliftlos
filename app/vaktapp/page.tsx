@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 // ----- Typer -----
@@ -360,7 +361,15 @@ export default function VaktAppPage() {
     <div className="min-h-screen bg-gray-50 text-gray-900 overflow-x-hidden">
       <header className="sticky top-0 bg-white/80 backdrop-blur border-b text-gray-900">
         <div className="mx-auto max-w-md p-4 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold">Vaktapp</h1>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
+            >
+              Til forsiden
+            </Link>
+            <h1 className="text-xl font-semibold">Vaktapp</h1>
+          </div>
           <button
             onClick={() => setShowArchive((v) => !v)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium border transition
