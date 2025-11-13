@@ -26,11 +26,6 @@ export default function Home() {
             Driftsrapport
           </Link>
         </div>
-
-        <p className="text-xs text-gray-500">
-          Vaktrapport er klar til bruk. Driftsrapport kommer snart og vil ha
-          lignende oppsett.
-        </p>
       </main>
     </div>
   );
