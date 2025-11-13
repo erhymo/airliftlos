@@ -96,6 +96,11 @@ export default function DriftsrapportPage() {
   const [oppfolgingTekst, setOppfolgingTekst] = useState("");
   const [alternativ, setAlternativ] = useState("");
   const [signatur, setSignatur] = useState("");
+  const [metarLines, setMetarLines] = useState<string[]>([]);
+  const [selectedMetarLines, setSelectedMetarLines] = useState<string[]>([]);
+  const [metarLoading, setMetarLoading] = useState(false);
+  const [metarError, setMetarError] = useState<string | null>(null);
+  const [useMetar, setUseMetar] = useState<"ja" | "nei">("nei");
 
   function toggleArsak(value: string) {
     setArsaker((prev) =>
@@ -121,6 +126,37 @@ export default function DriftsrapportPage() {
     setOppfolgingTekst("");
     setAlternativ("");
     setSignatur("");
+    setMetarLines([]);
+    setSelectedMetarLines([]);
+    setMetarLoading(false);
+    setMetarError(null);
+    setUseMetar("nei");
+  }
+
+  async function fetchMetarTaf() {
+    setMetarLoading(true);
+    setMetarError(null);
+
+    try {
+      const res = await fetch(`/api/weather?base=${encodeURIComponent(base)}`);
+      if (!res.ok) {
+        setMetarError("Klarte ikke å hente METAR/TAF.");
+        return;
+      }
+      const data = await res.json();
+      const lines = Array.isArray(data.lines) ? data.lines : [];
+      setMetarLines(lines);
+    } catch (err) {
+      setMetarError("Klarte ikke å hente METAR/TAF.");
+    } finally {
+      setMetarLoading(false);
+    }
+  }
+
+  function toggleMetarLine(line: string) {
+    setSelectedMetarLines((prev) =>
+      prev.includes(line) ? prev.filter((l) => l !== line) : [...prev, line]
+    );
   }
 
   async function handleSend() {
@@ -140,12 +176,19 @@ export default function DriftsrapportPage() {
       oppfolgingTekst && `Merknad oppfølging: ${oppfolgingTekst}`,
       "Vurdering alternativ løsning:",
       alternativ || "(tom)",
-      `Signatur: ${signatur || "(tom)"}`,
-    ].filter(Boolean);
+    ];
+
+    if (selectedMetarLines.length > 0) {
+      linjer.push("METAR/TAF:");
+      linjer.push(...selectedMetarLines);
+    }
+
+    linjer.push(`Signatur: ${signatur || "(tom)"}`);
 
     const plainText =
-      linjer.join("\n") +
-      "\n\nVedlagt driftsrapport som PDF.";
+      linjer
+        .filter(Boolean)
+        .join("\n") + "\n\nVedlagt driftsrapport som PDF.";
 
     const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
     const fileName = `Driftsrapport_${base}_${dato}.pdf`;
@@ -267,6 +310,85 @@ export default function DriftsrapportPage() {
 
         {step === 2 && (
           <StepShell onPrev={() => setStep(1)} onNext={() => setStep(3)}>
+            <Section title="Vil du legge til METAR/TAF?">
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseMetar("nei");
+                      setSelectedMetarLines([]);
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+                      useMetar === "nei"
+                        ? "border-gray-900 bg-gray-900 text-white"
+                        : "border-gray-300 bg-white text-gray-900"
+                    }`}
+                  >
+                    Nei, gå videre uten METAR/TAF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseMetar("ja");
+                      if (metarLines.length === 0) {
+                        fetchMetarTaf();
+                      }
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+                      useMetar === "ja"
+                        ? "border-gray-900 bg-gray-900 text-white"
+                        : "border-gray-300 bg-white text-gray-900"
+                    }`}
+                  >
+                    Ja, hent METAR/TAF for {base}
+                  </button>
+                </div>
+
+                {useMetar === "ja" && (
+                  <div className="space-y-2">
+                    {metarLoading && (
+                      <div className="text-sm text-gray-600">
+                        Henter METAR/TAF...
+                      </div>
+                    )}
+                    {metarError && (
+                      <div className="text-sm text-red-600">{metarError}</div>
+                    )}
+                    {!metarLoading && !metarError && metarLines.length > 0 && (
+                      <>
+                        <div className="text-sm text-gray-700">
+                          Velg en eller flere linjer (maks 5) du vil legge ved:
+                        </div>
+                        <div className="space-y-2">
+                          {metarLines.map((line, idx) => (
+                            <label
+                              key={idx}
+                              className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedMetarLines.includes(line)}
+                                onChange={() => toggleMetarLine(line)}
+                                className="mt-1"
+                              />
+                              <span className="text-xs whitespace-pre-wrap">
+                                {line}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Section>
+          </StepShell>
+        )}
+
+        {step === 3 && (
+          <StepShell onPrev={() => setStep(2)} onNext={() => setStep(4)}>
             <Section title="Teknisk (årsak)">
               <textarea
                 value={teknisk}
@@ -278,8 +400,8 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 3 && (
-          <StepShell onPrev={() => setStep(2)} onNext={() => setStep(4)}>
+        {step === 4 && (
+          <StepShell onPrev={() => setStep(3)} onNext={() => setStep(5)}>
             <Section title="Annen årsak til driftsforstyrrelsen">
               <textarea
                 value={annen}
@@ -291,8 +413,8 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 4 && (
-          <StepShell onPrev={() => setStep(3)} onNext={() => setStep(5)}>
+        {step === 5 && (
+          <StepShell onPrev={() => setStep(4)} onNext={() => setStep(6)}>
             <Section title="Antatt varighet">
               <div className="space-y-3">
                 <div>
@@ -320,8 +442,8 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 5 && (
-          <StepShell onPrev={() => setStep(4)} onNext={() => setStep(6)}>
+        {step === 6 && (
+          <StepShell onPrev={() => setStep(5)} onNext={() => setStep(7)}>
             <Section title="Estimert tidspunkt for gjenopptakelse">
               <div className="space-y-3">
                 <div>
@@ -349,8 +471,8 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 6 && (
-          <StepShell onPrev={() => setStep(5)} onNext={() => setStep(7)}>
+        {step === 7 && (
+          <StepShell onPrev={() => setStep(6)} onNext={() => setStep(8)}>
             <Section title="Oppfølging (neste tidspunkt for oppdatering)">
               <div className="space-y-3">
                 <div>
@@ -378,8 +500,8 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 7 && (
-          <StepShell onPrev={() => setStep(6)} onNext={() => setStep(8)}>
+        {step === 8 && (
+          <StepShell onPrev={() => setStep(7)} onNext={() => setStep(9)}>
             <Section title="Vurdering av alternativ løsning">
               <textarea
                 value={alternativ}
@@ -391,8 +513,8 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 8 && (
-          <StepShell onPrev={() => setStep(7)} onNext={() => setStep(9)}>
+        {step === 9 && (
+          <StepShell onPrev={() => setStep(8)} onNext={() => setStep(10)}>
             <Section title="Signatur">
               <input
                 value={signatur}
@@ -403,7 +525,7 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 9 && (
+        {step === 10 && (
           <div className="mx-auto w-full max-w-md p-4">
             <div className="bg-white rounded-2xl shadow p-4">
               <h2 className="text-lg font-semibold mb-2">Se over før sending</h2>
