@@ -2,14 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import Image from "next/image";
 
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
 
-type NavigatorWithShare = Navigator & {
-  share?: (data: ShareData) => Promise<void>;
-  canShare?: (data?: ShareData) => boolean;
-};
+
 
 interface DriftsReport {
   base: Base;
@@ -39,91 +36,7 @@ function getDefaultTime() {
   return `${h}:${m}`;
 }
 
-function wrapText(text: string, maxChars: number) {
-  const words = (text || "").split(/\s+/);
-  const lines: string[] = [];
-  let line = "";
 
-  words.forEach((w) => {
-    if ((line + " " + w).trim().length > maxChars) {
-      if (line) lines.push(line);
-      line = w;
-    } else {
-      line = (line ? line + " " : "") + w;
-    }
-  });
-
-  if (line) lines.push(line);
-  return lines;
-}
-
-async function buildPdf(report: DriftsReport): Promise<Blob> {
-  const pdf = await PDFDocument.create();
-  const page = pdf.addPage([595, 842]);
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-
-  const marginX = 50;
-  let y = 800;
-
-  const draw = (text: string, x: number, size = 12) => {
-    page.drawText(text, { x, y, size, font, color: rgb(0, 0, 0) });
-    y -= size + 6;
-  };
-
-  const drawSection = (title: string) => {
-    y -= 8;
-    page.drawText(title, {
-      x: marginX,
-      y,
-      size: 14,
-      font,
-      color: rgb(0, 0, 0),
-    });
-    y -= 20;
-  };
-
-  // Header
-  page.drawText("DRIFTSRAPPORT", {
-    x: marginX,
-    y,
-    size: 18,
-    font,
-    color: rgb(0, 0, 0),
-  });
-  y -= 32;
-
-  draw(`Base: ${report.base}`, marginX);
-  draw(`Dato/klokkeslett: ${report.dato} ${report.tid}`, marginX);
-  draw(`Årsak: ${report.arsaker.join(", ") || "ikke valgt"}`, marginX);
-
-  drawSection("Teknisk (årsak):");
-  wrapText(report.teknisk, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Annen årsak:");
-  wrapText(report.annen, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Antatt varighet:");
-  draw(`${report.varighetTimer} timer`, marginX);
-  wrapText(report.varighetTekst, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Estimert gjenopptakelse:");
-  draw(`Kl ${report.gjenopptakTimer}:00`, marginX);
-  wrapText(report.gjenopptakTekst, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Neste oppfølging:");
-  draw(`Kl ${report.oppfolgingTimer}:00`, marginX);
-  wrapText(report.oppfolgingTekst, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Vurdering alternativ løsning:");
-  wrapText(report.alternativ, 80).forEach((line) => draw(line, marginX));
-
-  y -= 10;
-  draw(`Signatur: ${report.signatur}`, marginX);
-
-  const bytes = await pdf.save();
-  const arrayBuffer = bytes.buffer as ArrayBuffer;
-  return new Blob([arrayBuffer], { type: "application/pdf" });
-}
 
 function StepShell(props: {
   children: React.ReactNode;
@@ -230,68 +143,35 @@ export default function DriftsrapportPage() {
       `Signatur: ${signatur || "(tom)"}`,
     ].filter(Boolean);
 
-    const report: DriftsReport = {
-      base,
-      dato,
-      tid,
-      arsaker,
-      teknisk,
-      annen,
-      varighetTimer,
-      varighetTekst,
-      gjenopptakTimer,
-      gjenopptakTekst,
-      oppfolgingTimer,
-      oppfolgingTekst,
-      alternativ,
-      signatur,
-    };
-
-    const blob = await buildPdf(report);
-    const fileName = `Driftsrapport_${base}_${dato}.pdf`;
-    const file = new File([blob], fileName, { type: "application/pdf" });
-
-    const nav = navigator as NavigatorWithShare;
-    const canShareFiles = nav.canShare?.({ files: [file] });
-
-    const subject = encodeURIComponent(
-      `LOS-helikopter ${base} – driftsrapport ${dato}`
-    );
-
     const plainText =
       linjer.join("\n") +
-      "\n\nVedlagt driftsrapport som PDF. På PC ligger den i Nedlastinger-mappen.";
+      "\n\nVedlagt driftsrapport som PDF.";
 
-    const body = encodeURIComponent(plainText);
+    const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
+    const fileName = `Driftsrapport_${base}_${dato}.pdf`;
+    const title = `Driftsrapport ${base} ${dato}`;
+    const fromName = `LOS Helikopter ${base}`;
 
-    const mottakere =
-      base === "Bergen"
-        ? "myhre.oyvind@gmail.com;tom.ostrem@airlift.no"
-        : "";
+    const response = await fetch("/api/send-report", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subject,
+        body: plainText,
+        fileName,
+        title,
+        fromName,
+      }),
+    });
 
-    if (nav.share && canShareFiles) {
-      try {
-        await nav.share({
-          title: `Driftsrapport ${base} ${dato}`,
-          text: plainText,
-          files: [file],
-        });
-      } catch {
-        // Hvis bruker avbryter deling, gjør ingenting
-      }
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      const to = encodeURIComponent(mottakere);
-      const mailto = `mailto:${to}?subject=${subject}&body=${body}`;
-      window.location.assign(mailto);
+    if (!response.ok) {
+      alert("Klarte ikke å sende driftsrapport. Prøv igjen senere.");
+      return;
     }
 
+    alert("Driftsrapport sendt til faste mottakere.");
     reset();
   }
 
@@ -299,14 +179,23 @@ export default function DriftsrapportPage() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 bg-white/80 backdrop-blur border-b text-gray-900">
         <div className="mx-auto max-w-md p-4 space-y-2">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
-            >
-              Til forsiden
-            </Link>
-            <h1 className="text-xl font-semibold">Driftsrapport</h1>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
+              >
+                Til forsiden
+              </Link>
+              <h1 className="text-xl font-semibold">Driftsrapport</h1>
+            </div>
+            <Image
+              src="/Airlift-logo.png"
+              alt="Airlift-logo"
+              width={140}
+              height={32}
+              className="h-8 w-auto"
+            />
           </div>
           <p className="text-sm text-gray-600">
             Stegvis driftsrapport for LOS-helikopter.

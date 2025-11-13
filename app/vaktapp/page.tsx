@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import Image from "next/image";
 
 // ----- Typer -----
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
@@ -30,10 +30,7 @@ interface VaktReport {
   createdAt: number;
 }
 
-type NavigatorWithShare = Navigator & {
-  share?: (data: ShareData) => Promise<void>;
-  canShare?: (data?: ShareData) => boolean;
-};
+
 
 type DraftReport = Omit<VaktReport, "createdAt">;
 
@@ -72,86 +69,7 @@ function saveReports(reports: VaktReport[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
 }
 
-function wrapText(text: string, maxChars: number) {
-  const words = (text || "").split(/\s+/);
-  const lines: string[] = [];
-  let line = "";
 
-  words.forEach((w) => {
-    if ((line + " " + w).trim().length > maxChars) {
-      if (line) lines.push(line);
-      line = w;
-    } else {
-      line = (line ? line + " " : "") + w;
-    }
-  });
-
-  if (line) lines.push(line);
-  return lines;
-}
-
-async function buildPdf(report: DraftReport): Promise<Blob> {
-  const pdf = await PDFDocument.create();
-  const page = pdf.addPage([595, 842]); // A4
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-
-  const marginX = 50;
-  let y = 800;
-
-  const draw = (text: string, x: number, size = 12) => {
-    page.drawText(text, { x, y, size, font, color: rgb(0, 0, 0) });
-    y -= size + 6;
-  };
-
-  const drawSection = (title: string) => {
-    y -= 8;
-    page.drawText(title, {
-      x: marginX,
-      y,
-      size: 14,
-      font,
-      color: rgb(0, 0, 0),
-    });
-    y -= 20;
-  };
-
-  // Header
-  page.drawText("VAKTRAPPORT", {
-    x: marginX,
-    y,
-    size: 18,
-    font,
-    color: rgb(0, 0, 0),
-  });
-  y -= 32;
-
-  draw(`Crew: ${report.crew}`, marginX);
-  draw(`Uke (fra–til): ${report.ukeFra} – ${report.ukeTil}`, marginX);
-  draw(`Maskin i bruk: ${report.maskin}`, marginX);
-  draw(`Base: ${report.base}`, marginX);
-
-  drawSection("Operativ informasjon:");
-  wrapText(report.operativ, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Annen informasjon:");
-  wrapText(report.annen, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Tekniske utfordringer:");
-  wrapText(report.teknisk, 80).forEach((line) => draw(line, marginX));
-
-  drawSection("Sjekkliste:");
-  report.checks.forEach((c) =>
-    draw(`- [${c.checked ? "x" : " "}] ${c.label}`, marginX)
-  );
-
-  y -= 10;
-  draw(`Dato/Sign: ${report.datoSign}`, marginX);
-  draw(`Skrevet av: ${report.skrevetAv}`, marginX);
-
-  const bytes = await pdf.save();
-  const arrayBuffer = bytes.buffer as ArrayBuffer;
-  return new Blob([arrayBuffer], { type: "application/pdf" });
-}
 
 // ----- UI-byggeklosser -----
 function StepShell(props: {
@@ -292,41 +210,54 @@ export default function VaktAppPage() {
   async function handleSend() {
     await saveCurrent();
 
-    const blob = await buildPdf(report);
-    const file = new File(
-      [blob],
-      `Vaktrapport_${report.ukeFra}-${report.ukeTil}.pdf`,
-      { type: "application/pdf" }
-    );
+    const linjer = [
+      `Crew: ${crew}`,
+      `Uke: ${ukeFra}-${ukeTil}`,
+      `Maskin i bruk: ${maskin}`,
+      `Base: ${base}`,
+      "",
+      "Operativ informasjon:",
+      operativ || "(tom)",
+      "",
+      "Annen informasjon:",
+      annen || "(tom)",
+      "",
+      "Tekniske utfordringer:",
+      teknisk || "(tom)",
+      "",
+      "Sjekkliste:",
+      ...checks.map((c) => `- [${c.checked ? "x" : " "}] ${c.label}`),
+      "",
+      `Dato/Sign: ${datoSign}`,
+      `Skrevet av: ${skrevetAv}`,
+    ];
 
-    const nav = navigator as NavigatorWithShare;
-    const canShareFiles = nav.canShare?.({ files: [file] });
+    const plainText = linjer.join("\n");
+    const subject = `LOS-helikopter ${base} - vaktrapport ${datoSign}`;
+    const fileName = `Vaktrapport_${base}_${ukeFra}-${ukeTil}.pdf`;
+    const title = `Vaktrapport ${base} ${datoSign}`;
+    const fromName = `LOS Helikopter ${base}`;
 
-    if (nav.share && canShareFiles) {
-      try {
-        await nav.share({
-          title: `Vaktrapport ${base} ${datoSign}`,
-          text: "Se vedlagt vaktrapport (PDF).",
-          files: [file],
-        });
-      } catch {}
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      a.click();
-      URL.revokeObjectURL(url);
+    const response = await fetch("/api/send-report", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subject,
+        body: plainText,
+        fileName,
+        title,
+        fromName,
+      }),
+    });
 
-      const subject = encodeURIComponent(
-        `LOS-helikopter ${base} – vaktrapport ${datoSign}`
-      );
-      const body = encodeURIComponent(
-        `LOS-helikopter ${base}\nVaktrapport uke ${ukeFra}–${ukeTil}, signert ${datoSign}.\n\nVedlagt PDF er lastet ned.`
-      );
-      window.location.assign(`mailto:?subject=${subject}&body=${body}`);
+    if (!response.ok) {
+      alert("Klarte ikke å sende vaktrapport. Prøv igjen senere.");
+      return;
     }
 
+    alert("Vaktrapport sendt til faste mottakere.");
     startNew();
   }
 
@@ -368,7 +299,16 @@ export default function VaktAppPage() {
             >
               Til forsiden
             </Link>
-            <h1 className="text-xl font-semibold">Vaktapp</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold">Vaktrapport</h1>
+              <Image
+                src="/Airlift-logo.png"
+                alt="Airlift-logo"
+                width={140}
+                height={32}
+                className="h-8 w-auto"
+              />
+            </div>
           </div>
           <button
             onClick={() => setShowArchive((v) => !v)}
@@ -678,33 +618,57 @@ export default function VaktAppPage() {
                     <button
                       className="text-gray-900 underline"
                       onClick={async () => {
-                        const blob = await buildPdf(r);
-                        const file = new File(
-                          [blob],
-                          `Vaktrapport_${r.ukeFra}-${r.ukeTil}.pdf`,
-                          { type: "application/pdf" }
-                        );
+                        const linjer = [
+                          `Crew: ${r.crew}`,
+                          `Uke: ${r.ukeFra}-${r.ukeTil}`,
+                          `Maskin i bruk: ${r.maskin}`,
+                          `Base: ${r.base}`,
+                          "",
+                          "Operativ informasjon:",
+                          r.operativ || "(tom)",
+                          "",
+                          "Annen informasjon:",
+                          r.annen || "(tom)",
+                          "",
+                          "Tekniske utfordringer:",
+                          r.teknisk || "(tom)",
+                          "",
+                          "Sjekkliste:",
+                          ...r.checks.map((c) => `- [${c.checked ? "x" : " "}] ${c.label}`),
+                          "",
+                          `Dato/Sign: ${r.datoSign}`,
+                          `Skrevet av: ${r.skrevetAv}`,
+                        ];
 
-                        const nav = navigator as NavigatorWithShare;
-                        const canShareFiles = nav.canShare?.({ files: [file] });
+                        const plainText = linjer.join("\n");
+                        const subject = `LOS-helikopter ${r.base} - vaktrapport ${r.datoSign}`;
+                        const fileName = `Vaktrapport_${r.base}_${r.ukeFra}-${r.ukeTil}.pdf`;
+                        const title = `Vaktrapport ${r.base} ${r.datoSign}`;
+                        const fromName = `LOS Helikopter ${r.base}`;
 
-                        if (nav.share && canShareFiles) {
-                          await nav.share({
-                            title: "Vaktrapport",
-                            text: "Se vedlagt vaktrapport (PDF).",
-                            files: [file],
-                          });
-                        } else {
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = file.name;
-                          a.click();
-                          URL.revokeObjectURL(url);
+                        const response = await fetch("/api/send-report", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            subject,
+                            body: plainText,
+                            fileName,
+                            title,
+                            fromName,
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          alert("Klarte ikke å sende vaktrapport. Prøv igjen senere.");
+                          return;
                         }
+
+                        alert("Vaktrapport sendt til faste mottakere.");
                       }}
                     >
-                      Del
+                      Send på nytt
                     </button>
                   </div>
                 </div>
