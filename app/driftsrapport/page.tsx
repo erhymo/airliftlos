@@ -1,8 +1,31 @@
 "use client";
 
 import React, { useState } from "react";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
+
+type NavigatorWithShare = Navigator & {
+  share?: (data: ShareData) => Promise<void>;
+  canShare?: (data?: ShareData) => boolean;
+};
+
+interface DriftsReport {
+  base: Base;
+  dato: string;
+  tid: string;
+  arsaker: string[];
+  teknisk: string;
+  annen: string;
+  varighetTimer: number;
+  varighetTekst: string;
+  gjenopptakTimer: number;
+  gjenopptakTekst: string;
+  oppfolgingTimer: number;
+  oppfolgingTekst: string;
+  alternativ: string;
+  signatur: string;
+}
 
 function getDefaultDate() {
   return new Date().toISOString().slice(0, 10);
@@ -13,6 +36,92 @@ function getDefaultTime() {
   const h = String(d.getHours()).padStart(2, "0");
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${h}:${m}`;
+}
+
+function wrapText(text: string, maxChars: number) {
+  const words = (text || "").split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+
+  words.forEach((w) => {
+    if ((line + " " + w).trim().length > maxChars) {
+      if (line) lines.push(line);
+      line = w;
+    } else {
+      line = (line ? line + " " : "") + w;
+    }
+  });
+
+  if (line) lines.push(line);
+  return lines;
+}
+
+async function buildPdf(report: DriftsReport): Promise<Blob> {
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage([595, 842]);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+
+  const marginX = 50;
+  let y = 800;
+
+  const draw = (text: string, x: number, size = 12) => {
+    page.drawText(text, { x, y, size, font, color: rgb(0, 0, 0) });
+    y -= size + 6;
+  };
+
+  const drawSection = (title: string) => {
+    y -= 8;
+    page.drawText(title, {
+      x: marginX,
+      y,
+      size: 14,
+      font,
+      color: rgb(0, 0, 0),
+    });
+    y -= 20;
+  };
+
+  // Header
+  page.drawText("DRIFTSRAPPORT", {
+    x: marginX,
+    y,
+    size: 18,
+    font,
+    color: rgb(0, 0, 0),
+  });
+  y -= 32;
+
+  draw(`Base: ${report.base}`, marginX);
+  draw(`Dato/klokkeslett: ${report.dato} ${report.tid}`, marginX);
+  draw(`Årsak: ${report.arsaker.join(", ") || "ikke valgt"}`, marginX);
+
+  drawSection("Teknisk (årsak):");
+  wrapText(report.teknisk, 80).forEach((line) => draw(line, marginX));
+
+  drawSection("Annen årsak:");
+  wrapText(report.annen, 80).forEach((line) => draw(line, marginX));
+
+  drawSection("Antatt varighet:");
+  draw(`${report.varighetTimer} timer`, marginX);
+  wrapText(report.varighetTekst, 80).forEach((line) => draw(line, marginX));
+
+  drawSection("Estimert gjenopptakelse:");
+  draw(`Kl ${report.gjenopptakTimer}:00`, marginX);
+  wrapText(report.gjenopptakTekst, 80).forEach((line) => draw(line, marginX));
+
+  drawSection("Neste oppfølging:");
+  draw(`Kl ${report.oppfolgingTimer}:00`, marginX);
+  wrapText(report.oppfolgingTekst, 80).forEach((line) => draw(line, marginX));
+
+  drawSection("Vurdering alternativ løsning:");
+  wrapText(report.alternativ, 80).forEach((line) => draw(line, marginX));
+
+  y -= 10;
+  draw(`Signatur: ${report.signatur}`, marginX);
+
+  const bytes = await pdf.save();
+  const arrayBuffer = bytes.buffer as ArrayBuffer;
+  return new Blob([arrayBuffer], { type: "application/pdf" });
 }
 
 function StepShell(props: {
@@ -100,7 +209,7 @@ export default function DriftsrapportPage() {
     setSignatur("");
   }
 
-  function handleSend() {
+  async function handleSend() {
     const linjer = [
       `Base: ${base}`,
       `Dato/klokkeslett: ${dato} ${tid}`,
@@ -120,16 +229,66 @@ export default function DriftsrapportPage() {
       `Signatur: ${signatur || "(tom)"}`,
     ].filter(Boolean);
 
+    const report: DriftsReport = {
+      base,
+      dato,
+      tid,
+      arsaker,
+      teknisk,
+      annen,
+      varighetTimer,
+      varighetTekst,
+      gjenopptakTimer,
+      gjenopptakTekst,
+      oppfolgingTimer,
+      oppfolgingTekst,
+      alternativ,
+      signatur,
+    };
+
+    const blob = await buildPdf(report);
+    const fileName = `Driftsrapport_${base}_${dato}.pdf`;
+    const file = new File([blob], fileName, { type: "application/pdf" });
+
+    const nav = navigator as NavigatorWithShare;
+    const canShareFiles = nav.canShare?.({ files: [file] });
+
     const subject = encodeURIComponent(
-      `LOS-helikopter ${base} – driftsrapport`
+      `LOS-helikopter ${base} – driftsrapport ${dato}`
     );
-    const body = encodeURIComponent(linjer.join("\n"));
+
+    const body = encodeURIComponent(
+      linjer.join("\n") +
+        "\n\nVedlagt driftsrapport er lastet ned som PDF (se nedlastinger)."
+    );
+
     const mottakere =
       base === "Bergen"
         ? "myhre.oyvind@gmail.com,tom.ostrem@airlift.no"
         : "";
-    const mailto = `mailto:${mottakere}?subject=${subject}&body=${body}`;
-    window.location.href = mailto;
+
+    if (nav.share && canShareFiles) {
+      try {
+        await nav.share({
+          title: `Driftsrapport ${base} ${dato}`,
+          text: "Se vedlagt driftsrapport (PDF).",
+          files: [file],
+        });
+      } catch {
+        // Hvis bruker avbryter deling, gjør ingenting
+      }
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const mailto = `mailto:${mottakere}?subject=${subject}&body=${body}`;
+      window.location.assign(mailto);
+    }
+
     reset();
   }
 

@@ -304,7 +304,7 @@ export default function VaktAppPage() {
     if (nav.share && canShareFiles) {
       try {
         await nav.share({
-          title: "Vaktrapport",
+          title: `Vaktrapport ${base} ${datoSign}`,
           text: "Se vedlagt vaktrapport (PDF).",
           files: [file],
         });
@@ -317,9 +317,11 @@ export default function VaktAppPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      const subject = encodeURIComponent(`LOS-helikopter ${base} – vaktrapport`);
+      const subject = encodeURIComponent(
+        `LOS-helikopter ${base} – vaktrapport ${datoSign}`
+      );
       const body = encodeURIComponent(
-        `LOS-helikopter ${base}\n\nVedlagt PDF er lastet ned.`
+        `LOS-helikopter ${base}\nVaktrapport uke ${ukeFra}–${ukeTil}, signert ${datoSign}.\n\nVedlagt PDF er lastet ned.`
       );
       window.location.assign(`mailto:?subject=${subject}&body=${body}`);
     }
