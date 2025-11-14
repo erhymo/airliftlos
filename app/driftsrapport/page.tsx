@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
 
-
-
 interface DriftsReport {
+  id: string;
   base: Base;
   dato: string;
   tid: string;
@@ -23,7 +22,11 @@ interface DriftsReport {
   oppfolgingTekst: string;
   alternativ: string;
   signatur: string;
+  metarLines: string[];
+  createdAt: number;
 }
+
+type DraftDriftsReport = Omit<DriftsReport, "createdAt">;
 
 function getDefaultDate() {
   const d = new Date();
@@ -38,6 +41,26 @@ function getDefaultTime() {
   const h = String(d.getHours()).padStart(2, "0");
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${h}:${m}`;
+}
+
+const STORAGE_KEY = "driftsrapport_reports_v1";
+
+function loadReports(): DriftsReport[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr;
+  } catch {
+    return [];
+  }
+}
+
+function saveReports(reports: DriftsReport[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
 }
 
 
@@ -107,6 +130,46 @@ export default function DriftsrapportPage() {
   const [metarLoading, setMetarLoading] = useState(false);
   const [metarError, setMetarError] = useState<string | null>(null);
   const [useMetar, setUseMetar] = useState<"ja" | "nei">("nei");
+  const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
+  const [showArchive, setShowArchive] = useState(false);
+
+  const report: DraftDriftsReport = useMemo(
+    () => ({
+      id: crypto.randomUUID(),
+      base,
+      dato,
+      tid,
+      arsaker,
+      teknisk,
+      annen,
+      varighetTimer,
+      varighetTekst,
+      gjenopptakTimer,
+      gjenopptakTekst,
+      oppfolgingTimer,
+      oppfolgingTekst,
+      alternativ,
+      signatur,
+      metarLines: selectedMetarLines,
+    }),
+    [
+      base,
+      dato,
+      tid,
+      arsaker,
+      teknisk,
+      annen,
+      varighetTimer,
+      varighetTekst,
+      gjenopptakTimer,
+      gjenopptakTekst,
+      oppfolgingTimer,
+      oppfolgingTekst,
+      alternativ,
+      signatur,
+      selectedMetarLines,
+    ]
+  );
 
   function toggleArsak(value: string) {
     setArsaker((prev) =>
@@ -137,6 +200,43 @@ export default function DriftsrapportPage() {
     setMetarLoading(false);
     setMetarError(null);
     setUseMetar("nei");
+  }
+
+  function resetFrom(r: DriftsReport) {
+    setBase(r.base);
+    setDato(r.dato);
+    setTid(r.tid);
+    setArsaker(r.arsaker);
+    setTeknisk(r.teknisk);
+    setAnnen(r.annen);
+    setVarighetTimer(r.varighetTimer);
+    setVarighetTekst(r.varighetTekst);
+    setGjenopptakTimer(r.gjenopptakTimer);
+    setGjenopptakTekst(r.gjenopptakTekst);
+    setOppfolgingTimer(r.oppfolgingTimer);
+    setOppfolgingTekst(r.oppfolgingTekst);
+    setAlternativ(r.alternativ);
+    setSignatur(r.signatur);
+    setSelectedMetarLines(r.metarLines || []);
+    setUseMetar(r.metarLines && r.metarLines.length > 0 ? "ja" : "nei");
+  }
+
+  async function saveCurrent() {
+    const newReport: DriftsReport = {
+      ...report,
+      createdAt: Date.now(),
+    };
+    const next = [newReport, ...reports].sort(
+      (a, b) => b.createdAt - a.createdAt
+    );
+    setReports(next);
+    saveReports(next);
+  }
+
+  function openExisting(r: DriftsReport) {
+    resetFrom(r);
+    setStep(10);
+    setShowArchive(false);
   }
 
   async function fetchMetarTaf() {
@@ -180,6 +280,8 @@ export default function DriftsrapportPage() {
   }
 
   async function handleSend() {
+    await saveCurrent();
+
     const linjer = [
       `Base: ${base}`,
       `Dato/klokkeslett: ${dato} ${tid}`,
@@ -206,9 +308,8 @@ export default function DriftsrapportPage() {
     linjer.push(`Signatur: ${signatur || "(tom)"}`);
 
     const plainText =
-      linjer
-        .filter(Boolean)
-        .join("\n") + "\n\nVedlagt driftsrapport som PDF.";
+      linjer.filter(Boolean).join("\n") +
+      "\n\nVedlagt driftsrapport som PDF.";
 
     const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
     const fileName = `Driftsrapport_${base}_${dato}.pdf`;
@@ -238,6 +339,63 @@ export default function DriftsrapportPage() {
     reset();
   }
 
+  async function resendReport(r: DriftsReport) {
+    const linjer = [
+      `Base: ${r.base}`,
+      `Dato/klokkeslett: ${r.dato} ${r.tid}`,
+      ` c5rsak: ${r.arsaker.join(", ") || "ikke valgt"}`,
+      "Teknisk ( e5rsak):",
+      r.teknisk || "(tom)",
+      "Annen  e5rsak:",
+      r.annen || "(tom)",
+      `Antatt varighet: ${r.varighetTimer} timer`,
+      r.varighetTekst && `Merknad varighet: ${r.varighetTekst}`,
+      `Estimert gjenopptakelse: kl ${r.gjenopptakTimer}:00`,
+      r.gjenopptakTekst && `Merknad gjenopptakelse: ${r.gjenopptakTekst}`,
+      `Neste oppf f8lging: kl ${r.oppfolgingTimer}:00`,
+      r.oppfolgingTekst && `Merknad oppf f8lging: ${r.oppfolgingTekst}`,
+      "Vurdering alternativ l f8sning:",
+      r.alternativ || "(tom)",
+    ];
+
+    if (r.metarLines && r.metarLines.length > 0) {
+      linjer.push("METAR/TAF:");
+      linjer.push(...r.metarLines);
+    }
+
+    linjer.push(`Signatur: ${r.signatur || "(tom)"}`);
+
+    const plainText =
+      linjer.filter(Boolean).join("\n") +
+      "\n\nVedlagt driftsrapport som PDF.";
+
+    const subject = `LOS-helikopter ${r.base}  f6 driftsrapport ${r.dato}`;
+    const fileName = `Driftsrapport_${r.base}_${r.dato}.pdf`;
+    const title = `Driftsrapport ${r.base} ${r.dato}`;
+    const fromName = `LOS Helikopter ${r.base}`;
+
+    const response = await fetch("/api/send-report", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subject,
+        body: plainText,
+        fileName,
+        title,
+        fromName,
+      }),
+    });
+
+    if (!response.ok) {
+      alert("Klarte ikke  e5 sende driftsrapport. Pr f8v igjen senere.");
+      return;
+    }
+
+    alert("Driftsrapport sendt til faste mottakere.");
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 bg-white/80 backdrop-blur border-b text-gray-900">
@@ -263,10 +421,23 @@ export default function DriftsrapportPage() {
           <p className="text-sm text-gray-600">
             Stegvis driftsrapport for LOS-helikopter.
           </p>
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowArchive((v) => !v)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                showArchive
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "bg-white text-gray-900 border-gray-300"
+              }`}
+            >
+              {showArchive ? "Skjul arkiv" : "Arkiv"}
+            </button>
+          </div>
         </div>
       </header>
 
-      <main>
+      {!showArchive && (
+        <main>
         {step === 0 && (
           <StepShell onNext={() => setStep(1)}>
             <Section title="Base, dato og klokkeslett">
@@ -653,6 +824,66 @@ export default function DriftsrapportPage() {
           </div>
         )}
       </main>
+      )}
+      {showArchive && (
+        <main className="mx-auto max-w-md p-4">
+          <div className="bg-white rounded-2xl shadow divide-y">
+            <div className="p-4 font-semibold">Arkiv (nyeste øverst)</div>
+
+            {reports.length === 0 && (
+              <div className="p-4 text-sm text-gray-800">
+                Ingen rapporter enda.
+              </div>
+            )}
+
+            {reports.map((r) => (
+              <div key={r.id} className="p-4">
+                <div className="text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="font-medium">
+                      {r.base} – {r.dato} {r.tid}
+                    </div>
+                    <div className="text-gray-900 text-sm">
+                      {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
+                      {new Date(r.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openExisting(r)}
+                      className="text-blue-600 underline"
+                    >
+                      Åpne
+                    </button>
+
+                    <button
+                      className="text-gray-900 underline"
+                      onClick={() => resendReport(r)}
+                    >
+                      Send på nytt
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                reset();
+                setShowArchive(false);
+              }}
+              className="w-full py-3 rounded-xl bg-black text-white"
+            >
+              Ny driftsrapport
+            </button>
+          </div>
+        </main>
+      )}
+
+
     </div>
   );
 }
