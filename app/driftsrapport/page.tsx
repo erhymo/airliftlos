@@ -894,7 +894,7 @@ export default function DriftsrapportPage() {
           <StepShell onPrev={() => setStep(4)} onNext={() => setStep(6)}>
             <Section title="Antatt varighet">
               <div className="space-y-3">
-                <div>
+                <div className="px-4">
                   <input
                     type="range"
                     min={0}
@@ -923,7 +923,7 @@ export default function DriftsrapportPage() {
           <StepShell onPrev={() => setStep(5)} onNext={() => setStep(7)}>
             <Section title="Estimert tidspunkt for gjenopptakelse">
               <div className="space-y-3">
-                <div>
+                <div className="px-4">
                   <input
                     type="range"
                     min={0}
@@ -952,7 +952,7 @@ export default function DriftsrapportPage() {
           <StepShell onPrev={() => setStep(6)} onNext={() => setStep(8)}>
             <Section title="Oppfølging (neste tidspunkt for oppdatering)">
               <div className="space-y-3">
-                <div>
+                <div className="px-4">
                   <input
                     type="range"
                     min={0}
