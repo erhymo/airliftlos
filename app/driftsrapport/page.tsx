@@ -413,7 +413,14 @@ export default function DriftsrapportPage() {
     "Des",
   ];
 
-  const CAUSES = ["Tåke", "Lyn", "Sikt/Skydekke", "Vind/Bølgehøyde"] as const;
+  const CAUSES = [
+    "Tåke",
+    "Lyn",
+    "Sikt/Skydekke",
+    "Vind/Bølgehøyde",
+    "Teknisk",
+    "Annet",
+  ] as const;
 
   const availableYears = (() => {
     const nowYear = new Date().getFullYear();
@@ -584,7 +591,7 @@ export default function DriftsrapportPage() {
           <StepShell onPrev={() => setStep(0)} onNext={() => setStep(2)}>
             <Section title="Årsak (huke av det som gjelder)">
               <div className="space-y-2">
-                {["Tåke", "Lyn", "Sikt/Skydekke", "Vind/Bølgehøyde"].map((a) => (
+                {CAUSES.map((a) => (
                   <label
                     key={a}
                     className="p-3 border rounded-xl flex items-center gap-3"
