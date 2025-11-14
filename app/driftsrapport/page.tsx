@@ -367,7 +367,8 @@ export default function DriftsrapportPage() {
       "\n\nVedlagt driftsrapport som PDF.";
 
     const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
-    const fileName = `Driftsrapport_${base}_${dato}.pdf`;
+    const safeTid = tid.replace(":", "-");
+    const fileName = `Driftsforstyrrelse_${base}_${dato}_${safeTid}.pdf`;
     const title = `Driftsrapport ${base} ${dato}`;
     const fromName = `LOS Helikopter ${base}`;
 
@@ -434,7 +435,8 @@ export default function DriftsrapportPage() {
       "\n\nVedlagt driftsrapport som PDF.";
 
     const subject = `LOS-helikopter ${r.base}  f6 driftsrapport ${r.dato}`;
-    const fileName = `Driftsrapport_${r.base}_${r.dato}.pdf`;
+    const safeTid = r.tid.replace(":", "-");
+    const fileName = `Driftsforstyrrelse_${r.base}_${r.dato}_${safeTid}.pdf`;
     const title = `Driftsrapport ${r.base} ${r.dato}`;
     const fromName = `LOS Helikopter ${r.base}`;
 
