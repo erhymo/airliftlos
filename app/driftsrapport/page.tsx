@@ -132,6 +132,8 @@ export default function DriftsrapportPage() {
   const [useMetar, setUseMetar] = useState<"ja" | "nei">("nei");
   const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
   const [showArchive, setShowArchive] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
 
   const report: DraftDriftsReport = useMemo(
     () => ({
@@ -396,6 +398,92 @@ export default function DriftsrapportPage() {
     alert("Driftsrapport sendt til faste mottakere.");
   }
 
+  const MONTH_LABELS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mai",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Des",
+  ];
+
+  const CAUSES = ["Tåke", "Lyn", "Sikt/Skydekke", "Vind/Bølgehøyde"] as const;
+
+  const availableYears = (() => {
+    const nowYear = new Date().getFullYear();
+    const set = new Set<number>();
+    for (const r of reports) {
+      const parts = r.dato.split("-");
+      const yearNum = Number(parts[0]);
+      if (!Number.isNaN(yearNum)) {
+        set.add(yearNum);
+      }
+    }
+    if (set.size === 0) {
+      set.add(nowYear);
+    }
+    return Array.from(set).sort();
+  })();
+
+  function buildStatsForYear(year: number) {
+    const perMonthCounts = MONTH_LABELS.map(() => {
+      const perCause: Record<string, number> = {};
+      for (const cause of CAUSES) {
+        perCause[cause] = 0;
+      }
+      return { perCause, totalReports: 0 };
+    });
+
+    const perMonthHours = MONTH_LABELS.map(() => {
+      const perCause: Record<string, number> = {};
+      for (const cause of CAUSES) {
+        perCause[cause] = 0;
+      }
+      return { perCause, totalHours: 0 };
+    });
+
+    for (const r of reports) {
+      const [yearStr, monthStr] = r.dato.split("-");
+      const y = Number(yearStr);
+      const m = Number(monthStr) - 1;
+      if (y !== year || m < 0 || m >= MONTH_LABELS.length) continue;
+
+      const duration = r.varighetTimer || 0;
+
+      perMonthCounts[m].totalReports += 1;
+      perMonthHours[m].totalHours += duration;
+
+      for (const cause of CAUSES) {
+        if (r.arsaker.includes(cause)) {
+          perMonthCounts[m].perCause[cause] += 1;
+          perMonthHours[m].perCause[cause] += duration;
+        }
+      }
+    }
+
+    const totalHoursByCause: Record<string, number> = {};
+    let totalHoursYear = 0;
+
+    for (let i = 0; i < MONTH_LABELS.length; i++) {
+      totalHoursYear += perMonthHours[i].totalHours;
+      for (const cause of CAUSES) {
+        totalHoursByCause[cause] =
+          (totalHoursByCause[cause] || 0) + perMonthHours[i].perCause[cause];
+      }
+    }
+
+    return { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear };
+  }
+
+  const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
+    buildStatsForYear(selectedYear);
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 bg-white/80 backdrop-blur border-b text-gray-900">
@@ -421,9 +509,12 @@ export default function DriftsrapportPage() {
           <p className="text-sm text-gray-600">
             Stegvis driftsrapport for LOS-helikopter.
           </p>
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <button
-              onClick={() => setShowArchive((v) => !v)}
+              onClick={() => {
+                setShowStats(false);
+                setShowArchive((v) => !v);
+              }}
               className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
                 showArchive
                   ? "bg-gray-900 text-white border-gray-900"
@@ -432,11 +523,23 @@ export default function DriftsrapportPage() {
             >
               {showArchive ? "Skjul arkiv" : "Arkiv"}
             </button>
+            {showArchive && (
+              <button
+                onClick={() => setShowStats(true)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                  showStats
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-900 border-gray-300"
+                }`}
+              >
+                Statestikk
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {!showArchive && (
+      {!showArchive && !showStats && (
         <main>
         {step === 0 && (
           <StepShell onNext={() => setStep(1)}>
@@ -825,7 +928,7 @@ export default function DriftsrapportPage() {
         )}
       </main>
       )}
-      {showArchive && (
+      {showArchive && !showStats && (
         <main className="mx-auto max-w-md p-4">
           <div className="bg-white rounded-2xl shadow divide-y">
             <div className="p-4 font-semibold">Arkiv (nyeste øverst)</div>
@@ -883,6 +986,132 @@ export default function DriftsrapportPage() {
         </main>
       )}
 
+      {showStats && (
+        <main className="mx-auto max-w-3xl p-4">
+          <div className="bg-white rounded-2xl shadow p-4 text-gray-900">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <h2 className="text-lg font-semibold">Statestikk driftsrapporter</h2>
+              <button
+                onClick={() => setShowStats(false)}
+                className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
+              >
+                Tilbake
+              </button>
+            </div>
+
+            <div className="mb-4 flex flex-wrap gap-2">
+              {availableYears.map((year) => (
+                <button
+                  key={year}
+                  onClick={() => setSelectedYear(year)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                    selectedYear === year
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-900 border-gray-300"
+                  }`}
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold mb-2 text-sm">
+                  Antall driftsrapporter per måned og årsak – {selectedYear}
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border border-gray-200 text-xs sm:text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="border px-2 py-1 text-left">Måned</th>
+                        {CAUSES.map((cause) => (
+                          <th key={cause} className="border px-2 py-1 text-left">
+                            {cause}
+                          </th>
+                        ))}
+                        <th className="border px-2 py-1 text-left">Totalt rapporter</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {MONTH_LABELS.map((label, index) => {
+                        const countsRow = perMonthCounts[index];
+                        const monthTotal = countsRow.totalReports;
+                        return (
+                          <tr key={label}>
+                            <td className="border px-2 py-1 font-medium">{label}</td>
+                            {CAUSES.map((cause) => (
+                              <td key={cause} className="border px-2 py-1 text-right">
+                                {countsRow.perCause[cause] || 0}
+                              </td>
+                            ))}
+                            <td className="border px-2 py-1 text-right font-semibold">
+                              {monthTotal}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2 text-sm">
+                  Antall timer stopp per måned og årsak – {selectedYear}
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border border-gray-200 text-xs sm:text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="border px-2 py-1 text-left">Måned</th>
+                        {CAUSES.map((cause) => (
+                          <th key={cause} className="border px-2 py-1 text-left">
+                            {cause}
+                          </th>
+                        ))}
+                        <th className="border px-2 py-1 text-left">Totalt timer (måned)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {MONTH_LABELS.map((label, index) => {
+                        const hoursRow = perMonthHours[index];
+                        return (
+                          <tr key={label}>
+                            <td className="border px-2 py-1 font-medium">{label}</td>
+                            {CAUSES.map((cause) => (
+                              <td key={cause} className="border px-2 py-1 text-right">
+                                {hoursRow.perCause[cause] || 0}
+                              </td>
+                            ))}
+                            <td className="border px-2 py-1 text-right font-semibold">
+                              {hoursRow.totalHours || 0}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-gray-50">
+                        <td className="border px-2 py-1 font-semibold">Sum år</td>
+                        {CAUSES.map((cause) => (
+                          <td
+                            key={cause}
+                            className="border px-2 py-1 text-right font-semibold"
+                          >
+                            {totalHoursByCause[cause] || 0}
+                          </td>
+                        ))}
+                        <td className="border px-2 py-1 text-right font-bold">
+                          {totalHoursYear || 0}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      )}
 
     </div>
   );
