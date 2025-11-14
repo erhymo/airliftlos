@@ -682,8 +682,6 @@ export default function DriftsrapportPage() {
                     onClick={() => {
                       setUseMetar("nei");
                       setSelectedMetarLines([]);
-                      setUseHti("nei");
-                      setSelectedHtiUrls([]);
                     }}
                     className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
                       useMetar === "nei"
@@ -769,7 +767,7 @@ export default function DriftsrapportPage() {
                   </div>
                 )}
 
-                {arsaker.includes("Lyn") && useMetar === "ja" && (
+                {arsaker.includes("Lyn") && (
                   <div className="mt-6 space-y-3 border-t pt-4">
                     <div className="text-sm font-medium text-gray-900">
                       Vil du legge til HTI-kart (kun relevant ved lyn)?
