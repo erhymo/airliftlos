@@ -182,6 +182,7 @@ export async function POST(req: Request) {
             content: pdfBase64,
             type: "application/pdf",
             filename: fileName,
+            disposition: "attachment",
           },
         ],
       }),
