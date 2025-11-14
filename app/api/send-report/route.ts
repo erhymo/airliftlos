@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 const TO_ADDRESSES = [
-  "myhre.oyvind@gmail.com",
+  "oyvind.myhre@airlift.no",
   "tom.ostrem@airlift.no",
 ];
 
