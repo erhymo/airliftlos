@@ -1,38 +1,15 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import StepShell from "./components/StepShell";
+import Section from "./components/Section";
+import CrewPicker from "./components/CrewPicker";
+import VaktReportArchive from "./components/VaktReportArchive";
 
 // ----- Typer -----
-type Base = "Bergen" | "Tromsø" | "Hammerfest";
-type Maskin = "LN-OXH" | "LN-OXI" | "LN-OXJ";
-
-interface CheckItem {
-  key: string;
-  label: string;
-  checked: boolean;
-}
-
-interface VaktReport {
-  id: string;
-  crew: string;
-  ukeFra: string;
-  ukeTil: string;
-  maskin: Maskin;
-  base: Base;
-  operativ: string;
-  annen: string;
-  teknisk: string;
-  checks: CheckItem[];
-  datoSign: string;
-  skrevetAv: string;
-  createdAt: number;
-}
-
-
-
-type DraftReport = Omit<VaktReport, "createdAt">;
+import type { Base, Maskin, CheckItem, VaktReport, DraftReport } from "./types";
 
 
 // ----- Hjelpefunksjoner -----
@@ -76,45 +53,6 @@ const defaultChecks: CheckItem[] = [
   { key: "sengetoy", label: "Bestilt sengetøy Flesland", checked: false },
 ];
 
-const CAPTAINS = [
-  "BFA",
-  "GUN",
-  "FOL",
-  "LEI",
-  "HUS",
-  "BRÆ",
-  "LOO",
-  "TJA",
-  "TUR",
-  "MÆL",
-  "BAC",
-  "OHN",
-].sort((a, b) => a.localeCompare(b, "nb-NO"));
-
-const FIRST_OFFICERS = [
-  "LUN",
-  "KIR",
-  "DAM",
-  "HOL",
-  "ØST",
-  "HAN",
-  "MYH",
-  "SMÅ",
-  "KON",
-].sort((a, b) => a.localeCompare(b, "nb-NO"));
-
-const TECHNICIANS = [
-  "MÆL",
-  "KRO",
-  "DYP",
-  "STE",
-  "FIK",
-  "HØV",
-  "ROT",
-  "ADS",
-].sort((a, b) => a.localeCompare(b, "nb-NO"));
-
-
 const STORAGE_KEY = "vaktapp_reports_v1";
 
 function loadReports(): VaktReport[] {
@@ -138,51 +76,6 @@ function saveReports(reports: VaktReport[]) {
 
 
 // ----- UI-byggeklosser -----
-function StepShell(props: {
-  children: React.ReactNode;
-  onNext: () => void;
-  onPrev?: () => void;
-  canNext?: boolean;
-  belowButtons?: React.ReactNode;
-}) {
-  const { children, onNext, onPrev, canNext = true, belowButtons } = props;
-
-  return (
-    <div className="mx-auto w-full max-w-md p-4 text-gray-900">
-      <div className="bg-white rounded-2xl shadow p-4">
-        {children}
-        <div className="mt-4 flex gap-2">
-          {onPrev && (
-            <button
-              onClick={onPrev}
-              className="flex-1 py-3 rounded-xl border border-gray-300"
-            >
-              Tilbake
-            </button>
-          )}
-          <button
-            onClick={onNext}
-            disabled={!canNext}
-            className="flex-1 py-3 rounded-xl bg-black text-white disabled:opacity-40"
-          >
-            Neste
-          </button>
-        </div>
-        {belowButtons && <div className="mt-4">{belowButtons}</div>}
-      </div>
-    </div>
-  );
-}
-
-function Section(props: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-3">
-      <div className="text-base font-medium text-gray-900 mb-1">{props.title}</div>
-      {props.children}
-    </div>
-  );
-}
-
 // ----- Hovedkomponent (side) -----
 export default function VaktAppPage() {
   const [step, setStep] = useState(0);
@@ -203,19 +96,7 @@ export default function VaktAppPage() {
   const [showArchive, setShowArchive] = useState(false);
   const [showCrewPicker, setShowCrewPicker] = useState(false);
 
-  const [selectedCaptains, setSelectedCaptains] = useState<string[]>([]);
-  const [selectedFirstOfficers, setSelectedFirstOfficers] = useState<string[]>([]);
-  const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
-
   const openCrewPicker = () => {
-    const tokens = crew
-      .split(/[\/,]+|\s+/)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-
-    setSelectedCaptains(tokens.filter((t) => CAPTAINS.includes(t)));
-    setSelectedFirstOfficers(tokens.filter((t) => FIRST_OFFICERS.includes(t)));
-    setSelectedTechnicians(tokens.filter((t) => TECHNICIANS.includes(t)));
     setShowCrewPicker(true);
   };
 
@@ -677,254 +558,19 @@ export default function VaktAppPage() {
 
       {/* Arkiv */}
       {showArchive && (
-        <main className="mx-auto max-w-md p-4">
-          <div className="bg-white rounded-2xl shadow divide-y">
-            <div className="p-4 font-semibold">Arkiv (nyeste øverst)</div>
-
-            {reports.length === 0 && (
-              <div className="p-4 text-sm text-gray-800">
-                Ingen rapporter enda.
-              </div>
-            )}
-
-            {reports.map((r) => (
-              <div key={r.id} className="p-4">
-                <div className="text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="font-medium">
-                      {r.crew} — uke {r.ukeFra}–{r.ukeTil}
-                    </div>
-                    <div className="text-gray-900 text-sm">
-                      {r.maskin} • {r.base} •{" "}
-                      {new Date(r.createdAt).toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openExisting(r)}
-                      className="text-blue-600 underline"
-                    >
-                      Åpne
-                    </button>
-
-                    <button
-                      className="text-gray-900 underline"
-                      onClick={async () => {
-                        const linjer = [
-                          `Crew: ${r.crew}`,
-                          `Uke: ${r.ukeFra}-${r.ukeTil}`,
-                          `Maskin i bruk: ${r.maskin}`,
-                          `Base: ${r.base}`,
-                          "",
-                          "Operativ informasjon:",
-                          r.operativ || "(tom)",
-                          "",
-                          "Annen informasjon:",
-                          r.annen || "(tom)",
-                          "",
-                          "Tekniske utfordringer:",
-                          r.teknisk || "(tom)",
-                          "",
-                          "Sjekkliste:",
-                          ...r.checks.map((c) => `- [${c.checked ? "x" : " "}] ${c.label}`),
-                          "",
-                          `Dato/Sign: ${r.datoSign}`,
-                          `Skrevet av: ${r.skrevetAv}`,
-                        ];
-
-                        const plainText = linjer.join("\n");
-                        const subject = `LOS-helikopter ${r.base} - vaktrapport ${r.datoSign}`;
-                        const fileName = `Vaktrapport_${r.base}_${r.ukeFra}-${r.ukeTil}.pdf`;
-                        const title = `Vaktrapport ${r.base} ${r.datoSign}`;
-                        const fromName = `LOS Helikopter ${r.base}`;
-
-                        const response = await fetch("/api/send-report", {
-                          method: "POST",
-                          headers: {
-                            "Content-Type": "application/json",
-                          },
-                          body: JSON.stringify({
-                            subject,
-                            body: plainText,
-                            fileName,
-                            title,
-                            fromName,
-                          }),
-                        });
-
-                        if (!response.ok) {
-                          alert("Klarte ikke å sende vaktrapport. Prøv igjen senere.");
-                          return;
-                        }
-
-                        alert("Vaktrapport sendt til faste mottakere.");
-                      }}
-                    >
-                      Send på nytt
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4">
-            <button
-              onClick={startNew}
-              className="w-full py-3 rounded-xl bg-black text-white"
-            >
-              Ny vaktrapport
-            </button>
-          </div>
-        </main>
+        <VaktReportArchive
+          reports={reports}
+          onOpen={openExisting}
+          onNew={startNew}
+        />
       )}
 
       {showCrewPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-4">
-            <h2 className="text-lg font-semibold mb-2">Velg crew</h2>
-            <p className="text-sm text-gray-700 mb-3">
-              Velg kaptein(er), styrmann/styrmenn og tekniker(e). Kapteiner vises
-              først, deretter styrmenn og teknikere.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Kapteiner</h3>
-                <div className="space-y-2">
-                  {CAPTAINS.map((c) => {
-                    const selected = selectedCaptains.includes(c);
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() =>
-                          setSelectedCaptains((prev) =>
-                            prev.includes(c)
-                              ? prev.filter((x) => x !== c)
-                              : [...prev, c]
-                          )
-                        }
-                        className={
-                          "w-full text-left p-2 rounded-xl border text-sm " +
-                          (selected
-                            ? "bg-black text-white border-black"
-                            : "bg-white hover:bg-gray-50")
-                        }
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Styrmenn</h3>
-                <div className="space-y-2">
-                  {FIRST_OFFICERS.map((c) => {
-                    const selected = selectedFirstOfficers.includes(c);
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() =>
-                          setSelectedFirstOfficers((prev) =>
-                            prev.includes(c)
-                              ? prev.filter((x) => x !== c)
-                              : [...prev, c]
-                          )
-                        }
-                        className={
-                          "w-full text-left p-2 rounded-xl border text-sm " +
-                          (selected
-                            ? "bg-black text-white border-black"
-                            : "bg-white hover:bg-gray-50")
-                        }
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-semibold mb-2">Teknikere</h3>
-                <div className="space-y-2">
-                  {TECHNICIANS.map((c) => {
-                    const selected = selectedTechnicians.includes(c);
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() =>
-                          setSelectedTechnicians((prev) =>
-                            prev.includes(c)
-                              ? prev.filter((x) => x !== c)
-                              : [...prev, c]
-                          )
-                        }
-                        className={
-                          "w-full text-left p-2 rounded-xl border text-sm " +
-                          (selected
-                            ? "bg-black text-white border-black"
-                            : "bg-white hover:bg-gray-50")
-                        }
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCaptains([]);
-                  setSelectedFirstOfficers([]);
-                  setSelectedTechnicians([]);
-                  setCrew("");
-                }}
-                className="px-3 py-1.5 rounded-full border bg-white text-gray-900 text-sm"
-              >
-                Nullstill
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const crewString = [
-                    ...[...selectedCaptains].sort((a, b) =>
-                      a.localeCompare(b, "nb-NO")
-                    ),
-                    ...[...selectedFirstOfficers].sort((a, b) =>
-                      a.localeCompare(b, "nb-NO")
-                    ),
-                    ...[...selectedTechnicians].sort((a, b) =>
-                      a.localeCompare(b, "nb-NO")
-                    ),
-                  ].join(" / ");
-                  setCrew(crewString);
-                  setShowCrewPicker(false);
-                }}
-                className="px-4 py-1.5 rounded-full bg-black text-white text-sm"
-              >
-                Ferdig
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCrewPicker(false)}
-                className="px-3 py-1.5 rounded-full border bg-white text-gray-900 text-sm"
-              >
-                Lukk
-              </button>
-            </div>
-          </div>
-        </div>
+        <CrewPicker
+          initialCrew={crew}
+          onChangeCrew={setCrew}
+          onClose={() => setShowCrewPicker(false)}
+        />
       )}
     </div>
   );
