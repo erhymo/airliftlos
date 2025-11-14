@@ -180,7 +180,8 @@ export async function POST(req: Request) {
         attachments: [
           {
             content: pdfBase64,
-            type: "application/pdf",
+            // Bruk en generisk MIME-type for å redusere sjansen for inline forhåndsvisning
+            type: "application/octet-stream",
             filename: fileName,
             disposition: "attachment",
           },
