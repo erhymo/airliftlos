@@ -44,6 +44,27 @@ const todayISO = () => {
   return `${year}-${month}-${day}`;
 };
 
+const getISOWeek = (date: Date) => {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((+d - +yearStart + 1) / 86400000) / 7);
+};
+
+const defaultWeekRange = () => {
+  const now = new Date();
+  const thisWeek = getISOWeek(now);
+  const prev = new Date(now);
+  prev.setDate(prev.getDate() - 7);
+  const prevWeek = getISOWeek(prev);
+  return {
+    from: String(prevWeek),
+    to: String(thisWeek),
+  };
+};
+
+
 const defaultChecks: CheckItem[] = [
   { key: "nvg", label: "NVG utstyr kontrollert", checked: false },
   { key: "efb", label: "EFB/Publikasjoner oppdatert", checked: false },
@@ -167,8 +188,8 @@ export default function VaktAppPage() {
   const [step, setStep] = useState(0);
 
   const [crew, setCrew] = useState("");
-  const [ukeFra, setUkeFra] = useState("");
-  const [ukeTil, setUkeTil] = useState("");
+  const [ukeFra, setUkeFra] = useState(() => defaultWeekRange().from);
+  const [ukeTil, setUkeTil] = useState(() => defaultWeekRange().to);
   const [maskin, setMaskin] = useState<Maskin>("LN-OXH");
   const [base, setBase] = useState<Base>("Bergen");
   const [operativ, setOperativ] = useState("");
@@ -327,8 +348,9 @@ export default function VaktAppPage() {
 
   function startNew() {
     setCrew("");
-    setUkeFra("");
-    setUkeTil("");
+    const weekRange = defaultWeekRange();
+    setUkeFra(weekRange.from);
+    setUkeTil(weekRange.to);
     setMaskin("LN-OXH");
     setBase("Bergen");
     setOperativ("");
