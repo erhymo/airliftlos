@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import fs from "fs/promises";
+import path from "path";
 
 const TO_ADDRESSES = [
   "oyvind.myhre@airlift.no",
@@ -33,19 +35,60 @@ async function createPdf(
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595, 842]);
+  const pageWidth = page.getWidth();
+
   const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+  // Forsøk å laste Airlift-logoen fra public-mappen
+  let logoImage: any | undefined;
+  try {
+    const logoPath = path.join(process.cwd(), "public", "Airlift-logo.png");
+    const logoBytes = await fs.readFile(logoPath);
+    logoImage = await pdf.embedPng(logoBytes);
+  } catch {
+    // Hvis logoen av en eller annen grunn ikke finnes i runtime, hopper vi bare over den
+  }
 
   const marginX = 50;
   let y = 800;
 
+  // Tegn logo oppe til høyre
+  if (logoImage) {
+    const desiredWidth = 140;
+    const scale = desiredWidth / logoImage.width;
+    const logoWidth = desiredWidth;
+    const logoHeight = logoImage.height * scale;
+    const logoX = pageWidth - marginX - logoWidth;
+    const logoY = y - logoHeight + 10;
+
+    page.drawImage(logoImage, {
+      x: logoX,
+      y: logoY,
+      width: logoWidth,
+      height: logoHeight,
+    });
+  }
+
+  // Tittel oppe til venstre
   page.drawText(title, {
     x: marginX,
     y,
     size: 18,
-    font,
-    color: rgb(0, 0, 0),
+    font: boldFont,
+    color: rgb(0.1, 0.1, 0.1),
   });
-  y -= 32;
+  y -= 28;
+
+  // Tynn linje under header
+  page.drawRectangle({
+    x: marginX,
+    y,
+    width: pageWidth - marginX * 2,
+    height: 0.5,
+    color: rgb(0.8, 0.8, 0.8),
+  });
+  y -= 20;
 
   const lines: string[] = [];
   for (const rawLine of body.split("\n")) {
@@ -72,6 +115,24 @@ async function createPdf(
     y -= 16;
   }
 
+  // Diskré footer nederst på hovedsiden
+  const footerY = 40;
+  page.drawRectangle({
+    x: marginX,
+    y: footerY + 10,
+    width: pageWidth - marginX * 2,
+    height: 0.5,
+    color: rgb(0.9, 0.9, 0.9),
+  });
+  page.drawText("Airlift - generert fra airliftlos", {
+    x: marginX,
+    y: footerY,
+    size: 8,
+    font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+
+  // Eventuelle HTI-bilder som egne sider
   if (htiImageUrls && htiImageUrls.length > 0) {
     for (const url of htiImageUrls) {
       try {
@@ -85,24 +146,41 @@ async function createPdf(
         const pngImage = await pdf.embedPng(pngBytes);
 
         const imgPage = pdf.addPage([595, 842]);
-        const pageWidth = imgPage.getWidth();
-        const pageHeight = imgPage.getHeight();
-        const maxWidth = pageWidth - 2 * marginX;
-        const maxHeight = pageHeight - 2 * marginX;
+        const imgPageWidth = imgPage.getWidth();
+        const imgPageHeight = imgPage.getHeight();
+        const maxWidth = imgPageWidth - 2 * marginX;
+        const maxHeight = imgPageHeight - 2 * marginX;
         const scale = Math.min(
           maxWidth / pngImage.width,
           maxHeight / pngImage.height
         );
         const imgWidth = pngImage.width * scale;
         const imgHeight = pngImage.height * scale;
-        const x = (pageWidth - imgWidth) / 2;
-        const yImg = (pageHeight - imgHeight) / 2;
+        const x = (imgPageWidth - imgWidth) / 2;
+        const yImg = (imgPageHeight - imgHeight) / 2;
 
         imgPage.drawImage(pngImage, {
           x,
           y: yImg,
           width: imgWidth,
           height: imgHeight,
+        });
+
+        // Footer også på HTI-sidene
+        const htiFooterY = 40;
+        imgPage.drawRectangle({
+          x: marginX,
+          y: htiFooterY + 10,
+          width: imgPageWidth - marginX * 2,
+          height: 0.5,
+          color: rgb(0.9, 0.9, 0.9),
+        });
+        imgPage.drawText("Airlift - generert fra airliftlos", {
+          x: marginX,
+          y: htiFooterY,
+          size: 8,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
         });
       } catch {
         // Ignore HTI image errors
