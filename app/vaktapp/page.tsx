@@ -122,8 +122,9 @@ function StepShell(props: {
   onNext: () => void;
   onPrev?: () => void;
   canNext?: boolean;
+  belowButtons?: React.ReactNode;
 }) {
-  const { children, onNext, onPrev, canNext = true } = props;
+  const { children, onNext, onPrev, canNext = true, belowButtons } = props;
 
   return (
     <div className="mx-auto w-full max-w-md p-4 text-gray-900">
@@ -146,6 +147,7 @@ function StepShell(props: {
             Neste
           </button>
         </div>
+        {belowButtons && <div className="mt-4">{belowButtons}</div>}
       </div>
     </div>
   );
@@ -388,7 +390,18 @@ export default function VaktAppPage() {
           {/* --- alle step --- */}
 
           {step === 0 && (
-            <StepShell onNext={() => setStep(1)} canNext={canNext}>
+            <StepShell
+              onNext={() => setStep(1)}
+              canNext={canNext}
+              belowButtons={
+                <button
+                  onClick={startNew}
+                  className="w-full py-3 rounded-xl bg-gray-200 text-gray-900"
+                >
+                  Start ny vaktrapport
+                </button>
+              }
+            >
               <Section title="Crew">
                 <input
                   value={crew}
@@ -401,15 +414,6 @@ export default function VaktAppPage() {
                   Trykk i feltet for å velge kapteiner, styrmenn og teknikere fra listen.
                 </p>
               </Section>
-
-              <div className="mt-4">
-                <button
-                  onClick={startNew}
-                  className="w-full py-3 rounded-xl bg-gray-900 text-white"
-                >
-                  Start ny vaktrapport
-                </button>
-              </div>
             </StepShell>
           )}
 
