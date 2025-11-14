@@ -95,6 +95,7 @@ export default function VaktAppPage() {
   const [reports, setReports] = useState<VaktReport[]>(() => loadReports());
   const [showArchive, setShowArchive] = useState(false);
   const [showCrewPicker, setShowCrewPicker] = useState(false);
+  const [sendStatus, setSendStatus] = useState<null | "sending" | "success" | "error">(null);
 
   const openCrewPicker = () => {
     setShowCrewPicker(true);
@@ -174,6 +175,8 @@ export default function VaktAppPage() {
   }
 
   async function handleSend() {
+    setSendStatus("sending");
+
     await saveCurrent();
 
     const linjer = [
@@ -204,27 +207,31 @@ export default function VaktAppPage() {
     const title = `Vaktrapport ${base} ${datoSign}`;
     const fromName = `LOS Helikopter ${base}`;
 
-    const response = await fetch("/api/send-report", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subject,
-        body: plainText,
-        fileName,
-        title,
-        fromName,
-      }),
-    });
+    try {
+      const response = await fetch("/api/send-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject,
+          body: plainText,
+          fileName,
+          title,
+          fromName,
+        }),
+      });
 
-    if (!response.ok) {
-      alert("Klarte ikke å sende vaktrapport. Prøv igjen senere.");
-      return;
+      if (!response.ok) {
+        setSendStatus("error");
+        return;
+      }
+
+      setSendStatus("success");
+      startNew();
+    } catch {
+      setSendStatus("error");
     }
-
-    alert("Vaktrapport sendt til faste mottakere.");
-    startNew();
   }
 
   function startNew() {
@@ -571,6 +578,46 @@ export default function VaktAppPage() {
           onChangeCrew={setCrew}
           onClose={() => setShowCrewPicker(false)}
         />
+      )}
+
+      {sendStatus && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm p-4 text-center">
+            {sendStatus === "sending" && (
+              <>
+                <p className="text-base font-semibold mb-2">Sender rapport...</p>
+                <p className="text-sm text-gray-700">
+                  Vennligst vent, dette kan ta noen sekunder.
+                </p>
+              </>
+            )}
+            {sendStatus === "success" && (
+              <>
+                <p className="text-base font-semibold mb-4">Rapporten er sendt.</p>
+                <button
+                  onClick={() => setSendStatus(null)}
+                  className="px-4 py-2 rounded-xl bg-black text-white text-sm"
+                >
+                  Lukk
+                </button>
+              </>
+            )}
+            {sendStatus === "error" && (
+              <>
+                <p className="text-base font-semibold mb-2">
+                  Klarte ikke å sende rapporten.
+                </p>
+                <p className="text-sm text-gray-700 mb-4">Prøv igjen senere.</p>
+                <button
+                  onClick={() => setSendStatus(null)}
+                  className="px-4 py-2 rounded-xl bg-black text-white text-sm"
+                >
+                  Lukk
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
