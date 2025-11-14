@@ -329,9 +329,12 @@ export default function DriftsrapportPage() {
   async function handleSend() {
     await saveCurrent();
 
+    const [year, month, day] = dato.split("-");
+    const datoTekst = `${day}-${month}-${year}`;
+
     const linjer = [
       `Base: ${base}`,
-      `Dato/klokkeslett: ${dato} ${tid}`,
+      `Dato: ${datoTekst}`,
       `Årsak: ${arsaker.join(", ") || "ikke valgt"}`,
       "Teknisk (årsak):",
       teknisk || "(tom)",
@@ -367,7 +370,6 @@ export default function DriftsrapportPage() {
       "\n\nVedlagt driftsrapport som PDF.";
 
     const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
-    const [year, month, day] = dato.split("-");
     const fileName = `Driftsforstyrrelse_${base}_${day}-${month}-${year}.pdf`;
     const title = `Driftsrapport ${base} ${dato}`;
     const fromName = `LOS Helikopter ${base}`;
@@ -397,9 +399,12 @@ export default function DriftsrapportPage() {
   }
 
   async function resendReport(r: DriftsReport) {
+    const [year, month, day] = r.dato.split("-");
+    const datoTekst = `${day}-${month}-${year}`;
+
     const linjer = [
       `Base: ${r.base}`,
-      `Dato/klokkeslett: ${r.dato} ${r.tid}`,
+      `Dato: ${datoTekst}`,
       ` c5rsak: ${r.arsaker.join(", ") || "ikke valgt"}`,
       "Teknisk ( e5rsak):",
       r.teknisk || "(tom)",
@@ -435,7 +440,6 @@ export default function DriftsrapportPage() {
       "\n\nVedlagt driftsrapport som PDF.";
 
     const subject = `LOS-helikopter ${r.base}  f6 driftsrapport ${r.dato}`;
-    const [year, month, day] = r.dato.split("-");
     const fileName = `Driftsforstyrrelse_${r.base}_${day}-${month}-${year}.pdf`;
     const title = `Driftsrapport ${r.base} ${r.dato}`;
     const fromName = `LOS Helikopter ${r.base}`;
