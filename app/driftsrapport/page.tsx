@@ -23,6 +23,7 @@ interface DriftsReport {
   alternativ: string;
   signatur: string;
   metarLines: string[];
+  htiImageUrls?: string[];
   createdAt: number;
 }
 
@@ -130,6 +131,12 @@ export default function DriftsrapportPage() {
   const [metarLoading, setMetarLoading] = useState(false);
   const [metarError, setMetarError] = useState<string | null>(null);
   const [useMetar, setUseMetar] = useState<"ja" | "nei">("nei");
+  const [htiItems, setHtiItems] = useState<{ time: string; uri: string }[]>([]);
+  const [selectedHtiUrls, setSelectedHtiUrls] = useState<string[]>([]);
+  const [htiLoading, setHtiLoading] = useState(false);
+  const [htiError, setHtiError] = useState<string | null>(null);
+  const [useHti, setUseHti] = useState<"ja" | "nei">("nei");
+
   const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
   const [showArchive, setShowArchive] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -153,6 +160,7 @@ export default function DriftsrapportPage() {
       alternativ,
       signatur,
       metarLines: selectedMetarLines,
+      htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
     }),
     [
       base,
@@ -170,6 +178,8 @@ export default function DriftsrapportPage() {
       alternativ,
       signatur,
       selectedMetarLines,
+      useHti,
+      selectedHtiUrls,
     ]
   );
 
@@ -202,6 +212,11 @@ export default function DriftsrapportPage() {
     setMetarLoading(false);
     setMetarError(null);
     setUseMetar("nei");
+    setHtiItems([]);
+    setSelectedHtiUrls([]);
+    setHtiLoading(false);
+    setHtiError(null);
+    setUseHti("nei");
   }
 
   function resetFrom(r: DriftsReport) {
@@ -221,6 +236,8 @@ export default function DriftsrapportPage() {
     setSignatur(r.signatur);
     setSelectedMetarLines(r.metarLines || []);
     setUseMetar(r.metarLines && r.metarLines.length > 0 ? "ja" : "nei");
+    setSelectedHtiUrls(r.htiImageUrls || []);
+    setUseHti(r.htiImageUrls && r.htiImageUrls.length > 0 ? "ja" : "nei");
   }
 
   async function saveCurrent() {
@@ -275,6 +292,34 @@ export default function DriftsrapportPage() {
     }
   }
 
+  async function fetchHti() {
+    setHtiLoading(true);
+    setHtiError(null);
+
+    try {
+      const res = await fetch(`/api/hti?base=${encodeURIComponent(base)}`);
+      if (!res.ok) {
+        setHtiError("Klarte ikke å hente HTI-kart.");
+        return;
+      }
+      const data = await res.json();
+      const items: { time: string; uri: string }[] = Array.isArray(data.items)
+        ? data.items
+        : [];
+      setHtiItems(items);
+    } catch (err) {
+      setHtiError("Klarte ikke å hente HTI-kart.");
+    } finally {
+      setHtiLoading(false);
+    }
+  }
+
+  function toggleHtiUrl(url: string) {
+    setSelectedHtiUrls((prev) =>
+      prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]
+    );
+  }
+
   function toggleMetarLine(line: string) {
     setSelectedMetarLines((prev) =>
       prev.includes(line) ? prev.filter((l) => l !== line) : [...prev, line]
@@ -303,8 +348,16 @@ export default function DriftsrapportPage() {
     ];
 
     if (selectedMetarLines.length > 0) {
+      linjer.push("");
       linjer.push("METAR/TAF:");
       linjer.push(...selectedMetarLines);
+    }
+
+    if (useHti === "ja" && selectedHtiUrls.length > 0) {
+      linjer.push("");
+      linjer.push(
+        `HTI-kart: ${selectedHtiUrls.length} bilde(r) lagt ved nederst i PDF.`
+      );
     }
 
     linjer.push(`Signatur: ${signatur || "(tom)"}`);
@@ -329,6 +382,7 @@ export default function DriftsrapportPage() {
         fileName,
         title,
         fromName,
+        htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
       }),
     });
 
@@ -361,8 +415,16 @@ export default function DriftsrapportPage() {
     ];
 
     if (r.metarLines && r.metarLines.length > 0) {
+      linjer.push("");
       linjer.push("METAR/TAF:");
       linjer.push(...r.metarLines);
+    }
+
+    if (r.htiImageUrls && r.htiImageUrls.length > 0) {
+      linjer.push("");
+      linjer.push(
+        `HTI-kart: ${r.htiImageUrls.length} bilde(r) lagt ved nederst i PDF.`
+      );
     }
 
     linjer.push(`Signatur: ${r.signatur || "(tom)"}`);
@@ -387,6 +449,7 @@ export default function DriftsrapportPage() {
         fileName,
         title,
         fromName,
+        htiImageUrls: r.htiImageUrls || [],
       }),
     });
 
@@ -619,6 +682,8 @@ export default function DriftsrapportPage() {
                     onClick={() => {
                       setUseMetar("nei");
                       setSelectedMetarLines([]);
+                      setUseHti("nei");
+                      setSelectedHtiUrls([]);
                     }}
                     className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
                       useMetar === "nei"
@@ -700,6 +765,97 @@ export default function DriftsrapportPage() {
                           })}
                         </div>
                       </>
+                    )}
+                  </div>
+                )}
+
+                {arsaker.includes("Lyn") && useMetar === "ja" && (
+                  <div className="mt-6 space-y-3 border-t pt-4">
+                    <div className="text-sm font-medium text-gray-900">
+                      Vil du legge til HTI-kart (kun relevant ved lyn)?
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseHti("nei");
+                          setSelectedHtiUrls([]);
+                        }}
+                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+                          useHti === "nei"
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-gray-300 bg-white text-gray-900"
+                        }`}
+                      >
+                        Nei, gå videre uten HTI
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseHti("ja");
+                          if (htiItems.length === 0) {
+                            fetchHti();
+                          }
+                        }}
+                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+                          useHti === "ja"
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-gray-300 bg-white text-gray-900"
+                        }`}
+                      >
+                        Ja, vis HTI-kart for {base}
+                      </button>
+                    </div>
+
+                    {useHti === "ja" && (
+                      <div className="space-y-2">
+                        {htiLoading && (
+                          <div className="text-sm text-gray-600">
+                            Henter HTI-kart...
+                          </div>
+                        )}
+                        {htiError && (
+                          <div className="text-sm text-red-600">{htiError}</div>
+                        )}
+                        {!htiLoading && !htiError && htiItems.length > 0 && (
+                          <>
+                            <div className="text-sm text-gray-700">
+                              Velg de kartene du vil legge ved:
+                            </div>
+                            <div className="space-y-2">
+                              {htiItems.map((item, idx) => (
+                                <label
+                                  key={item.uri || idx}
+                                  className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedHtiUrls.includes(item.uri)}
+                                    onChange={() => toggleHtiUrl(item.uri)}
+                                    className="mt-1"
+                                  />
+                                  <span className="text-xs whitespace-pre-wrap">
+                                    <div>
+                                      <b>Gyldig tid:</b> {item.time}
+                                    </div>
+                                    <div className="mt-1">
+                                      <a
+                                        href={item.uri}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="underline text-gray-900"
+                                      >
+                                        Åpne kart i ny fane
+                                      </a>
+                                    </div>
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -908,6 +1064,26 @@ export default function DriftsrapportPage() {
                     <div className="whitespace-pre-wrap border rounded-lg p-2 mt-1">
                       {selectedMetarLines.map((line, idx) => (
                         <div key={idx}>{line}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selectedHtiUrls.length > 0 && (
+                  <div>
+                    <b>HTI-kart:</b>
+                    <div className="border rounded-lg p-2 mt-1 space-y-2">
+                      {selectedHtiUrls.map((url, idx) => (
+                        <div key={url || idx} className="text-xs text-gray-700">
+                          HTI-kart {idx + 1}:{" "}
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline text-gray-900"
+                          >
+                            Se kart
+                          </a>
+                        </div>
                       ))}
                     </div>
                   </div>
