@@ -872,27 +872,45 @@ export default function DriftsrapportPage() {
 
         {step === 3 && (
           <StepShell onPrev={() => setStep(2)} onNext={() => setStep(4)}>
-            <Section title="Teknisk (årsak)">
-              <textarea
-                value={teknisk}
-                onChange={(e) => setTeknisk(e.target.value)}
-                rows={4}
-                className="w-full border rounded-xl p-3 text-base text-gray-900"
-              />
-            </Section>
+	          <Section title="Teknisk (årsak)">
+	            <textarea
+	              value={teknisk}
+	              onChange={(e) => setTeknisk(e.target.value)}
+	              rows={4}
+	              className="w-full border rounded-xl p-3 text-base text-gray-900"
+	            />
+	            <div className="mt-2 flex justify-end">
+	              <button
+	                type="button"
+	                onClick={() => setTeknisk("N/A")}
+	                className="px-3 py-1.5 text-sm rounded-full border border-gray-300 bg-gray-100 text-gray-900"
+	              >
+	                N/A
+	              </button>
+	            </div>
+	          </Section>
           </StepShell>
         )}
 
         {step === 4 && (
           <StepShell onPrev={() => setStep(3)} onNext={() => setStep(5)}>
-            <Section title="Annen årsak til driftsforstyrrelsen">
-              <textarea
-                value={annen}
-                onChange={(e) => setAnnen(e.target.value)}
-                rows={4}
-                className="w-full border rounded-xl p-3 text-base text-gray-900"
-              />
-            </Section>
+	          <Section title="Annen årsak til driftsforstyrrelsen">
+	            <textarea
+	              value={annen}
+	              onChange={(e) => setAnnen(e.target.value)}
+	              rows={4}
+	              className="w-full border rounded-xl p-3 text-base text-gray-900"
+	            />
+	            <div className="mt-2 flex justify-end">
+	              <button
+	                type="button"
+	                onClick={() => setAnnen("N/A")}
+	                className="px-3 py-1.5 text-sm rounded-full border border-gray-300 bg-gray-100 text-gray-900"
+	              >
+	                N/A
+	              </button>
+	            </div>
+	          </Section>
           </StepShell>
         )}
 
@@ -983,18 +1001,27 @@ export default function DriftsrapportPage() {
           </StepShell>
         )}
 
-        {step === 8 && (
-          <StepShell onPrev={() => setStep(7)} onNext={() => setStep(9)}>
-            <Section title="Vurdering av alternativ løsning">
-              <textarea
-                value={alternativ}
-                onChange={(e) => setAlternativ(e.target.value)}
-                rows={4}
-                className="w-full border rounded-xl p-3 text-base text-gray-900"
-              />
-            </Section>
-          </StepShell>
-        )}
+	      {step === 8 && (
+	        <StepShell onPrev={() => setStep(7)} onNext={() => setStep(9)}>
+	          <Section title="Vurdering av alternativ løsning">
+	            <textarea
+	              value={alternativ}
+	              onChange={(e) => setAlternativ(e.target.value)}
+	              rows={4}
+	              className="w-full border rounded-xl p-3 text-base text-gray-900"
+	            />
+	            <div className="mt-2 flex justify-end">
+	              <button
+	                type="button"
+	                onClick={() => setAlternativ("N/A")}
+	                className="px-3 py-1.5 text-sm rounded-full border border-gray-300 bg-gray-100 text-gray-900"
+	              >
+	                N/A
+	              </button>
+	            </div>
+	          </Section>
+	        </StepShell>
+	      )}
 
         {step === 9 && (
           <StepShell onPrev={() => setStep(8)} onNext={() => setStep(10)}>
