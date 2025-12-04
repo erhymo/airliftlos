@@ -24,7 +24,14 @@ interface DriftsReport {
 	signatur: string;
 	metarLines: string[];
 	htiImageUrls?: string[];
+	/** Når rapporten ble lagret lokalt */
 	createdAt: number;
+	/** Faktisk tidspunkt (klokkeslett) for gjenopptatt drift, hvis sendt */
+	gjenopptattKl?: number;
+	/** Kommentar som ble sendt ved gjenopptatt drift */
+	gjenopptattKommentar?: string;
+	/** Når e-posten om gjenopptatt drift ble sendt (ms since epoch) */
+	gjenopptattSendtAt?: number;
 }
 
 type DraftDriftsReport = Omit<DriftsReport, "createdAt">;
@@ -147,10 +154,15 @@ export default function DriftsrapportPage() {
   const [htiError, setHtiError] = useState<string | null>(null);
   const [useHti, setUseHti] = useState<"ja" | "nei">("nei");
 
-  const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
-  const [showArchive, setShowArchive] = useState(false);
-  const [showStats, setShowStats] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+	  const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
+	  const [showArchive, setShowArchive] = useState(false);
+	  const [showStats, setShowStats] = useState(false);
+	  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+	  const [resumeReport, setResumeReport] = useState<DriftsReport | null>(null);
+	  const [resumeStep, setResumeStep] = useState(0);
+	  const [resumeHour, setResumeHour] = useState(12);
+	  const [resumeComment, setResumeComment] = useState("");
+	  const [resumeSending, setResumeSending] = useState(false);
 
   const report: DraftDriftsReport = useMemo(
     () => ({
@@ -262,11 +274,33 @@ export default function DriftsrapportPage() {
     saveReports(next);
   }
 
-  function openExisting(r: DriftsReport) {
-    resetFrom(r);
-    setStep(10);
-    setShowArchive(false);
-  }
+	  function openExisting(r: DriftsReport) {
+	    resetFrom(r);
+	    setStep(10);
+	    setShowArchive(false);
+	  }
+
+	  function deleteReport(id: string) {
+	    if (!window.confirm("Vil du slette denne driftsrapporten fra denne enheten?")) {
+	      return;
+	    }
+	    const next = reports.filter((r) => r.id !== id);
+	    setReports(next);
+	    saveReports(next);
+	  }
+
+	  function startResumeFlow(r: DriftsReport) {
+	    if (r.gjenopptattSendtAt) {
+	      return;
+	    }
+	    setResumeReport(r);
+	    setResumeStep(0);
+	    const now = new Date();
+	    setResumeHour(now.getHours());
+	    setResumeComment("");
+	    setShowArchive(false);
+	    setShowStats(false);
+	  }
 
   async function fetchMetarTaf() {
     setMetarLoading(true);
@@ -428,94 +462,169 @@ export default function DriftsrapportPage() {
 		    reset();
   }
 
-  async function resendReport(r: DriftsReport) {
-    const [year, month, day] = r.dato.split("-");
-    const datoTekst = `${day}-${month}-${year}`;
+	  async function resendReport(r: DriftsReport) {
+	    const [year, month, day] = r.dato.split("-");
+	    const datoTekst = `${day}-${month}-${year}`;
+	
+	    const linjer = [
+	      `Base: ${r.base}`,
+	      `Dato: ${datoTekst}`,
+	      `Årsak: ${r.arsaker.join(", ") || "ikke valgt"}`,
+	      "Teknisk (årsak):",
+	      r.teknisk || "(tom)",
+	      "Annen årsak:",
+	      r.annen || "(tom)",
+	      `Antatt varighet: ${r.varighetTimer} timer`,
+	      r.varighetTekst && `Merknad varighet: ${r.varighetTekst}`,
+	      `Estimert gjenopptakelse: kl ${r.gjenopptakTimer}:00`,
+	      r.gjenopptakTekst && `Merknad gjenopptakelse: ${r.gjenopptakTekst}`,
+	      `Neste oppfølging: kl ${r.oppfolgingTimer}:00`,
+	      r.oppfolgingTekst && `Merknad oppfølging: ${r.oppfolgingTekst}`,
+	      "Vurdering alternativ løsning:",
+	      r.alternativ || "(tom)",
+	    ];
+	
+	    if (r.metarLines && r.metarLines.length > 0) {
+	      linjer.push("");
+	      linjer.push("METAR/TAF:");
+	      linjer.push(...r.metarLines);
+	    }
+	
+	    if (r.htiImageUrls && r.htiImageUrls.length > 0) {
+	      linjer.push("");
+	      linjer.push(
+	        `HTI-kart: ${r.htiImageUrls.length} bilde(r) lagt ved nederst i PDF.`
+	      );
+	    }
+	
+	    linjer.push(`Signatur: ${r.signatur || "(tom)"}`);
+	
+	    const plainText =
+	      linjer.filter(Boolean).join("\n") +
+	      "\n\nVedlagt driftsrapport som PDF.";
+	
+	    const subject = `LOS-helikopter ${r.base} – driftsrapport ${r.dato}`;
+	    const fileName = `Driftsforstyrrelse_${r.base}_${day}-${month}-${year}.pdf`;
+	    const title = `Driftsrapport ${r.base} ${r.dato}`;
+	    const fromName = `LOS Helikopter ${r.base}`;
+	
+	    const response = await fetch("/api/send-report", {
+	      method: "POST",
+	      headers: {
+	        "Content-Type": "application/json",
+	      },
+	      body: JSON.stringify({
+	        subject,
+	        body: plainText,
+	        fileName,
+	        title,
+	        fromName,
+	        base: r.base,
+	        reportType: "driftsrapport",
+	        htiImageUrls: r.htiImageUrls || [],
+	      }),
+	    });
+	
+	    let data: SendReportResponseBody | null = null;
+	    try {
+	      data = await response.json();
+	    } catch {
+	      // Ignorer JSON-feil – vi håndterer bare statuskode
+	    }
+	
+	    if (!response.ok) {
+	      const msg =
+	        (data && (data.error || data.details)) ||
+	        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
+	      alert(msg);
+	      return;
+	    }
+	
+	    if (data && data.sharepoint && data.sharepoint.ok === false) {
+	      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
+	      alert(
+	        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
+	          spMsg
+	      );
+	    } else {
+	      alert("Driftsrapport sendt til faste mottakere.");
+	    }
+	  }
 
-    const linjer = [
-      `Base: ${r.base}`,
-      `Dato: ${datoTekst}`,
-      ` c5rsak: ${r.arsaker.join(", ") || "ikke valgt"}`,
-      "Teknisk ( e5rsak):",
-      r.teknisk || "(tom)",
-      "Annen  e5rsak:",
-      r.annen || "(tom)",
-      `Antatt varighet: ${r.varighetTimer} timer`,
-      r.varighetTekst && `Merknad varighet: ${r.varighetTekst}`,
-      `Estimert gjenopptakelse: kl ${r.gjenopptakTimer}:00`,
-      r.gjenopptakTekst && `Merknad gjenopptakelse: ${r.gjenopptakTekst}`,
-      `Neste oppf f8lging: kl ${r.oppfolgingTimer}:00`,
-      r.oppfolgingTekst && `Merknad oppf f8lging: ${r.oppfolgingTekst}`,
-      "Vurdering alternativ l f8sning:",
-      r.alternativ || "(tom)",
-    ];
-
-    if (r.metarLines && r.metarLines.length > 0) {
-      linjer.push("");
-      linjer.push("METAR/TAF:");
-      linjer.push(...r.metarLines);
-    }
-
-    if (r.htiImageUrls && r.htiImageUrls.length > 0) {
-      linjer.push("");
-      linjer.push(
-        `HTI-kart: ${r.htiImageUrls.length} bilde(r) lagt ved nederst i PDF.`
-      );
-    }
-
-    linjer.push(`Signatur: ${r.signatur || "(tom)"}`);
-
-    const plainText =
-      linjer.filter(Boolean).join("\n") +
-      "\n\nVedlagt driftsrapport som PDF.";
-
-    const subject = `LOS-helikopter ${r.base}  f6 driftsrapport ${r.dato}`;
-    const fileName = `Driftsforstyrrelse_${r.base}_${day}-${month}-${year}.pdf`;
-    const title = `Driftsrapport ${r.base} ${r.dato}`;
-    const fromName = `LOS Helikopter ${r.base}`;
-
-		    const response = await fetch("/api/send-report", {
-		      method: "POST",
-		      headers: {
-		        "Content-Type": "application/json",
-		      },
-		      body: JSON.stringify({
-		        subject,
-		        body: plainText,
-		        fileName,
-		        title,
-		        fromName,
-						base: r.base,
-						reportType: "driftsrapport",
-						htiImageUrls: r.htiImageUrls || [],
-		      }),
-		    });
-
-		    let data: SendReportResponseBody | null = null;
-		    try {
-		      data = await response.json();
-		    } catch {
-		      // Ignorer JSON-feil – vi håndterer bare statuskode
-		    }
-
-		    if (!response.ok) {
-		      const msg =
-		        (data && (data.error || data.details)) ||
-		        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
-		      alert(msg);
-		      return;
-		    }
-
-		    if (data && data.sharepoint && data.sharepoint.ok === false) {
-		      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
-		      alert(
-		        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
-		          spMsg
-		      );
-		    } else {
-		      alert("Driftsrapport sendt til faste mottakere.");
-		    }
-  }
+	  async function sendResume() {
+	    if (!resumeReport) return;
+	    setResumeSending(true);
+	    try {
+	      const now = new Date();
+	      const year = now.getFullYear();
+	      const month = String(now.getMonth() + 1).padStart(2, "0");
+	      const day = String(now.getDate()).padStart(2, "0");
+	      const datoTekst = `${day}-${month}-${year}`;
+	      const hourLabel = String(resumeHour).padStart(2, "0");
+	
+	      const linjer = [
+	        `Base: ${resumeReport.base}`,
+	        `Gjelder driftsrapport sendt ${resumeReport.dato} kl ${resumeReport.tid}.`,
+	        "",
+	        `Driften er gjenopptatt kl ${hourLabel}:00.`,
+	        "",
+	        "Kommentar:",
+	        resumeComment || "(ingen kommentar)",
+	      ];
+	
+	      const plainText = linjer.join("\n");
+	      const subject = `LOS-helikopter ${resumeReport.base} – drift gjenopptatt ${datoTekst}`;
+	      const fromName = `LOS Helikopter ${resumeReport.base}`;
+	
+	      const response = await fetch("/api/resume-drift", {
+	        method: "POST",
+	        headers: {
+	          "Content-Type": "application/json",
+	        },
+	        body: JSON.stringify({
+	          base: resumeReport.base,
+	          subject,
+	          body: plainText,
+	          fromName,
+	        }),
+	      });
+	
+	      let data: SendReportResponseBody | null = null;
+	      try {
+	        data = await response.json();
+	      } catch {
+	        // Ignorer JSON-feil
+	      }
+	
+	      if (!response.ok || (data && data.ok === false)) {
+	        const msg =
+	          (data && (data.error || data.details)) ||
+	          "Klarte ikke å sende melding om gjenopptatt drift. Prøv igjen senere.";
+	        alert(msg);
+	        return;
+	      }
+	
+	      const sentAt = Date.now();
+	      const next = reports.map((r) =>
+	        r.id === resumeReport.id
+	          ? {
+	              ...r,
+	              gjenopptattKl: resumeHour,
+	              gjenopptattKommentar: resumeComment,
+	              gjenopptattSendtAt: sentAt,
+	            }
+	          : r
+	      );
+	      setReports(next);
+	      saveReports(next);
+	      alert("Melding om gjenopptatt drift er sendt.");
+	      setResumeReport(null);
+	      setResumeStep(0);
+	      setResumeComment("");
+	    } finally {
+	      setResumeSending(false);
+	    }
+	  }
 
   const MONTH_LABELS = [
     "Jan",
@@ -1203,37 +1312,74 @@ export default function DriftsrapportPage() {
               </div>
             )}
 
-            {reports.map((r) => (
-              <div key={r.id} className="p-4">
-                <div className="text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="font-medium">
-                      {r.base} – {r.dato} {r.tid}
-                    </div>
-                    <div className="text-gray-900 text-sm">
-                      {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
-                      {new Date(r.createdAt).toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openExisting(r)}
-                      className="text-blue-600 underline"
-                    >
-                      Åpne
-                    </button>
-
-                    <button
-                      className="text-gray-900 underline"
-                      onClick={() => resendReport(r)}
-                    >
-                      Send på nytt
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+	            {reports.map((r) => {
+	              const alreadyResumed = Boolean(r.gjenopptattSendtAt);
+	              const resumedLabelTime =
+	                typeof r.gjenopptattKl === "number"
+	                  ? String(r.gjenopptattKl).padStart(2, "0") + ":00"
+	                  : null;
+	              return (
+	                <div key={r.id} className="p-4">
+	                  <div className="text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+	                    <div>
+	                      <div className="font-medium">
+	                        {r.base} – {r.dato} {r.tid}
+	                      </div>
+	                      <div className="text-gray-900 text-sm">
+	                        {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
+	                        {new Date(r.createdAt).toLocaleString()}
+	                      </div>
+	                      {alreadyResumed && (
+	                        <div className="mt-1 text-xs text-gray-700">
+	                          Drift gjenopptatt
+	                          {resumedLabelTime ? ` kl ${resumedLabelTime}` : ""}
+	                          {r.gjenopptattSendtAt
+	                            ? ` (melding sendt ${new Date(
+	                                r.gjenopptattSendtAt
+	                              ).toLocaleString()})`
+	                            : ""}
+	                        </div>
+	                      )}
+	                    </div>
+	
+	                    <div className="flex-1 flex flex-col gap-2 sm:items-end">
+	                      <div className="flex gap-2 justify-end">
+	                        <button
+	                          onClick={() => openExisting(r)}
+	                          className="text-blue-600 underline"
+	                        >
+	                          Åpne
+	                        </button>
+	                        <button
+	                          className="text-gray-900 underline"
+	                          onClick={() => resendReport(r)}
+	                        >
+	                          Send på nytt
+	                        </button>
+	                        <button
+	                          className="text-red-600 underline"
+	                          onClick={() => deleteReport(r.id)}
+	                        >
+	                          Slett
+	                        </button>
+	                      </div>
+	                      <button
+	                        type="button"
+	                        onClick={() => startResumeFlow(r)}
+	                        disabled={alreadyResumed}
+	                        className={`mt-1 w-full sm:w-auto px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+	                          alreadyResumed
+	                            ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
+	                            : "bg-blue-600 text-white border-blue-700"
+	                        }`}
+	                      >
+	                        {alreadyResumed ? "Drift er gjenopptatt" : "Gjenoppta drift"}
+	                      </button>
+	                    </div>
+	                  </div>
+	                </div>
+	              );
+	            })}
           </div>
 
           <div className="mt-4">
@@ -1374,10 +1520,131 @@ export default function DriftsrapportPage() {
               </div>
             </div>
           </div>
-        </main>
-      )}
+	        </main>
+	      )}
 
-    </div>
-  );
-}
+	      {resumeReport && (
+	        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40">
+	          <div className="mx-auto w-full max-w-md p-4">
+	            <div className="bg-white rounded-2xl shadow p-4">
+	              <h2 className="text-lg font-semibold mb-1">Gjenoppta drift</h2>
+	              <p className="text-sm text-gray-700 mb-4">
+	                Dette gjelder driftsrapporten for {resumeReport.base} {" "}
+	                {resumeReport.dato} kl {resumeReport.tid}.
+	              </p>
 
+	              {resumeStep === 0 && (
+	                <div className="space-y-3">
+	                  <div className="text-sm font-medium text-gray-900">
+	                    Velg tidspunkt for når driften skal vre oppe og g igjen
+	                    (klokkeslett).
+	                  </div>
+	                  <div className="px-2">
+	                    <input
+	                      type="range"
+	                      min={0}
+	                      max={23}
+	                      value={resumeHour}
+	                      onChange={(e) => setResumeHour(Number(e.target.value))}
+	                      className="w-full"
+	                    />
+	                    <div className="mt-1 text-sm text-gray-800">
+	                      Kl {String(resumeHour).padStart(2, "0")}:00
+	                    </div>
+	                  </div>
+	                </div>
+	              )}
+
+	              {resumeStep === 1 && (
+	                <div className="space-y-3">
+	                  <div className="text-sm font-medium text-gray-900">
+	                    Eventuell kommentar til gjenopptatt drift
+	                  </div>
+	                  <textarea
+	                    value={resumeComment}
+	                    onChange={(e) => setResumeComment(e.target.value)}
+	                    rows={4}
+	                    className="w-full border rounded-xl p-3 text-base text-gray-900"
+	                    placeholder="Skriv en kort kommentar (valgfritt)"
+	                  />
+	                </div>
+	              )}
+
+	              {resumeStep === 2 && (
+	                <div className="space-y-3 text-sm text-gray-900">
+	                  <div>
+	                    <b>Base:</b> {resumeReport.base}
+	                  </div>
+	                  <div>
+	                    <b>Gjelder driftsrapport:</b> {resumeReport.dato} kl{" "}
+	                    {resumeReport.tid}
+	                  </div>
+	                  <div>
+	                    <b>Drift gjenopptas:</b> kl{" "}
+	                    {String(resumeHour).padStart(2, "0")}:00
+	                  </div>
+	                  <div>
+	                    <b>Kommentar:</b>
+	                    <div className="mt-1 border rounded-lg p-2 whitespace-pre-wrap">
+	                      {resumeComment || "(ingen kommentar)"}
+	                    </div>
+	                  </div>
+	                  <p className="text-xs text-gray-600 mt-1">
+	                    Meldingen sendes til de samme mottakerne som den opprinnelige
+	                    driftsrapporten, men uten PDF-vedlegg.
+	                  </p>
+	                </div>
+	              )}
+
+	              <div className="mt-4 flex flex-wrap gap-2 justify-end">
+	                <button
+	                  type="button"
+	                  onClick={() => {
+	                    if (resumeSending) return;
+	                    setResumeReport(null);
+	                    setResumeStep(0);
+	                    setResumeComment("");
+	                  }}
+	                  className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white"
+	                >
+	                  Avbryt
+	                </button>
+	                {resumeStep > 0 && (
+	                  <button
+	                    type="button"
+	                    onClick={() => setResumeStep((s) => Math.max(0, s - 1))}
+	                    disabled={resumeSending}
+	                    className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white"
+	                  >
+	                    Tilbake
+	                  </button>
+	                )}
+	                {resumeStep < 2 && (
+	                  <button
+	                    type="button"
+	                    onClick={() => setResumeStep((s) => Math.min(2, s + 1))}
+	                    disabled={resumeSending}
+	                    className="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white border border-blue-700"
+	                  >
+	                    Neste
+	                  </button>
+	                )}
+	                {resumeStep === 2 && (
+	                  <button
+	                    type="button"
+	                    onClick={sendResume}
+	                    disabled={resumeSending}
+	                    className="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white border border-blue-700"
+	                  >
+	                    {resumeSending ? "Sender..." : "Send"}
+	                  </button>
+	                )}
+	              </div>
+	            </div>
+	          </div>
+	        </div>
+	      )}
+
+	    </div>
+	  );
+	}
