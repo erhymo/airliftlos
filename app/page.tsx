@@ -3,8 +3,15 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
-      <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+	    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col items-center justify-center p-4 space-y-4">
+	      <Image
+	        src="/los-patch.svg"
+	        alt="LOS patch"
+	        width={120}
+	        height={120}
+	        className="h-24 w-auto drop-shadow-sm"
+	      />
+	      <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 relative">
         <header className="space-y-1">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-semibold">LOS Helikopter</h1>
@@ -36,6 +43,15 @@ export default function Home() {
             Driftsrapport
           </Link>
         </div>
+
+	        {/* Skjult inngang til LOS-logg */}
+	        <Link
+	          href="/loslogg"
+	          aria-label="LOS-logg"
+	          className="absolute bottom-2 right-3 text-[10px] leading-none text-gray-300 hover:text-gray-400 select-none"
+	        >
+	          .
+	        </Link>
       </main>
     </div>
   );
