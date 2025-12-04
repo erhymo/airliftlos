@@ -29,7 +29,7 @@ function wrapText(text: string, maxChars: number): string[] {
   return lines;
 }
 
-async function createPdf(
+export async function createPdf(
   title: string,
   body: string,
   htiImageUrls?: string[]

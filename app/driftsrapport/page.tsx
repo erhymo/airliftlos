@@ -160,11 +160,14 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	  const [showArchive, setShowArchive] = useState(false);
 	  const [showStats, setShowStats] = useState(false);
 	  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
-	  const [resumeReport, setResumeReport] = useState<DriftsReport | null>(null);
+		  const [resumeReport, setResumeReport] = useState<DriftsReport | null>(null);
 	  const [resumeStep, setResumeStep] = useState(0);
 	  const [resumeHour, setResumeHour] = useState(12);
-	  const [resumeComment, setResumeComment] = useState("");
-	  const [resumeSending, setResumeSending] = useState(false);
+		  const [resumeComment, setResumeComment] = useState("");
+		  const [resumeSending, setResumeSending] = useState(false);
+		  const [showStatsSendDialog, setShowStatsSendDialog] = useState(false);
+		  const [statsTo, setStatsTo] = useState("");
+		  const [statsSending, setStatsSending] = useState(false);
 
   const report: DraftDriftsReport = useMemo(
     () => ({
@@ -641,7 +644,102 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    }
 	  }
 
-  const MONTH_LABELS = [
+		async function handleSendStats() {
+			if (!statsTo.trim()) {
+				alert("Skriv inn minst én e-postadresse.");
+				return;
+			}
+
+			setStatsSending(true);
+			try {
+				const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
+					buildStatsForYear(selectedYear);
+
+				const lines: string[] = [];
+				lines.push(`Statistikk driftsrapporter ${selectedYear}`);
+				lines.push("");
+				lines.push("Antall driftsrapporter per måned og årsak:");
+				for (let i = 0; i < MONTH_LABELS.length; i++) {
+					const label = MONTH_LABELS[i];
+					const row = perMonthCounts[i];
+					const parts = CAUSES.map(
+						(cause) => `${cause}: ${row.perCause[cause] || 0}`
+					);
+					lines.push(
+						`${label} – ${parts.join(", ")} | Totalt: ${row.totalReports || 0}`
+					);
+				}
+
+				lines.push("");
+				lines.push("Antall timer stopp per måned og årsak:");
+				for (let i = 0; i < MONTH_LABELS.length; i++) {
+					const label = MONTH_LABELS[i];
+					const row = perMonthHours[i];
+					const parts = CAUSES.map(
+						(cause) => `${cause}: ${row.perCause[cause] || 0}`
+					);
+					lines.push(
+						`${label} – ${parts.join(", ")} | Totalt timer: ${
+							row.totalHours || 0
+						}`
+					);
+				}
+
+				lines.push("");
+				lines.push("Oppsummert totalt stoppetid per årsak:");
+				for (const cause of CAUSES) {
+					lines.push(
+						`${cause}: ${totalHoursByCause[cause] || 0} timer`
+					);
+				}
+				lines.push("");
+				lines.push(
+					`Totalt stoppetid ${selectedYear}: ${totalHoursYear || 0} timer`
+				);
+
+				const plainText = lines.join("\n");
+				const subject = `Statistikk driftsrapporter ${selectedYear}`;
+				const title = subject;
+				const fileName = `Statistikk_driftsrapporter_${selectedYear}.pdf`;
+
+				const response = await fetch("/api/send-stats", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						subject,
+						body: plainText,
+						fileName,
+						title,
+						to: statsTo,
+					}),
+				});
+
+				let data: { ok?: boolean; error?: string; details?: string } | null = null;
+				try {
+					data = await response.json();
+				} catch {
+					// Ignorer JSON-feil – vi bruker bare statuskode
+				}
+
+				if (!response.ok || (data && data.ok === false)) {
+					const msg =
+						(data && (data.error || data.details)) ||
+						"Klarte ikke å sende statistikk. Prøv igjen senere.";
+					alert(msg);
+					return;
+				}
+
+				alert("Statistikk er sendt på e-post.");
+				setShowStatsSendDialog(false);
+				setStatsTo("");
+			} finally {
+				setStatsSending(false);
+			}
+		}
+
+	  const MONTH_LABELS = [
     "Jan",
     "Feb",
     "Mar",
@@ -1424,21 +1522,33 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	              </button>
 	            </div>
 
-	            <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
-	              <span>
-	                Statistikk bygger på alle driftsrapporter som er lagret på denne
-	                enheten. Du kan nullstille for å starte på nytt.
-	              </span>
-	              {reports.length > 0 && (
-	                <button
-	                  type="button"
-	                  onClick={clearAllReports}
-	                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-red-600"
-	                >
-	                  Nullstill statistikk
-	                </button>
-	              )}
-	            </div>
+		            <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
+		              <span>
+		                Statistikk bygger på alle driftsrapporter som er lagret på denne
+		                enheten. Du kan nullstille for å starte på nytt.
+		              </span>
+		              {reports.length > 0 && (
+		                <div className="flex flex-wrap gap-2">
+		                  <button
+		                    type="button"
+		                    onClick={clearAllReports}
+		                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-red-600"
+		                  >
+		                    Nullstill statistikk
+		                  </button>
+		                  <button
+		                    type="button"
+		                    onClick={() => {
+		                      setStatsTo("");
+		                      setShowStatsSendDialog(true);
+		                    }}
+		                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-900"
+		                  >
+		                    Send statistikk
+		                  </button>
+		                </div>
+		              )}
+		            </div>
 
 	            <div className="mb-4 flex flex-wrap gap-2">
               {availableYears.map((year) => (
@@ -1555,8 +1665,50 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	              </div>
 	            </div>
           </div>
-	        </main>
-	      )}
+		        </main>
+		      )}
+
+		      {showStatsSendDialog && (
+		        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
+		          <div className="mx-auto w-full max-w-md p-4">
+		            <div className="bg-white rounded-2xl shadow p-4">
+		              <h2 className="text-lg font-semibold mb-1">Send statistikk</h2>
+		              <p className="text-sm text-gray-700 mb-3">
+		                Statistikk for {selectedYear} sendes som PDF-vedlegg. Skriv inn
+		                e-postadresser (komma, mellomrom eller semikolon mellom hver).
+		              </p>
+		              <input
+		                type="text"
+		                value={statsTo}
+		                onChange={(e) => setStatsTo(e.target.value)}
+		                className="w-full border rounded-xl p-3 text-sm text-gray-900"
+		                placeholder="fornavn.etternavn@firma.no, annen@epost.no"
+		                disabled={statsSending}
+		              />
+		              <div className="mt-4 flex justify-end gap-2">
+		                <button
+		                  type="button"
+		                  onClick={() => {
+		                    if (statsSending) return;
+		                    setShowStatsSendDialog(false);
+		                  }}
+		                  className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white"
+		                >
+		                  Avbryt
+		                </button>
+		                <button
+		                  type="button"
+		                  onClick={handleSendStats}
+		                  disabled={statsSending}
+		                  className="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white border border-blue-700"
+		                >
+		                  {statsSending ? "Sender..." : "Send"}
+		                </button>
+		              </div>
+		            </div>
+		          </div>
+		        </div>
+		      )}
 
 	      {resumeReport && (
 	        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40">
