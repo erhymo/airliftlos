@@ -285,9 +285,9 @@ export default function DriftsrapportPage() {
       }
 
       setMetarTafPairs(pairs);
-    } catch (err) {
-      setMetarError("Klarte ikke å hente METAR/TAF.");
-    } finally {
+	    } catch {
+	      setMetarError("Klarte ikke å hente METAR/TAF.");
+	    } finally {
       setMetarLoading(false);
     }
   }
@@ -307,9 +307,9 @@ export default function DriftsrapportPage() {
         ? data.items
         : [];
       setHtiItems(items);
-    } catch (err) {
-      setHtiError("Klarte ikke å hente HTI-kart.");
-    } finally {
+	    } catch {
+	      setHtiError("Klarte ikke å hente HTI-kart.");
+	    } finally {
       setHtiLoading(false);
     }
   }

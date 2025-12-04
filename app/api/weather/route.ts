@@ -68,14 +68,14 @@ export async function GET(req: Request) {
         headers: { "Content-Type": "application/json" },
       }
     );
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "Failed to contact MET" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
+	  } catch {
+	    return new Response(
+	      JSON.stringify({ error: "Failed to contact MET" }),
+	      {
+	        status: 500,
+	        headers: { "Content-Type": "application/json" },
+	      }
+	    );
+	  }
 }
 
