@@ -201,7 +201,102 @@ interface SendReportPayload {
 	fromName?: string;
 	/** Hvilken base rapporten gjelder (Bergen/Tromsø/Hammerfest) */
 	base?: string;
-	htiImageUrls?: string[];
+		htiImageUrls?: string[];
+		/** Type rapport (brukes til f.eks. SharePoint-opplasting) */
+		reportType?: "driftsrapport" | "vaktrapport";
+}
+
+async function getGraphAccessToken(): Promise<string | null> {
+	const tenantId = process.env.MS_TENANT_ID;
+	const clientId = process.env.MS_CLIENT_ID;
+	const clientSecret = process.env.MS_CLIENT_SECRET;
+
+	if (!tenantId || !clientId || !clientSecret) {
+		console.warn(
+			"SharePoint: MS_TENANT_ID, MS_CLIENT_ID eller MS_CLIENT_SECRET mangler, hopper over opplasting"
+		);
+		return null;
+	}
+
+	const params = new URLSearchParams({
+		client_id: clientId,
+		client_secret: clientSecret,
+		scope: "https://graph.microsoft.com/.default",
+		grant_type: "client_credentials",
+	});
+
+	const res = await fetch(
+		`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+			},
+			body: params.toString(),
+		}
+	);
+
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		console.error("SharePoint: klarte ikke å hente access token", text);
+		return null;
+	}
+
+	const data = (await res.json()) as { access_token?: string };
+	if (!data.access_token) {
+		console.error("SharePoint: access token mangler i responsen");
+		return null;
+	}
+
+	return data.access_token;
+}
+
+async function uploadDriftsrapportToSharePoint(
+	fileName: string,
+	pdfBytes: Uint8Array
+): Promise<void> {
+	const siteId = process.env.SHAREPOINT_SITE_ID;
+	const folderPath = process.env.DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH;
+
+	if (!siteId || !folderPath) {
+		console.warn(
+			"SharePoint: SHAREPOINT_SITE_ID eller DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH mangler, hopper over opplasting"
+		);
+		return;
+	}
+
+	const accessToken = await getGraphAccessToken();
+	if (!accessToken) return;
+
+	// Bygg sti til filen under dokumentbiblioteket, med korrekt URL-encoding per segment
+	const encodedFolder = folderPath
+		.split("/")
+		.filter(Boolean)
+		.map((segment) => encodeURIComponent(segment))
+		.join("/");
+	const encodedFileName = encodeURIComponent(fileName);
+	const itemPath = `${encodedFolder}/${encodedFileName}`;
+
+	const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}:/content`;
+
+	const res = await fetch(url, {
+		method: "PUT",
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+			"Content-Type": "application/pdf",
+		},
+		// pdf-lib gir Uint8Array – gjør det om til Buffer for Node/fetch
+		body: Buffer.from(pdfBytes),
+	});
+
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		console.error(
+			"SharePoint: klarte ikke å laste opp driftsrapport",
+			res.status,
+			text
+		);
+	}
 }
 
 export async function POST(req: Request) {
@@ -225,14 +320,15 @@ export async function POST(req: Request) {
     );
   }
 
-  let payload: SendReportPayload;
+	  let payload: SendReportPayload;
   try {
     payload = (await req.json()) as SendReportPayload;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-	const { subject, body, fileName, title, fromName, htiImageUrls, base } = payload;
+		const { subject, body, fileName, title, fromName, htiImageUrls, base, reportType } =
+			payload;
 
   if (!subject || !body || !fileName || !title) {
     return NextResponse.json(
@@ -241,9 +337,19 @@ export async function POST(req: Request) {
     );
   }
 
-	try {
-		const pdfBytes = await createPdf(title, body, htiImageUrls);
-		const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
+		try {
+			const pdfBytes = await createPdf(title, body, htiImageUrls);
+			const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
+
+			// Kun driftsrapporter skal til SharePoint. Dette er best-effort – hvis det feiler,
+			// sender vi likevel e-posten som før, men logger feilen.
+			if (reportType === "driftsrapport") {
+				try {
+					await uploadDriftsrapportToSharePoint(fileName, pdfBytes);
+				} catch (err) {
+					console.error("SharePoint: uventet feil ved opplasting", err);
+				}
+			}
 
 		// Legg til base-spesifikke kopi-adresser
 		const cc: { email: string }[] = [];

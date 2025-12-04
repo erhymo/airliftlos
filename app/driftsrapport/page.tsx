@@ -374,21 +374,22 @@ export default function DriftsrapportPage() {
     const title = `Driftsrapport ${base} ${dato}`;
     const fromName = `LOS Helikopter ${base}`;
 
-    const response = await fetch("/api/send-report", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subject,
-        body: plainText,
-        fileName,
-        title,
-        fromName,
-			base,
-        htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
-      }),
-    });
+	    const response = await fetch("/api/send-report", {
+	      method: "POST",
+	      headers: {
+	        "Content-Type": "application/json",
+	      },
+	      body: JSON.stringify({
+	        subject,
+	        body: plainText,
+	        fileName,
+	        title,
+	        fromName,
+				base,
+	        htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
+				reportType: "driftsrapport",
+	      }),
+	    });
 
     if (!response.ok) {
       alert("Klarte ikke å sende driftsrapport. Prøv igjen senere.");
@@ -445,21 +446,22 @@ export default function DriftsrapportPage() {
     const title = `Driftsrapport ${r.base} ${r.dato}`;
     const fromName = `LOS Helikopter ${r.base}`;
 
-    const response = await fetch("/api/send-report", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subject,
-        body: plainText,
-        fileName,
-        title,
-        fromName,
-				base: r.base,
-				htiImageUrls: r.htiImageUrls || [],
-      }),
-    });
+	    const response = await fetch("/api/send-report", {
+	      method: "POST",
+	      headers: {
+	        "Content-Type": "application/json",
+	      },
+	      body: JSON.stringify({
+	        subject,
+	        body: plainText,
+	        fileName,
+	        title,
+	        fromName,
+						base: r.base,
+						reportType: "driftsrapport",
+						htiImageUrls: r.htiImageUrls || [],
+	      }),
+	    });
 
     if (!response.ok) {
       alert("Klarte ikke  e5 sende driftsrapport. Pr f8v igjen senere.");
