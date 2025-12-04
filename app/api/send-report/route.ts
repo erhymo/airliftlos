@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { cookies } from "next/headers";
+import { PDFDocument, StandardFonts, rgb, PDFImage } from "pdf-lib";
 import fs from "fs/promises";
 import path from "path";
 
@@ -33,15 +34,15 @@ async function createPdf(
   body: string,
   htiImageUrls?: string[]
 ): Promise<Uint8Array> {
-  const pdf = await PDFDocument.create();
-  const page = pdf.addPage([595, 842]);
-  const pageWidth = page.getWidth();
+	  const pdf = await PDFDocument.create();
+	  const page = pdf.addPage([595, 842]);
+	  const pageWidth = page.getWidth();
 
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
+	  const font = await pdf.embedFont(StandardFonts.Helvetica);
+	  const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  // Forsøk å laste Airlift-logoen fra public-mappen
-  let logoImage: any | undefined;
+	  // Forsøk å laste Airlift-logoen fra public-mappen
+	  let logoImage: PDFImage | undefined;
   try {
     const logoPath = path.join(process.cwd(), "public", "Airlift-logo.png");
     const logoBytes = await fs.readFile(logoPath);
@@ -204,6 +205,16 @@ interface SendReportPayload {
 export async function POST(req: Request) {
   const apiKey = process.env.SENDGRID_API_KEY;
   const fromEmail = process.env.SENDGRID_FROM;
+	  const accessCode = process.env.ACCESS_CODE;
+
+	  // Hvis ACCESS_CODE er satt, krever vi at brukeren har en gyldig tilgangs-cookie
+	  if (accessCode) {
+	    const cookieStore = await cookies();
+	    const accessCookie = cookieStore.get("airliftlos_access");
+	    if (!accessCookie || accessCookie.value !== "ok") {
+	      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+	    }
+	  }
 
   if (!apiKey || !fromEmail) {
     return NextResponse.json(

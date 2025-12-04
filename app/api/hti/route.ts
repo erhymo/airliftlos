@@ -20,44 +20,50 @@ export async function GET(req: Request) {
     "https://api.met.no/weatherapi/offshoremaps/1.0/available.json?type=helicoptertriggeredlightningindex&area=" +
     area;
 
-  try {
-    const res = await fetch(url, {
-      headers: {
-        // MET krever en tydelig User-Agent
-        "User-Agent": "airliftlos/1.0 (kontakt: myhre.oyvind@gmail.com)",
-      },
-      cache: "no-store",
-    });
+	  try {
+	    const res = await fetch(url, {
+	      headers: {
+	        // MET krever en tydelig User-Agent
+	        "User-Agent": "airliftlos/1.0 (kontakt: myhre.oyvind@gmail.com)",
+	      },
+	      cache: "no-store",
+	    });
 
-    if (!res.ok) {
-      return new Response(
-        JSON.stringify({ error: "Upstream MET error", status: res.status }),
-        {
-          status: 502,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
+	    if (!res.ok) {
+	      return new Response(
+	        JSON.stringify({ error: "Upstream MET error", status: res.status }),
+	        {
+	          status: 502,
+	          headers: { "Content-Type": "application/json" },
+	        }
+	      );
+	    }
 
-    const data: any = await res.json();
+	    const data = (await res.json()) as unknown;
 
-    if (!Array.isArray(data)) {
-      return new Response(
-        JSON.stringify({ base, area, items: [] }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
+	    if (!Array.isArray(data)) {
+	      return new Response(
+	        JSON.stringify({ base, area, items: [] }),
+	        {
+	          status: 200,
+	          headers: { "Content-Type": "application/json" },
+	        }
+	      );
+	    }
 
-    const items = (data as any[])
-      .map((entry) => ({
-        time: String(entry?.params?.time ?? ""),
-        uri: String(entry?.uri ?? ""),
-        updated: String(entry?.updated ?? ""),
-      }))
-      .filter((item) => item.time && item.uri);
+	    type OffshoreEntry = {
+	      params?: { time?: string };
+	      uri?: string;
+	      updated?: string;
+	    };
+
+	    const items = (data as OffshoreEntry[])
+	      .map((entry) => ({
+	        time: String(entry.params?.time ?? ""),
+	        uri: String(entry.uri ?? ""),
+	        updated: String(entry.updated ?? ""),
+	      }))
+	      .filter((item) => item.time && item.uri);
 
     // Sorter på tid (eldst først)
     items.sort((a, b) => a.time.localeCompare(b.time));
