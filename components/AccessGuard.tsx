@@ -33,25 +33,25 @@ export function AccessGuard({ children }: Props) {
         body: JSON.stringify({ code }),
       });
 
-      if (!res.ok) {
-        setError("Feil kode. Prv igjen.");
+	      if (!res.ok) {
+	        setError("Feil kode. Prøv igjen.");
         setSubmitting(false);
         return;
       }
 
-      // Mark	r denne nettleseren/telefonen som godkjent
+	      // Marker denne nettleseren/telefonen som godkjent
       if (typeof window !== "undefined") {
         window.localStorage.setItem("airliftlos_access", "ok");
       }
       setUnlocked(true);
-    } catch {
-      setError("Kunne ikke verifisere koden. Sjekk nett og prv igjen.");
+	    } catch {
+	      setError("Kunne ikke verifisere koden. Sjekk nettverket og prøv igjen.");
       setSubmitting(false);
     }
   }
 
-  if (unlocked === null) {
-    // Unng srk flicker mens vi sjekker localStorage
+	  if (unlocked === null) {
+	    // Unngå "flicker" mens vi sjekker localStorage
     return null;
   }
 
@@ -64,10 +64,10 @@ export function AccessGuard({ children }: Props) {
       <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
         <header className="space-y-1">
           <h1 className="text-xl font-semibold">LOS Helikopter</h1>
-          <p className="text-sm text-gray-600">
-            Oppsett for rapport-appen. Skriv inn oppsettkoden du har f tt
-            utdelt for  g bruke denne telefonen.
-          </p>
+		          <p className="text-sm text-gray-600">
+		            Oppsett for rapport-appen. Skriv inn oppsettkoden du har fått
+		            utdelt for å bruke denne telefonen.
+		          </p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -92,14 +92,14 @@ export function AccessGuard({ children }: Props) {
             disabled={submitting || !code}
             className="w-full py-2.5 rounded-lg bg-blue-600 text-white text-base font-medium disabled:opacity-60"
           >
-            {submitting ? "Sjekker kode..." : "L s opp denne telefonen"}
+	            {submitting ? "Sjekker kode..." : "Lås opp denne telefonen"}
           </button>
         </form>
 
         <p className="text-xs text-gray-500">
-          Koden trenger bare  taste inn  n gang per telefon. Nr den er
+          Koden trenger bare å tastes inn én gang per telefon. Når den er
           godkjent kan alle som bruker denne telefonen sende
-          vakt-/driftsrapporter.
+          vakt- og driftsrapporter.
         </p>
       </main>
     </div>
