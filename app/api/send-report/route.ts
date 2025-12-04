@@ -239,6 +239,16 @@ type SharePointUploadResult = {
   error?: string;
 };
 
+function buildSharePointItemPath(folderPath: string, fileName: string): string {
+	const encodedFolder = folderPath
+		.split("/")
+		.filter(Boolean)
+		.map((segment) => encodeURIComponent(segment))
+		.join("/");
+	const encodedFileName = encodeURIComponent(fileName);
+	return `${encodedFolder}/${encodedFileName}`;
+}
+
 async function getGraphAccessToken(): Promise<string | null> {
   const tenantId = process.env.MS_TENANT_ID;
   const clientId = process.env.MS_CLIENT_ID;
@@ -310,14 +320,8 @@ async function uploadPdfToSharePoint(
     };
   }
 
-  // Bygg sti til filen under dokumentbiblioteket, med korrekt URL-encoding per segment
-  const encodedFolder = folderPath
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-  const encodedFileName = encodeURIComponent(fileName);
-  const itemPath = `${encodedFolder}/${encodedFileName}`;
+	// Bygg sti til filen under dokumentbiblioteket, med korrekt URL-encoding per segment
+	const itemPath = buildSharePointItemPath(folderPath, fileName);
 
   const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}:/content`;
 
@@ -371,39 +375,113 @@ async function uploadDriftsrapportToSharePoint(
   return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
 }
 
+function getVaktrapportFolderPath(base: string | undefined): string | undefined {
+	switch (base) {
+		case "Bergen":
+			return process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_BERGEN;
+		case "Hammerfest":
+			return process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_HAMMERFEST;
+		case "Tromsø":
+			return process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_TROMSO;
+		default:
+			return undefined;
+	}
+}
+
 async function uploadVaktrapportToSharePoint(
-  base: string | undefined,
-  fileName: string,
-  pdfBytes: Uint8Array
+	base: string | undefined,
+	fileName: string,
+	pdfBytes: Uint8Array
 ): Promise<SharePointUploadResult> {
-  let folderPath: string | undefined;
+	const folderPath = getVaktrapportFolderPath(base);
 
-  switch (base) {
-    case "Bergen":
-      folderPath = process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_BERGEN;
-      break;
-    case "Hammerfest":
-      folderPath = process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_HAMMERFEST;
-      break;
-    case "Tromsø":
-      folderPath = process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_TROMSO;
-      break;
-    default:
-      break;
-  }
+	if (!folderPath) {
+	  console.warn(
+	    `SharePoint: mangler mappe for vaktrapport-base ${base ?? "(ukjent)"} – hopper over opplasting`
+	  );
+	  return {
+	    ok: false,
+	    skipped: true,
+	    error: "SharePoint-mappe for denne basen er ikke konfigurert",
+	  };
+	}
 
-  if (!folderPath) {
-    console.warn(
-      `SharePoint: mangler mappe for vaktrapport-base ${base ?? "(ukjent)"} – hopper over opplasting`
-    );
-    return {
-      ok: false,
-      skipped: true,
-      error: "SharePoint-mappe for denne basen er ikke konfigurert",
-    };
-  }
+	return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
+}
 
-  return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
+async function deleteVaktrapportFromSharePoint(
+	base: string | undefined,
+	fileName: string
+): Promise<SharePointUploadResult> {
+	const siteId = process.env.SHAREPOINT_SITE_ID;
+
+	if (!siteId) {
+		console.warn(
+			"SharePoint: SHAREPOINT_SITE_ID mangler, hopper over sletting"
+		);
+		return {
+			ok: false,
+			skipped: true,
+			error: "SharePoint-sletting er ikke konfigurert (mangler SITE_ID)",
+		};
+	}
+
+	const folderPath = getVaktrapportFolderPath(base);
+
+		if (!folderPath) {
+			console.warn(
+				`SharePoint: mangler mappe for vaktrapport-base ${base ?? "(ukjent)"} – hopper over sletting`
+			);
+		return {
+			ok: false,
+			skipped: true,
+			error: "SharePoint-mappe for denne basen er ikke konfigurert",
+		};
+	}
+
+	const accessToken = await getGraphAccessToken();
+	if (!accessToken) {
+		return {
+			ok: false,
+			error: "Fikk ikke access token fra Microsoft Graph",
+		};
+	}
+
+	const itemPath = buildSharePointItemPath(folderPath, fileName);
+	const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}`;
+
+	const res = await fetch(url, {
+		method: "DELETE",
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+		},
+	});
+
+	if (res.status === 404) {
+		// Filen finnes ikke lenger  vi betrakter dette som OK for  holde appen i sync
+		console.warn(
+			"SharePoint: filen som skulle slettes ble ikke funnet (404)  antar at den allerede er fjernet"
+		);
+		return { ok: true, skipped: true, error: "File already deleted (404)" };
+	}
+
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		console.error(
+			"SharePoint: klarte ikke  slette fil",
+			res.status,
+			text
+		);
+		return {
+			ok: false,
+			error:
+				text && text.length < 400
+					? text
+					: `HTTP ${res.status} fra Graph ved sletting`,
+		};
+	}
+
+	return { ok: true };
 }
 
 export async function POST(req: Request) {
@@ -593,4 +671,62 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+interface DeleteVaktrapportPayload {
+	base?: string;
+	fileName: string;
+}
+
+export async function DELETE(req: Request) {
+	const accessCode = process.env.ACCESS_CODE;
+
+	// Hvis ACCESS_CODE er satt, krever vi at brukeren har en gyldig tilgangs-cookie
+	if (accessCode) {
+		const cookieStore = await cookies();
+		const accessCookie = cookieStore.get("airliftlos_access");
+		if (!accessCookie || accessCookie.value !== "ok") {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+		}
+	}
+
+	let payload: DeleteVaktrapportPayload;
+	try {
+		payload = (await req.json()) as DeleteVaktrapportPayload;
+	} catch {
+		return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+	}
+
+	const { base, fileName } = payload;
+
+	if (!fileName) {
+		return NextResponse.json(
+			{ error: "fileName is required" },
+			{ status: 400 }
+		);
+	}
+
+	try {
+		const result = await deleteVaktrapportFromSharePoint(base, fileName);
+		if (!result.ok && !result.skipped) {
+			return NextResponse.json(
+				{
+					error: "Failed to delete vaktrapport from SharePoint",
+					details: result.error,
+				},
+				{ status: 502 }
+			);
+		}
+
+		return NextResponse.json({
+			ok: true,
+			sharepoint: result,
+		});
+	} catch (error) {
+		console.error("Failed to delete vaktrapport", error);
+		return NextResponse.json(
+			{ error: "Failed to delete vaktrapport" },
+			{ status: 500 }
+		);
+	}
 }

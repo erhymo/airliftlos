@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import StepShell from "./components/StepShell";
 import Section from "./components/Section";
 import CrewPicker from "./components/CrewPicker";
@@ -41,6 +42,8 @@ const defaultWeekRange = () => {
   };
 };
 
+const getVaktrapportFileName = (base: Base, ukeFra: string, ukeTil: string) =>
+	`Vaktrapport_${base}_${ukeFra}-${ukeTil}.pdf`;
 
 const defaultChecks: CheckItem[] = [
   { key: "nvg", label: "NVG utstyr kontrollert", checked: false },
@@ -78,6 +81,8 @@ function saveReports(reports: VaktReport[]) {
 // ----- UI-byggeklosser -----
 // ----- Hovedkomponent (side) -----
 export default function VaktAppPage() {
+  const router = useRouter();
+
   const [step, setStep] = useState(0);
 
   const [crew, setCrew] = useState("");
@@ -203,7 +208,7 @@ export default function VaktAppPage() {
 
     const plainText = linjer.join("\n");
     const subject = `LOS-helikopter ${base} - vaktrapport ${datoSign}`;
-    const fileName = `Vaktrapport_${base}_${ukeFra}-${ukeTil}.pdf`;
+	    const fileName = getVaktrapportFileName(base, ukeFra, ukeTil);
     const title = `Vaktrapport ${base} ${datoSign}`;
     const fromName = `LOS Helikopter ${base}`;
 
@@ -229,8 +234,11 @@ export default function VaktAppPage() {
         return;
       }
 
-      setSendStatus("success");
-      startNew();
+	      setSendStatus("success");
+	      startNew();
+	      // Etter vellykket sending går vi helt tilbake til hovedforsiden
+	      // der du kan velge mellom vaktrapport og driftsrapport.
+	      router.push("/");
     } catch {
       setSendStatus("error");
     }
@@ -252,11 +260,53 @@ export default function VaktAppPage() {
     setStep(0);
   }
 
-  function openExisting(r: VaktReport) {
+	function openExisting(r: VaktReport) {
     resetFrom(r);
     setStep(9);
     setShowArchive(false);
   }
+
+	async function deleteReport(r: VaktReport) {
+		// Sørg for at vi bruker helt samme filnavn som ved opplasting til SharePoint
+		const fileName = getVaktrapportFileName(r.base, r.ukeFra, r.ukeTil);
+
+		try {
+			const res = await fetch("/api/send-report", {
+				method: "DELETE",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					base: r.base,
+					fileName,
+				}),
+			});
+
+			if (!res.ok) {
+				// Hvis vi ikke klarer å slette i SharePoint, lar vi rapporten ligge i arkivet
+				// slik at du kan prøve igjen senere.
+				if (typeof window !== "undefined") {
+					alert(
+						"Klarte ikke å slette rapporten fra SharePoint. Den er ikke fjernet fra arkivet."
+					);
+				}
+				return;
+			}
+		} catch (error) {
+			console.error("Feil ved sletting av vaktrapport", error);
+			if (typeof window !== "undefined") {
+				alert(
+					"Uventet feil ved sletting. Rapporten er ikke fjernet fra arkivet."
+				);
+			}
+			return;
+		}
+
+		// Lokalt sletter vi kun hvis SharePoint-sletting gikk bra (eller filen allerede var borte)
+		const next = reports.filter((report) => report.id !== r.id);
+		setReports(next);
+		saveReports(next);
+	}
 
   function updateCheck(key: string, checked: boolean) {
     setChecks((prev) =>
@@ -570,7 +620,8 @@ export default function VaktAppPage() {
         <VaktReportArchive
           reports={reports}
           onOpen={openExisting}
-          onNew={startNew}
+	          onNew={startNew}
+	          onDelete={deleteReport}
         />
       )}
 
@@ -597,7 +648,11 @@ export default function VaktAppPage() {
               <>
                 <p className="text-base font-semibold mb-4">Rapporten er sendt.</p>
                 <button
-                  onClick={() => setSendStatus(null)}
+	                  onClick={() => {
+	                    // Ved suksess har vi allerede navigert til forsiden.
+	                    // Denne knappen trengs mest som "OK" dersom dialogen fortsatt vises.
+	                    setSendStatus(null);
+	                  }}
                   className="px-4 py-2 rounded-xl bg-black text-white text-sm"
                 >
                   Lukk

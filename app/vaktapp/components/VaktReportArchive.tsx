@@ -6,12 +6,14 @@ interface VaktReportArchiveProps {
   reports: VaktReport[];
   onOpen: (report: VaktReport) => void;
   onNew: () => void;
+  onDelete: (report: VaktReport) => void;
 }
 
 export default function VaktReportArchive({
   reports,
   onOpen,
   onNew,
+  onDelete,
 }: VaktReportArchiveProps) {
   return (
     <main className="mx-auto max-w-md p-4">
@@ -40,6 +42,16 @@ export default function VaktReportArchive({
 		                  className="text-blue-600 underline"
 		                >
 		                  Åpne
+		                </button>
+		                <button
+		                  onClick={() => {
+		                    if (window.confirm("Slette denne vaktrapporten?")) {
+		                      onDelete(r);
+		                    }
+		                  }}
+		                  className="text-red-600 underline"
+		                >
+		                  Slett
 		                </button>
 		              </div>
 		            </div>
