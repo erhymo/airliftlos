@@ -40,7 +40,7 @@ async function resendReport(r: VaktReport) {
   const response = await fetch("/api/send-report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subject, body: plainText, fileName, title, fromName }),
+		body: JSON.stringify({ subject, body: plainText, fileName, title, fromName, base: r.base }),
   });
 
   if (!response.ok) {

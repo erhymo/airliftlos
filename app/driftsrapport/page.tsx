@@ -385,6 +385,7 @@ export default function DriftsrapportPage() {
         fileName,
         title,
         fromName,
+			base,
         htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
       }),
     });
@@ -455,7 +456,8 @@ export default function DriftsrapportPage() {
         fileName,
         title,
         fromName,
-        htiImageUrls: r.htiImageUrls || [],
+				base: r.base,
+				htiImageUrls: r.htiImageUrls || [],
       }),
     });
 

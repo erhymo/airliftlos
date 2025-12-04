@@ -194,12 +194,14 @@ async function createPdf(
 }
 
 interface SendReportPayload {
-  subject: string;
-  body: string;
-  fileName: string;
-  title: string;
-  fromName?: string;
-  htiImageUrls?: string[];
+	subject: string;
+	body: string;
+	fileName: string;
+	title: string;
+	fromName?: string;
+	/** Hvilken base rapporten gjelder (Bergen/Tromsø/Hammerfest) */
+	base?: string;
+	htiImageUrls?: string[];
 }
 
 export async function POST(req: Request) {
@@ -230,7 +232,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { subject, body, fileName, title, fromName, htiImageUrls } = payload;
+	const { subject, body, fileName, title, fromName, htiImageUrls, base } = payload;
 
   if (!subject || !body || !fileName || !title) {
     return NextResponse.json(
@@ -239,44 +241,55 @@ export async function POST(req: Request) {
     );
   }
 
-  try {
-    const pdfBytes = await createPdf(title, body, htiImageUrls);
-    const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
+	try {
+		const pdfBytes = await createPdf(title, body, htiImageUrls);
+		const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
 
-    const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        personalizations: [
-          {
-            to: TO_ADDRESSES.map((email) => ({ email })),
-            subject,
-          },
-        ],
-        from: {
-          email: fromEmail,
-          name: fromName || "LOS Helikopter",
-        },
-        content: [
-          {
-            type: "text/plain",
-            value: body,
-          },
-        ],
-        attachments: [
-          {
-            content: pdfBase64,
-            // Bruk en generisk MIME-type for å redusere sjansen for inline forhåndsvisning
-            type: "application/octet-stream",
-            filename: fileName,
-            disposition: "attachment",
-          },
-        ],
-      }),
-    });
+		// Legg til base-spesifikke kopi-adresser
+		const cc: { email: string }[] = [];
+		if (base === "Bergen") {
+			cc.push({ email: "loshelikopter.bergen@airlift.no" });
+		}
+		if (base === "Hammerfest") {
+			cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
+		}
+
+		const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${apiKey}`,
+			},
+			body: JSON.stringify({
+				personalizations: [
+					{
+						to: TO_ADDRESSES.map((email) => ({ email })),
+						// Kopi-adresser per base (Bergen/Hammerfest)
+						...(cc.length > 0 ? { cc } : {}),
+						subject,
+					},
+				],
+				from: {
+					email: fromEmail,
+					name: fromName || "LOS Helikopter",
+				},
+				content: [
+					{
+						type: "text/plain",
+						value: body,
+					},
+				],
+				attachments: [
+					{
+						content: pdfBase64,
+						// Bruk en generisk MIME-type for å redusere sjansen for inline forhåndsvisning
+						type: "application/octet-stream",
+						filename: fileName,
+						disposition: "attachment",
+					},
+				],
+			}),
+		});
 
     if (!sgResponse.ok) {
       const text = await sgResponse.text();

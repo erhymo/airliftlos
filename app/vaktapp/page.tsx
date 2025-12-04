@@ -218,7 +218,8 @@ export default function VaktAppPage() {
           body: plainText,
           fileName,
           title,
-          fromName,
+				fromName,
+				base,
         }),
       });
 
