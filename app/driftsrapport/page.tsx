@@ -686,100 +686,94 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    }
 	  }
 
-		async function handleSendStats() {
-			if (!statsTo.trim()) {
-				alert("Skriv inn minst én e-postadresse.");
-				return;
-			}
-
-			setStatsSending(true);
-			try {
-				const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
-					buildStatsForYear(selectedYear);
-
-				const lines: string[] = [];
-				lines.push(`Statistikk driftsrapporter ${selectedYear}`);
-				lines.push("");
-				lines.push("Antall driftsrapporter per måned og årsak:");
-				for (let i = 0; i < MONTH_LABELS.length; i++) {
-					const label = MONTH_LABELS[i];
-					const row = perMonthCounts[i];
-					const parts = CAUSES.map(
-						(cause) => `${cause}: ${row.perCause[cause] || 0}`
-					);
-					lines.push(
-						`${label} – ${parts.join(", ")} | Totalt: ${row.totalReports || 0}`
-					);
-				}
-
-				lines.push("");
-				lines.push("Antall timer stopp per måned og årsak:");
-				for (let i = 0; i < MONTH_LABELS.length; i++) {
-					const label = MONTH_LABELS[i];
-					const row = perMonthHours[i];
-					const parts = CAUSES.map(
-						(cause) => `${cause}: ${row.perCause[cause] || 0}`
-					);
-					lines.push(
-						`${label} – ${parts.join(", ")} | Totalt timer: ${
-							row.totalHours || 0
-						}`
-					);
-				}
-
-				lines.push("");
-				lines.push("Oppsummert totalt stoppetid per årsak:");
-				for (const cause of CAUSES) {
-					lines.push(
-						`${cause}: ${totalHoursByCause[cause] || 0} timer`
-					);
-				}
-				lines.push("");
-				lines.push(
-					`Totalt stoppetid ${selectedYear}: ${totalHoursYear || 0} timer`
-				);
-
-				const plainText = lines.join("\n");
-				const subject = `Statistikk driftsrapporter ${selectedYear}`;
-				const title = subject;
-				const fileName = `Statistikk_driftsrapporter_${selectedYear}.pdf`;
-
-				const response = await fetch("/api/send-stats", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						subject,
-						body: plainText,
-						fileName,
-						title,
-						to: statsTo,
-					}),
-				});
-
-				let data: { ok?: boolean; error?: string; details?: string } | null = null;
-				try {
-					data = await response.json();
-				} catch {
-					// Ignorer JSON-feil – vi bruker bare statuskode
-				}
-
-				if (!response.ok || (data && data.ok === false)) {
-					const msg =
-						(data && (data.error || data.details)) ||
-						"Klarte ikke å sende statistikk. Prøv igjen senere.";
-					alert(msg);
+			async function handleSendStats() {
+				if (!statsTo.trim()) {
+					alert("Skriv inn minst én e-postadresse.");
 					return;
 				}
-
-				alert("Statistikk er sendt på e-post.");
-				setShowStatsSendDialog(false);
-				setStatsTo("");
-			} finally {
-				setStatsSending(false);
+			
+				setStatsSending(true);
+				try {
+					const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
+						buildStatsForYear(selectedYear);
+				
+					// Kort og ryddig e-posttekst med bare nøkkeltall per måned
+					const totalReportsYear = perMonthCounts.reduce(
+						(acc, row) => acc + (row.totalReports || 0),
+						0
+					);
+					const lines: string[] = [];
+					lines.push(`Statistikk driftsrapporter ${selectedYear}`);
+					lines.push("");
+					lines.push("Nøkkeltall per måned:");
+					for (let i = 0; i < MONTH_LABELS.length; i++) {
+						const label = MONTH_LABELS[i];
+						const countsRow = perMonthCounts[i];
+						const hoursRow = perMonthHours[i];
+						const reports = countsRow.totalReports || 0;
+						const hours = hoursRow.totalHours || 0;
+						if (!reports && !hours) continue;
+						lines.push(
+							`${label}: ${reports} rapporter, ${hours} timer stopp`
+						);
+					}
+					lines.push("");
+					lines.push(
+						`Totalt for ${selectedYear}: ${totalReportsYear} rapporter, ${
+							totalHoursYear || 0
+						} timer stopp.`
+					);
+					lines.push("");
+					lines.push("Se vedlagt PDF for full fordeling per årsak.");
+				
+					const plainText = lines.join("\n");
+					const subject = `Statistikk driftsrapporter ${selectedYear}`;
+					const title = subject;
+					const fileName = `Statistikk_driftsrapporter_${selectedYear}.pdf`;
+				
+					const response = await fetch("/api/send-stats", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							subject,
+							body: plainText,
+							fileName,
+							title,
+							to: statsTo,
+							year: selectedYear,
+							stats: {
+								perMonthCounts,
+								perMonthHours,
+								totalHoursByCause,
+								totalHoursYear,
+							},
+						}),
+					});
+				
+					let data: { ok?: boolean; error?: string; details?: string } | null = null;
+					try {
+						data = await response.json();
+					} catch {
+						// Ignorer JSON-feil – vi bruker bare statuskode
+					}
+				
+					if (!response.ok || (data && data.ok === false)) {
+						const msg =
+							(data && (data.error || data.details)) ||
+							"Klarte ikke å sende statistikk. Prøv igjen senere.";
+						alert(msg);
+						return;
+					}
+				
+					alert("Statistikk er sendt på e-post.");
+					setShowStatsSendDialog(false);
+					setStatsTo("");
+				} finally {
+					setStatsSending(false);
+				}
 			}
-		}
 
 	  const MONTH_LABELS = [
     "Jan",
