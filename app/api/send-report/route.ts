@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { PDFDocument, StandardFonts, rgb, PDFImage } from "pdf-lib";
 import fs from "fs/promises";
 import path from "path";
+import { getDb } from "../../../lib/firebaseAdmin";
 
 const TO_ADDRESSES = [
   "oyvind.myhre@airlift.no",
@@ -34,15 +35,15 @@ export async function createPdf(
   body: string,
   htiImageUrls?: string[]
 ): Promise<Uint8Array> {
-	  const pdf = await PDFDocument.create();
-	  const page = pdf.addPage([595, 842]);
-	  const pageWidth = page.getWidth();
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage([595, 842]);
+  const pageWidth = page.getWidth();
 
-	  const font = await pdf.embedFont(StandardFonts.Helvetica);
-	  const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-	  // Forsøk å laste Airlift-logoen fra public-mappen
-	  let logoImage: PDFImage | undefined;
+  // Forsøk å laste Airlift-logoen fra public-mappen
+  let logoImage: PDFImage | undefined;
   try {
     const logoPath = path.join(process.cwd(), "public", "Airlift-logo.png");
     const logoBytes = await fs.readFile(logoPath);
@@ -193,150 +194,167 @@ export async function createPdf(
   return bytes;
 }
 
+interface DriftsReportRecord {
+  id: string;
+  base: string;
+  dato: string;
+  tid: string;
+  arsaker: string[];
+  teknisk: string;
+  annen: string;
+  varighetTimer: number;
+  varighetTekst: string;
+  gjenopptakTimer: number;
+  gjenopptakTekst: string;
+  oppfolgingTimer: number;
+  oppfolgingTekst: string;
+  alternativ: string;
+  signatur: string;
+  metarLines: string[];
+  htiImageUrls?: string[];
+  createdAt: number;
+  gjenopptattKl?: number;
+  gjenopptattKommentar?: string;
+  gjenopptattSendtAt?: number;
+}
+
 interface SendReportPayload {
-	subject: string;
-	body: string;
-	fileName: string;
-	title: string;
-	fromName?: string;
-	/** Hvilken base rapporten gjelder (Bergen/Tromsø/Hammerfest) */
-	base?: string;
-	htiImageUrls?: string[];
-	/** Type rapport (brukes til f.eks. SharePoint-opplasting) */
-	reportType?: "driftsrapport" | "vaktrapport";
+  subject: string;
+  body: string;
+  fileName: string;
+  title: string;
+  fromName?: string;
+  /** Hvilken base rapporten gjelder (Bergen/Tromsø/Hammerfest) */
+  base?: string;
+  htiImageUrls?: string[];
+  /** Type rapport (brukes til f.eks. SharePoint-opplasting) */
+  reportType?: "driftsrapport" | "vaktrapport";
+  /** Strukturert driftsrapport som kan lagres i Firestore */
+  driftsReport?: DriftsReportRecord;
 }
 
 type SharePointUploadResult = {
-	ok: boolean;
-	skipped?: boolean;
-	error?: string;
+  ok: boolean;
+  skipped?: boolean;
+  error?: string;
 };
 
 async function getGraphAccessToken(): Promise<string | null> {
-	const tenantId = process.env.MS_TENANT_ID;
-	const clientId = process.env.MS_CLIENT_ID;
-	const clientSecret = process.env.MS_CLIENT_SECRET;
+  const tenantId = process.env.MS_TENANT_ID;
+  const clientId = process.env.MS_CLIENT_ID;
+  const clientSecret = process.env.MS_CLIENT_SECRET;
 
-	if (!tenantId || !clientId || !clientSecret) {
-		console.warn(
-			"SharePoint: MS_TENANT_ID, MS_CLIENT_ID eller MS_CLIENT_SECRET mangler, hopper over opplasting"
-		);
-		return null;
-	}
+  if (!tenantId || !clientId || !clientSecret) {
+    console.warn(
+      "SharePoint: MS_TENANT_ID, MS_CLIENT_ID eller MS_CLIENT_SECRET mangler, hopper over opplasting"
+    );
+    return null;
+  }
 
-	const params = new URLSearchParams({
-		client_id: clientId,
-		client_secret: clientSecret,
-		scope: "https://graph.microsoft.com/.default",
-		grant_type: "client_credentials",
-	});
+  const params = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: "https://graph.microsoft.com/.default",
+    grant_type: "client_credentials",
+  });
 
-	const res = await fetch(
-		`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-		{
-			method: "POST",
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-			},
-			body: params.toString(),
-		}
-	);
+  const res = await fetch(
+    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    }
+  );
 
-	if (!res.ok) {
-		const text = await res.text().catch(() => "");
-		console.error("SharePoint: klarte ikke å hente access token", text);
-		return null;
-	}
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error("SharePoint: klarte ikke å hente access token", text);
+    return null;
+  }
 
-	const data = (await res.json()) as { access_token?: string };
-	if (!data.access_token) {
-		console.error("SharePoint: access token mangler i responsen");
-		return null;
-	}
+  const data = (await res.json()) as { access_token?: string };
+  if (!data.access_token) {
+    console.error("SharePoint: access token mangler i responsen");
+    return null;
+  }
 
-	return data.access_token;
+  return data.access_token;
 }
 
 async function uploadDriftsrapportToSharePoint(
-	fileName: string,
-	pdfBytes: Uint8Array
+  fileName: string,
+  pdfBytes: Uint8Array
 ): Promise<SharePointUploadResult> {
-	const siteId = process.env.SHAREPOINT_SITE_ID;
-	const folderPath = process.env.DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH;
+  const siteId = process.env.SHAREPOINT_SITE_ID;
+  const folderPath = process.env.DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH;
 
-	if (!siteId || !folderPath) {
-		console.warn(
-			"SharePoint: SHAREPOINT_SITE_ID eller DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH mangler, hopper over opplasting"
-		);
-		return {
-			ok: false,
-			skipped: true,
-			error:
-				"SharePoint-opplasting er ikke konfigurert (mangler SITE_ID eller FOLDER_PATH)",
-		};
-	}
+  if (!siteId || !folderPath) {
+    console.warn(
+      "SharePoint: SHAREPOINT_SITE_ID eller DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH mangler, hopper over opplasting"
+    );
+    return {
+      ok: false,
+      skipped: true,
+      error:
+        "SharePoint-opplasting er ikke konfigurert (mangler SITE_ID eller FOLDER_PATH)",
+    };
+  }
 
-	const accessToken = await getGraphAccessToken();
-	if (!accessToken) {
-		return {
-			ok: false,
-			error: "Fikk ikke access token fra Microsoft Graph",
-		};
-	}
+  const accessToken = await getGraphAccessToken();
+  if (!accessToken) {
+    return {
+      ok: false,
+      error: "Fikk ikke access token fra Microsoft Graph",
+    };
+  }
 
-	// Bygg sti til filen under dokumentbiblioteket, med korrekt URL-encoding per segment
-	const encodedFolder = folderPath
-		.split("/")
-		.filter(Boolean)
-		.map((segment) => encodeURIComponent(segment))
-		.join("/");
-	const encodedFileName = encodeURIComponent(fileName);
-	const itemPath = `${encodedFolder}/${encodedFileName}`;
+  // Bygg sti til filen under dokumentbiblioteket, med korrekt URL-encoding per segment
+  const encodedFolder = folderPath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  const encodedFileName = encodeURIComponent(fileName);
+  const itemPath = `${encodedFolder}/${encodedFileName}`;
 
-	const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}:/content`;
+  const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}:/content`;
 
-	const res = await fetch(url, {
-		method: "PUT",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-			"Content-Type": "application/pdf",
-		},
-		// pdf-lib gir Uint8Array – gjør det om til Buffer for Node/fetch
-		body: Buffer.from(pdfBytes),
-	});
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/pdf",
+    },
+    // pdf-lib gir Uint8Array – gjør det om til Buffer for Node/fetch
+    body: Buffer.from(pdfBytes),
+  });
 
-	if (!res.ok) {
-		const text = await res.text().catch(() => "");
-		console.error(
-			"SharePoint: klarte ikke å laste opp driftsrapport",
-			res.status,
-			text
-		);
-		return {
-			ok: false,
-			error:
-				text && text.length < 400
-					? text
-					: `HTTP ${res.status} fra Graph ved opplasting`,
-		};
-	}
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error(
+      "SharePoint: klarte ikke å laste opp driftsrapport",
+      res.status,
+      text
+    );
+    return {
+      ok: false,
+      error:
+        text && text.length < 400
+          ? text
+          : `HTTP ${res.status} fra Graph ved opplasting`,
+    };
+  }
 
-	return { ok: true };
+  return { ok: true };
 }
 
 export async function POST(req: Request) {
   const apiKey = process.env.SENDGRID_API_KEY;
   const fromEmail = process.env.SENDGRID_FROM;
-	  const accessCode = process.env.ACCESS_CODE;
-
-	  // Hvis ACCESS_CODE er satt, krever vi at brukeren har en gyldig tilgangs-cookie
-	  if (accessCode) {
-	    const cookieStore = await cookies();
-	    const accessCookie = cookieStore.get("airliftlos_access");
-	    if (!accessCookie || accessCookie.value !== "ok") {
-	      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-	    }
-	  }
+  const accessCode = process.env.ACCESS_CODE;
 
   if (!apiKey || !fromEmail) {
     return NextResponse.json(
@@ -345,15 +363,33 @@ export async function POST(req: Request) {
     );
   }
 
-	  let payload: SendReportPayload;
+  // Hvis ACCESS_CODE er satt, krever vi at brukeren har en gyldig tilgangs-cookie
+  if (accessCode) {
+    const cookieStore = await cookies();
+    const accessCookie = cookieStore.get("airliftlos_access");
+    if (!accessCookie || accessCookie.value !== "ok") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+  }
+
+  let payload: SendReportPayload;
   try {
     payload = (await req.json()) as SendReportPayload;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-		const { subject, body, fileName, title, fromName, htiImageUrls, base, reportType } =
-			payload;
+  const {
+    subject,
+    body,
+    fileName,
+    title,
+    fromName,
+    htiImageUrls,
+    base,
+    reportType,
+    driftsReport,
+  } = payload;
 
   if (!subject || !body || !fileName || !title) {
     return NextResponse.json(
@@ -362,81 +398,120 @@ export async function POST(req: Request) {
     );
   }
 
-		try {
-			const pdfBytes = await createPdf(title, body, htiImageUrls);
-			const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
+  try {
+    const pdfBytes = await createPdf(title, body, htiImageUrls);
+    const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
 
-			let sharepointResult: SharePointUploadResult | undefined;
-			if (reportType === "driftsrapport") {
-				try {
-					sharepointResult = await uploadDriftsrapportToSharePoint(
-						fileName,
-						pdfBytes
-					);
-				} catch (err) {
-					console.error("SharePoint: uventet feil ved opplasting", err);
-					sharepointResult = {
-						ok: false,
-						error: "Uventet feil ved opplasting til SharePoint",
-					};
-				}
-			}
+    let sharepointResult: SharePointUploadResult | undefined;
+    if (reportType === "driftsrapport") {
+      try {
+        sharepointResult = await uploadDriftsrapportToSharePoint(
+          fileName,
+          pdfBytes
+        );
+      } catch (err) {
+        console.error("SharePoint: uventet feil ved opplasting", err);
+        sharepointResult = {
+          ok: false,
+          error: "Uventet feil ved opplasting til SharePoint",
+        };
+      }
+    }
 
-		// Legg til base-spesifikke kopi-adresser
-		const cc: { email: string }[] = [];
-		if (base === "Bergen") {
-			cc.push({ email: "loshelikopter.bergen@airlift.no" });
-		}
-		if (base === "Hammerfest") {
-			cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
-		}
+    let firestoreResult:
+      | {
+          ok: boolean;
+          error?: string;
+        }
+      | undefined;
 
-		const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${apiKey}`,
-			},
-			body: JSON.stringify({
-				personalizations: [
-					{
-						to: TO_ADDRESSES.map((email) => ({ email })),
-						// Kopi-adresser per base (Bergen/Hammerfest)
-						...(cc.length > 0 ? { cc } : {}),
-						subject,
-					},
-				],
-				from: {
-					email: fromEmail,
-					name: fromName || "LOS Helikopter",
-				},
-				content: [
-					{
-						type: "text/plain",
-						value: body,
-					},
-				],
-				attachments: [
-					{
-						content: pdfBase64,
-						// Bruk en generisk MIME-type for å redusere sjansen for inline forhåndsvisning
-						type: "application/octet-stream",
-						filename: fileName,
-						disposition: "attachment",
-					},
-				],
-			}),
-			});
-			
-			if (!sgResponse.ok) {
-				const text = await sgResponse.text();
-				return NextResponse.json(
-					{ error: "SendGrid error", details: text },
-					{ status: 502 }
-				);
-			}
-			
-			return NextResponse.json({ ok: true, sharepoint: sharepointResult });
+    if (reportType === "driftsrapport" && driftsReport) {
+      try {
+        const db = getDb();
+        const id = driftsReport.id;
+        const createdAt = driftsReport.createdAt || Date.now();
+        await db
+          .collection("driftsrapporter")
+          .doc(id)
+          .set({
+            ...driftsReport,
+            base: base ?? driftsReport.base,
+            createdAt,
+            reportType: "driftsrapport",
+            sentAt: Date.now(),
+          });
+        firestoreResult = { ok: true };
+      } catch (err) {
+        console.error(
+          "Firestore: klarte ikke å lagre driftsrapport i Firestore",
+          (err as Error).message
+        );
+        firestoreResult = {
+          ok: false,
+          error: "Klarte ikke å lagre driftsrapport i Firestore",
+        };
+      }
+    }
+
+    // Legg til base-spesifikke kopi-adresser
+    const cc: { email: string }[] = [];
+    if (base === "Bergen") {
+      cc.push({ email: "loshelikopter.bergen@airlift.no" });
+    }
+    if (base === "Hammerfest") {
+      cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
+    }
+
+    const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        personalizations: [
+          {
+            to: TO_ADDRESSES.map((email) => ({ email })),
+            // Kopi-adresser per base (Bergen/Hammerfest)
+            ...(cc.length > 0 ? { cc } : {}),
+            subject,
+          },
+        ],
+        from: {
+          email: fromEmail,
+          name: fromName || "LOS Helikopter",
+        },
+        content: [
+          {
+            type: "text/plain",
+            value: body,
+          },
+        ],
+        attachments: [
+          {
+            content: pdfBase64,
+            // Bruk en generisk MIME-type for å redusere sjansen for inline forhåndsvisning
+            type: "application/octet-stream",
+            filename: fileName,
+            disposition: "attachment",
+          },
+        ],
+      }),
+    });
+
+    if (!sgResponse.ok) {
+      const text = await sgResponse.text();
+      return NextResponse.json(
+        { error: "SendGrid error", details: text },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      sharepoint: sharepointResult,
+      firestore: firestoreResult,
+    });
   } catch (error) {
     console.error("Failed to send report", error);
     return NextResponse.json(
@@ -445,4 +520,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

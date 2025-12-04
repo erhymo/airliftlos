@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -189,28 +189,68 @@ function Section(props: { title: string; children: React.ReactNode }) {
       metarLines: selectedMetarLines,
       htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
     }),
-    [
-      base,
-      dato,
-      tid,
-      arsaker,
-      teknisk,
-      annen,
-      varighetTimer,
-      varighetTekst,
-      gjenopptakTimer,
-      gjenopptakTekst,
-      oppfolgingTimer,
-      oppfolgingTekst,
-      alternativ,
-      signatur,
-      selectedMetarLines,
-      useHti,
-      selectedHtiUrls,
-    ]
-  );
+	    [
+	      base,
+	      dato,
+	      tid,
+	      arsaker,
+	      teknisk,
+	      annen,
+	      varighetTimer,
+	      varighetTekst,
+	      gjenopptakTimer,
+	      gjenopptakTekst,
+	      oppfolgingTimer,
+	      oppfolgingTekst,
+	      alternativ,
+	      signatur,
+	      selectedMetarLines,
+	      useHti,
+	      selectedHtiUrls,
+	    ]
+	  );
 
-  function toggleArsak(value: string) {
+		useEffect(() => {
+			let cancelled = false;
+
+			async function loadFromServer() {
+				try {
+					const res = await fetch("/api/driftsrapporter");
+					if (!res.ok) {
+						return;
+					}
+					const data = await res.json();
+					if (cancelled) return;
+
+					const serverReports: DriftsReport[] = Array.isArray(data.reports)
+						? data.reports
+						: [];
+
+					setReports((local) => {
+						const byId = new Map<string, DriftsReport>();
+						for (const r of local) {
+							byId.set(r.id, r);
+						}
+						for (const r of serverReports) {
+							byId.set(r.id, r as DriftsReport);
+						}
+						return Array.from(byId.values()).sort(
+							(a, b) => b.createdAt - a.createdAt
+						);
+					});
+				} catch {
+					// Hvis Firestore ikke er satt opp riktig, faller vi tilbake til lokale rapporter
+				}
+			}
+
+			loadFromServer();
+
+			return () => {
+				cancelled = true;
+			};
+		}, []);
+
+	  function toggleArsak(value: string) {
     setArsaker((prev) =>
       prev.includes(value)
         ? prev.filter((a) => a !== value)
@@ -267,17 +307,18 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setUseHti(r.htiImageUrls && r.htiImageUrls.length > 0 ? "ja" : "nei");
   }
 
-  async function saveCurrent() {
-    const newReport: DriftsReport = {
-      ...report,
-      createdAt: Date.now(),
-    };
-    const next = [newReport, ...reports].sort(
-      (a, b) => b.createdAt - a.createdAt
-    );
-    setReports(next);
-    saveReports(next);
-  }
+	  async function saveCurrent(): Promise<DriftsReport> {
+	    const newReport: DriftsReport = {
+	      ...report,
+	      createdAt: Date.now(),
+	    };
+	    const next = [newReport, ...reports].sort(
+	      (a, b) => b.createdAt - a.createdAt
+	    );
+	    setReports(next);
+	    saveReports(next);
+			return newReport;
+	  }
 
 	  function openExisting(r: DriftsReport) {
 	    resetFrom(r);
@@ -387,19 +428,19 @@ function Section(props: { title: string; children: React.ReactNode }) {
     );
   }
 
-  async function handleSend() {
-    await saveCurrent();
+	  async function handleSend() {
+	    const newReport = await saveCurrent();
 
     const [year, month, day] = dato.split("-");
     const datoTekst = `${day}-${month}-${year}`;
 
-    const linjer = [
+      const linjer = [
       `Base: ${base}`,
       `Dato: ${datoTekst}`,
       `Årsak: ${arsaker.join(", ") || "ikke valgt"}`,
-      "Teknisk (årsak):",
+        "Begrunnelse:",
       teknisk || "(tom)",
-      "Annen årsak:",
+        "Andre kommentarer:",
       annen || "(tom)",
       `Antatt varighet: ${varighetTimer} timer`,
       varighetTekst && `Merknad varighet: ${varighetTekst}`,
@@ -448,7 +489,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		        fromName,
 					base,
 		        htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
-					reportType: "driftsrapport",
+						reportType: "driftsrapport",
+						driftsReport: newReport,
 		      }),
 		    });
 
@@ -484,13 +526,13 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    const [year, month, day] = r.dato.split("-");
 	    const datoTekst = `${day}-${month}-${year}`;
 	
-	    const linjer = [
+        const linjer = [
 	      `Base: ${r.base}`,
 	      `Dato: ${datoTekst}`,
 	      `Årsak: ${r.arsaker.join(", ") || "ikke valgt"}`,
-	      "Teknisk (årsak):",
+          "Begrunnelse:",
 	      r.teknisk || "(tom)",
-	      "Annen årsak:",
+          "Andre kommentarer:",
 	      r.annen || "(tom)",
 	      `Antatt varighet: ${r.varighetTimer} timer`,
 	      r.varighetTekst && `Merknad varighet: ${r.varighetTekst}`,
@@ -1142,7 +1184,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 
         {step === 3 && (
           <StepShell onPrev={() => setStep(2)} onNext={() => setStep(4)}>
-	          <Section title="Teknisk (årsak)">
+	          <Section title="Begrunnelse">
 	            <textarea
 	              value={teknisk}
 	              onChange={(e) => setTeknisk(e.target.value)}
@@ -1164,7 +1206,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 
         {step === 4 && (
           <StepShell onPrev={() => setStep(3)} onNext={() => setStep(5)}>
-	          <Section title="Annen årsak til driftsforstyrrelsen">
+	          <Section title="Andre kommentarer">
 	            <textarea
 	              value={annen}
 	              onChange={(e) => setAnnen(e.target.value)}
@@ -1320,7 +1362,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
                   <b>Årsak:</b> {arsaker.join(", ") || "ikke valgt"}
                 </div>
                 <div>
-                  <b>Teknisk (årsak):</b>
+                  <b>Begrunnelse:</b>
                   <div className="whitespace-pre-wrap border rounded-lg p-2 mt-1">
                     {teknisk || "(tom)"}
                   </div>
