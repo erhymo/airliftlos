@@ -1423,8 +1423,8 @@ export default function DriftsrapportPage() {
 
 	            <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
 	              <span>
-	                Statistikk bygger p e5 alle driftsrapporter som er lagret p e5 denne
-	                enheten. Du kan nullstille for  e5 starte p e5 nytt.
+	                Statistikk bygger på alle driftsrapporter som er lagret på denne
+	                enheten. Du kan nullstille for å starte på nytt.
 	              </span>
 	              {reports.length > 0 && (
 	                <button
@@ -1564,7 +1564,7 @@ export default function DriftsrapportPage() {
 	              {resumeStep === 0 && (
 	                <div className="space-y-3">
 	                  <div className="text-sm font-medium text-gray-900">
-	                    Velg tidspunkt for når driften skal vre oppe og g igjen
+	                    Velg tidspunkt for når driften skal være oppe og gå igjen
 	                    (klokkeslett).
 	                  </div>
 	                  <div className="px-2">
