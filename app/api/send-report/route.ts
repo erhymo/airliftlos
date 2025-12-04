@@ -284,22 +284,21 @@ async function getGraphAccessToken(): Promise<string | null> {
   return data.access_token;
 }
 
-async function uploadDriftsrapportToSharePoint(
+async function uploadPdfToSharePoint(
+  folderPath: string,
   fileName: string,
   pdfBytes: Uint8Array
 ): Promise<SharePointUploadResult> {
   const siteId = process.env.SHAREPOINT_SITE_ID;
-  const folderPath = process.env.DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH;
 
-  if (!siteId || !folderPath) {
+  if (!siteId) {
     console.warn(
-      "SharePoint: SHAREPOINT_SITE_ID eller DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH mangler, hopper over opplasting"
+      "SharePoint: SHAREPOINT_SITE_ID mangler, hopper over opplasting"
     );
     return {
       ok: false,
       skipped: true,
-      error:
-        "SharePoint-opplasting er ikke konfigurert (mangler SITE_ID eller FOLDER_PATH)",
+      error: "SharePoint-opplasting er ikke konfigurert (mangler SITE_ID)",
     };
   }
 
@@ -335,7 +334,7 @@ async function uploadDriftsrapportToSharePoint(
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     console.error(
-      "SharePoint: klarte ikke å laste opp driftsrapport",
+      "SharePoint: klarte ikke å laste opp fil",
       res.status,
       text
     );
@@ -351,17 +350,66 @@ async function uploadDriftsrapportToSharePoint(
   return { ok: true };
 }
 
+async function uploadDriftsrapportToSharePoint(
+  fileName: string,
+  pdfBytes: Uint8Array
+): Promise<SharePointUploadResult> {
+  const folderPath = process.env.DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH;
+
+  if (!folderPath) {
+    console.warn(
+      "SharePoint: DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH mangler, hopper over opplasting"
+    );
+    return {
+      ok: false,
+      skipped: true,
+      error:
+        "SharePoint-opplasting er ikke konfigurert (mangler FOLDER_PATH)",
+    };
+  }
+
+  return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
+}
+
+async function uploadVaktrapportToSharePoint(
+  base: string | undefined,
+  fileName: string,
+  pdfBytes: Uint8Array
+): Promise<SharePointUploadResult> {
+  let folderPath: string | undefined;
+
+  switch (base) {
+    case "Bergen":
+      folderPath = process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_BERGEN;
+      break;
+    case "Hammerfest":
+      folderPath = process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_HAMMERFEST;
+      break;
+    case "Tromsø":
+      folderPath = process.env.VAKT_RAPPORT_SHAREPOINT_FOLDER_PATH_TROMSO;
+      break;
+    default:
+      break;
+  }
+
+  if (!folderPath) {
+    console.warn(
+      `SharePoint: mangler mappe for vaktrapport-base ${base ?? "(ukjent)"} – hopper over opplasting`
+    );
+    return {
+      ok: false,
+      skipped: true,
+      error: "SharePoint-mappe for denne basen er ikke konfigurert",
+    };
+  }
+
+  return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.SENDGRID_API_KEY;
   const fromEmail = process.env.SENDGRID_FROM;
   const accessCode = process.env.ACCESS_CODE;
-
-  if (!apiKey || !fromEmail) {
-    return NextResponse.json(
-      { error: "Missing SENDGRID_API_KEY or SENDGRID_FROM" },
-      { status: 500 }
-    );
-  }
 
   // Hvis ACCESS_CODE er satt, krever vi at brukeren har en gyldig tilgangs-cookie
   if (accessCode) {
@@ -398,6 +446,15 @@ export async function POST(req: Request) {
     );
   }
 
+  // For vaktrapport krever vi ikke SendGrid-oppsett, siden den kun skal til SharePoint.
+  // For alle andre rapporttyper må nøklene være satt.
+  if (reportType !== "vaktrapport" && (!apiKey || !fromEmail)) {
+    return NextResponse.json(
+      { error: "Missing SENDGRID_API_KEY or SENDGRID_FROM" },
+      { status: 500 }
+    );
+  }
+
   try {
     const pdfBytes = await createPdf(title, body, htiImageUrls);
     const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
@@ -414,6 +471,20 @@ export async function POST(req: Request) {
         sharepointResult = {
           ok: false,
           error: "Uventet feil ved opplasting til SharePoint",
+        };
+      }
+    } else if (reportType === "vaktrapport") {
+      try {
+        sharepointResult = await uploadVaktrapportToSharePoint(
+          base,
+          fileName,
+          pdfBytes
+        );
+      } catch (err) {
+        console.error("SharePoint: uventet feil ved opplasting av vaktrapport", err);
+        sharepointResult = {
+          ok: false,
+          error: "Uventet feil ved opplasting av vaktrapport til SharePoint",
         };
       }
     }
@@ -462,49 +533,52 @@ export async function POST(req: Request) {
       cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
     }
 
-    const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        personalizations: [
-          {
-            to: TO_ADDRESSES.map((email) => ({ email })),
-            // Kopi-adresser per base (Bergen/Hammerfest)
-            ...(cc.length > 0 ? { cc } : {}),
-            subject,
-          },
-        ],
-        from: {
-          email: fromEmail,
-          name: fromName || "LOS Helikopter",
+    // Ikke send e-post for vaktrapporter, kun lagre lokalt + SharePoint.
+    if (reportType !== "vaktrapport") {
+      const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
-        content: [
-          {
-            type: "text/plain",
-            value: body,
+        body: JSON.stringify({
+          personalizations: [
+            {
+              to: TO_ADDRESSES.map((email) => ({ email })),
+              // Kopi-adresser per base (Bergen/Hammerfest)
+              ...(cc.length > 0 ? { cc } : {}),
+              subject,
+            },
+          ],
+          from: {
+            email: fromEmail as string,
+            name: fromName || "LOS Helikopter",
           },
-        ],
-        attachments: [
-          {
-            content: pdfBase64,
-            // Bruk en generisk MIME-type for å redusere sjansen for inline forhåndsvisning
-            type: "application/octet-stream",
-            filename: fileName,
-            disposition: "attachment",
-          },
-        ],
-      }),
-    });
+          content: [
+            {
+              type: "text/plain",
+              value: body,
+            },
+          ],
+          attachments: [
+            {
+              content: pdfBase64,
+              // Bruk en generisk MIME-type for å redusere sjansen for inline forhåndsvisning
+              type: "application/octet-stream",
+              filename: fileName,
+              disposition: "attachment",
+            },
+          ],
+        }),
+      });
 
-    if (!sgResponse.ok) {
-      const text = await sgResponse.text();
-      return NextResponse.json(
-        { error: "SendGrid error", details: text },
-        { status: 502 }
-      );
+      if (!sgResponse.ok) {
+        const text = await sgResponse.text();
+        return NextResponse.json(
+          { error: "SendGrid error", details: text },
+          { status: 502 }
+        );
+      }
     }
 
     return NextResponse.json({

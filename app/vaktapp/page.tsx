@@ -220,6 +220,7 @@ export default function VaktAppPage() {
           title,
 				fromName,
 				base,
+				reportType: "vaktrapport",
         }),
       });
 
