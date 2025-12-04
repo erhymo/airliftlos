@@ -770,18 +770,18 @@ export default function DriftsrapportPage() {
             >
               {showArchive ? "Skjul arkiv" : "Arkiv"}
             </button>
-            {showArchive && (
-              <button
-                onClick={() => setShowStats(true)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-                  showStats
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-900 border-gray-300"
-                }`}
-              >
-                Statestikk
-              </button>
-            )}
+	            {showArchive && (
+	              <button
+	                onClick={() => setShowStats(true)}
+	                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+	                  showStats
+	                    ? "bg-gray-900 text-white border-gray-900"
+	                    : "bg-white text-gray-900 border-gray-300"
+	                }`}
+	              >
+	                Statistikk
+	              </button>
+	            )}
           </div>
         </div>
       </header>
@@ -1408,11 +1408,11 @@ export default function DriftsrapportPage() {
         </main>
       )}
 
-      {showStats && (
-        <main className="mx-auto max-w-3xl p-4">
-          <div className="bg-white rounded-2xl shadow p-4 text-gray-900">
+	      {showStats && (
+	        <main className="mx-auto max-w-3xl p-4">
+	          <div className="bg-white rounded-2xl shadow p-4 text-gray-900">
 	            <div className="flex items-center justify-between gap-2 mb-4">
-	              <h2 className="text-lg font-semibold">Statestikk driftsrapporter</h2>
+	              <h2 className="text-lg font-semibold">Statistikk driftsrapporter</h2>
 	              <button
 	                onClick={() => setShowStats(false)}
 	                className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
@@ -1423,7 +1423,7 @@ export default function DriftsrapportPage() {
 
 	            <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
 	              <span>
-	                Statestikken bygger p e5 alle driftsrapporter som er lagret p e5 denne
+	                Statistikk bygger p e5 alle driftsrapporter som er lagret p e5 denne
 	                enheten. Du kan nullstille for  e5 starte p e5 nytt.
 	              </span>
 	              {reports.length > 0 && (
@@ -1432,7 +1432,7 @@ export default function DriftsrapportPage() {
 	                  onClick={clearAllReports}
 	                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-red-600"
 	                >
-	                  Nullstill statestikk
+	                  Nullstill statistikk
 	                </button>
 	              )}
 	            </div>
