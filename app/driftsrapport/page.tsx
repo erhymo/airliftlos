@@ -7,27 +7,37 @@ import Image from "next/image";
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
 
 interface DriftsReport {
-  id: string;
-  base: Base;
-  dato: string;
-  tid: string;
-  arsaker: string[];
-  teknisk: string;
-  annen: string;
-  varighetTimer: number;
-  varighetTekst: string;
-  gjenopptakTimer: number;
-  gjenopptakTekst: string;
-  oppfolgingTimer: number;
-  oppfolgingTekst: string;
-  alternativ: string;
-  signatur: string;
-  metarLines: string[];
-  htiImageUrls?: string[];
-  createdAt: number;
+	id: string;
+	base: Base;
+	dato: string;
+	tid: string;
+	arsaker: string[];
+	teknisk: string;
+	annen: string;
+	varighetTimer: number;
+	varighetTekst: string;
+	gjenopptakTimer: number;
+	gjenopptakTekst: string;
+	oppfolgingTimer: number;
+	oppfolgingTekst: string;
+	alternativ: string;
+	signatur: string;
+	metarLines: string[];
+	htiImageUrls?: string[];
+	createdAt: number;
 }
 
 type DraftDriftsReport = Omit<DriftsReport, "createdAt">;
+
+type SendReportResponseBody = {
+	ok?: boolean;
+	error?: string;
+	details?: string;
+	sharepoint?: {
+		ok?: boolean;
+		error?: string;
+	} | null;
+};
 
 function getDefaultDate() {
   const d = new Date();
@@ -374,30 +384,48 @@ export default function DriftsrapportPage() {
     const title = `Driftsrapport ${base} ${dato}`;
     const fromName = `LOS Helikopter ${base}`;
 
-	    const response = await fetch("/api/send-report", {
-	      method: "POST",
-	      headers: {
-	        "Content-Type": "application/json",
-	      },
-	      body: JSON.stringify({
-	        subject,
-	        body: plainText,
-	        fileName,
-	        title,
-	        fromName,
-				base,
-	        htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
-				reportType: "driftsrapport",
-	      }),
-	    });
+		    const response = await fetch("/api/send-report", {
+		      method: "POST",
+		      headers: {
+		        "Content-Type": "application/json",
+		      },
+		      body: JSON.stringify({
+		        subject,
+		        body: plainText,
+		        fileName,
+		        title,
+		        fromName,
+					base,
+		        htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
+					reportType: "driftsrapport",
+		      }),
+		    });
 
-    if (!response.ok) {
-      alert("Klarte ikke å sende driftsrapport. Prøv igjen senere.");
-      return;
-    }
+		    let data: SendReportResponseBody | null = null;
+		    try {
+		      data = await response.json();
+		    } catch {
+		      // Ignorer JSON-feil – vi håndterer bare statuskode
+		    }
 
-    alert("Driftsrapport sendt til faste mottakere.");
-    reset();
+		    if (!response.ok) {
+		      const msg =
+		        (data && (data.error || data.details)) ||
+		        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
+		      alert(msg);
+		      return;
+		    }
+
+		    if (data && data.sharepoint && data.sharepoint.ok === false) {
+		      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
+		      alert(
+		        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
+		          spMsg
+		      );
+		    } else {
+		      alert("Driftsrapport sendt til faste mottakere.");
+		    }
+		    reset();
   }
 
   async function resendReport(r: DriftsReport) {
@@ -446,29 +474,47 @@ export default function DriftsrapportPage() {
     const title = `Driftsrapport ${r.base} ${r.dato}`;
     const fromName = `LOS Helikopter ${r.base}`;
 
-	    const response = await fetch("/api/send-report", {
-	      method: "POST",
-	      headers: {
-	        "Content-Type": "application/json",
-	      },
-	      body: JSON.stringify({
-	        subject,
-	        body: plainText,
-	        fileName,
-	        title,
-	        fromName,
+		    const response = await fetch("/api/send-report", {
+		      method: "POST",
+		      headers: {
+		        "Content-Type": "application/json",
+		      },
+		      body: JSON.stringify({
+		        subject,
+		        body: plainText,
+		        fileName,
+		        title,
+		        fromName,
 						base: r.base,
 						reportType: "driftsrapport",
 						htiImageUrls: r.htiImageUrls || [],
-	      }),
-	    });
+		      }),
+		    });
 
-    if (!response.ok) {
-      alert("Klarte ikke  e5 sende driftsrapport. Pr f8v igjen senere.");
-      return;
-    }
+		    let data: SendReportResponseBody | null = null;
+		    try {
+		      data = await response.json();
+		    } catch {
+		      // Ignorer JSON-feil – vi håndterer bare statuskode
+		    }
 
-    alert("Driftsrapport sendt til faste mottakere.");
+		    if (!response.ok) {
+		      const msg =
+		        (data && (data.error || data.details)) ||
+		        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
+		      alert(msg);
+		      return;
+		    }
+
+		    if (data && data.sharepoint && data.sharepoint.ok === false) {
+		      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
+		      alert(
+		        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
+		          spMsg
+		      );
+		    } else {
+		      alert("Driftsrapport sendt til faste mottakere.");
+		    }
   }
 
   const MONTH_LABELS = [

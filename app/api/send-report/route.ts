@@ -201,10 +201,16 @@ interface SendReportPayload {
 	fromName?: string;
 	/** Hvilken base rapporten gjelder (Bergen/Tromsø/Hammerfest) */
 	base?: string;
-		htiImageUrls?: string[];
-		/** Type rapport (brukes til f.eks. SharePoint-opplasting) */
-		reportType?: "driftsrapport" | "vaktrapport";
+	htiImageUrls?: string[];
+	/** Type rapport (brukes til f.eks. SharePoint-opplasting) */
+	reportType?: "driftsrapport" | "vaktrapport";
 }
+
+type SharePointUploadResult = {
+	ok: boolean;
+	skipped?: boolean;
+	error?: string;
+};
 
 async function getGraphAccessToken(): Promise<string | null> {
 	const tenantId = process.env.MS_TENANT_ID;
@@ -254,7 +260,7 @@ async function getGraphAccessToken(): Promise<string | null> {
 async function uploadDriftsrapportToSharePoint(
 	fileName: string,
 	pdfBytes: Uint8Array
-): Promise<void> {
+): Promise<SharePointUploadResult> {
 	const siteId = process.env.SHAREPOINT_SITE_ID;
 	const folderPath = process.env.DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH;
 
@@ -262,11 +268,21 @@ async function uploadDriftsrapportToSharePoint(
 		console.warn(
 			"SharePoint: SHAREPOINT_SITE_ID eller DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH mangler, hopper over opplasting"
 		);
-		return;
+		return {
+			ok: false,
+			skipped: true,
+			error:
+				"SharePoint-opplasting er ikke konfigurert (mangler SITE_ID eller FOLDER_PATH)",
+		};
 	}
 
 	const accessToken = await getGraphAccessToken();
-	if (!accessToken) return;
+	if (!accessToken) {
+		return {
+			ok: false,
+			error: "Fikk ikke access token fra Microsoft Graph",
+		};
+	}
 
 	// Bygg sti til filen under dokumentbiblioteket, med korrekt URL-encoding per segment
 	const encodedFolder = folderPath
@@ -296,7 +312,16 @@ async function uploadDriftsrapportToSharePoint(
 			res.status,
 			text
 		);
+		return {
+			ok: false,
+			error:
+				text && text.length < 400
+					? text
+					: `HTTP ${res.status} fra Graph ved opplasting`,
+		};
 	}
+
+	return { ok: true };
 }
 
 export async function POST(req: Request) {
@@ -341,13 +366,19 @@ export async function POST(req: Request) {
 			const pdfBytes = await createPdf(title, body, htiImageUrls);
 			const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
 
-			// Kun driftsrapporter skal til SharePoint. Dette er best-effort – hvis det feiler,
-			// sender vi likevel e-posten som før, men logger feilen.
+			let sharepointResult: SharePointUploadResult | undefined;
 			if (reportType === "driftsrapport") {
 				try {
-					await uploadDriftsrapportToSharePoint(fileName, pdfBytes);
+					sharepointResult = await uploadDriftsrapportToSharePoint(
+						fileName,
+						pdfBytes
+					);
 				} catch (err) {
 					console.error("SharePoint: uventet feil ved opplasting", err);
+					sharepointResult = {
+						ok: false,
+						error: "Uventet feil ved opplasting til SharePoint",
+					};
 				}
 			}
 
@@ -395,17 +426,17 @@ export async function POST(req: Request) {
 					},
 				],
 			}),
-		});
-
-    if (!sgResponse.ok) {
-      const text = await sgResponse.text();
-      return NextResponse.json(
-        { error: "SendGrid error", details: text },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({ ok: true });
+			});
+			
+			if (!sgResponse.ok) {
+				const text = await sgResponse.text();
+				return NextResponse.json(
+					{ error: "SendGrid error", details: text },
+					{ status: 502 }
+				);
+			}
+			
+			return NextResponse.json({ ok: true, sharepoint: sharepointResult });
   } catch (error) {
     console.error("Failed to send report", error);
     return NextResponse.json(
