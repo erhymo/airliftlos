@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
 
@@ -125,7 +126,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
   );
 }
 
-export default function DriftsrapportPage() {
+	export default function DriftsrapportPage() {
+	  const router = useRouter();
   const [step, setStep] = useState(0);
   const [base, setBase] = useState<Base>("Bergen");
   const [dato, setDato] = useState(getDefaultDate);
@@ -454,24 +456,25 @@ export default function DriftsrapportPage() {
 		      // Ignorer JSON-feil – vi håndterer bare statuskode
 		    }
 
-		    if (!response.ok) {
-		      const msg =
-		        (data && (data.error || data.details)) ||
-		        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
-		      alert(msg);
-		      return;
-		    }
+	    if (!response.ok) {
+	      const msg =
+	        (data && (data.error || data.details)) ||
+	        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
+	      alert(msg);
+	      return;
+	    }
 
-		    if (data && data.sharepoint && data.sharepoint.ok === false) {
-		      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
-		      alert(
-		        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
-		          spMsg
-		      );
-		    } else {
-		      alert("Driftsrapport sendt til faste mottakere.");
-		    }
-		    reset();
+	    if (data && data.sharepoint && data.sharepoint.ok === false) {
+	      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
+	      alert(
+	        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
+	          spMsg
+	      );
+	    } else {
+	      alert("Driftsrapport sendt til faste mottakere.");
+	    }
+	    reset();
+	    router.push("/");
   }
 
 	  async function resendReport(r: DriftsReport) {
