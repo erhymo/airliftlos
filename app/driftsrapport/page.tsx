@@ -1458,17 +1458,17 @@ export default function DriftsrapportPage() {
 	                <h3 className="font-semibold mb-2 text-sm">
 	                  Antall driftsrapporter per måned og årsak – {selectedYear}
 	                </h3>
-	                <div className="hidden md:block overflow-x-auto">
-	                  <table className="min-w-full border border-gray-200 text-xs sm:text-sm">
+	                <div className="overflow-x-auto">
+	                  <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
 	                    <thead className="bg-gray-50">
 	                      <tr>
-	                        <th className="border px-2 py-1 text-left">Måned</th>
+	                        <th className="border px-1 py-0.5 text-left">Måned</th>
 	                        {CAUSES.map((cause) => (
-	                          <th key={cause} className="border px-2 py-1 text-left">
+	                          <th key={cause} className="border px-1 py-0.5 text-left">
 	                            {cause}
 	                          </th>
 	                        ))}
-	                        <th className="border px-2 py-1 text-left">Totalt rapporter</th>
+	                        <th className="border px-1 py-0.5 text-left">Totalt</th>
 	                      </tr>
 	                    </thead>
 	                    <tbody>
@@ -1477,13 +1477,15 @@ export default function DriftsrapportPage() {
 	                        const monthTotal = countsRow.totalReports;
 	                        return (
 	                          <tr key={label}>
-	                            <td className="border px-2 py-1 font-medium">{label}</td>
+	                            <td className="border px-1 py-0.5 font-medium whitespace-nowrap">
+	                              {label}
+	                            </td>
 	                            {CAUSES.map((cause) => (
-	                              <td key={cause} className="border px-2 py-1 text-right">
+	                              <td key={cause} className="border px-1 py-0.5 text-right">
 	                                {countsRow.perCause[cause] || 0}
 	                              </td>
 	                            ))}
-	                            <td className="border px-2 py-1 text-right font-semibold">
+	                            <td className="border px-1 py-0.5 text-right font-semibold">
 	                              {monthTotal}
 	                            </td>
 	                          </tr>
@@ -1492,55 +1494,23 @@ export default function DriftsrapportPage() {
 	                    </tbody>
 	                  </table>
 	                </div>
-	                <div className="md:hidden space-y-3">
-	                  {MONTH_LABELS.map((label, index) => {
-	                    const countsRow = perMonthCounts[index];
-	                    const monthTotal = countsRow.totalReports;
-	                    return (
-	                      <div
-	                        key={label}
-	                        className="border border-gray-200 rounded-xl p-3 bg-white"
-	                      >
-	                        <div className="flex items-center justify-between mb-1">
-	                          <span className="font-semibold text-sm">{label}</span>
-	                          <span className="text-xs text-gray-600">
-	                            Totalt: <b>{monthTotal}</b>
-	                          </span>
-	                        </div>
-	                        <div className="mt-1 space-y-1 text-xs text-gray-800">
-	                          {CAUSES.map((cause) => (
-	                            <div
-	                              key={cause}
-	                              className="flex items-center justify-between"
-	                            >
-	                              <span>{cause}</span>
-	                              <span className="font-semibold">
-	                                {countsRow.perCause[cause] || 0}
-	                              </span>
-	                            </div>
-	                          ))}
-	                        </div>
-	                      </div>
-	                    );
-	                  })}
-	                </div>
 	              </div>
 
 	              <div>
 	                <h3 className="font-semibold mb-2 text-sm">
 	                  Antall timer stopp per måned og årsak – {selectedYear}
 	                </h3>
-	                <div className="hidden md:block overflow-x-auto">
-	                  <table className="min-w-full border border-gray-200 text-xs sm:text-sm">
+	                <div className="overflow-x-auto">
+	                  <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
 	                    <thead className="bg-gray-50">
 	                      <tr>
-	                        <th className="border px-2 py-1 text-left">Måned</th>
+	                        <th className="border px-1 py-0.5 text-left">Måned</th>
 	                        {CAUSES.map((cause) => (
-	                          <th key={cause} className="border px-2 py-1 text-left">
+	                          <th key={cause} className="border px-1 py-0.5 text-left">
 	                            {cause}
 	                          </th>
 	                        ))}
-	                        <th className="border px-2 py-1 text-left">Totalt timer (måned)</th>
+	                        <th className="border px-1 py-0.5 text-left">Totalt timer</th>
 	                      </tr>
 	                    </thead>
 	                    <tbody>
@@ -1548,68 +1518,39 @@ export default function DriftsrapportPage() {
 	                        const hoursRow = perMonthHours[index];
 	                        return (
 	                          <tr key={label}>
-	                            <td className="border px-2 py-1 font-medium">{label}</td>
+	                            <td className="border px-1 py-0.5 font-medium whitespace-nowrap">
+	                              {label}
+	                            </td>
 	                            {CAUSES.map((cause) => (
-	                              <td key={cause} className="border px-2 py-1 text-right">
+	                              <td key={cause} className="border px-1 py-0.5 text-right">
 	                                {hoursRow.perCause[cause] || 0}
 	                              </td>
 	                            ))}
-	                            <td className="border px-2 py-1 text-right font-semibold">
+	                            <td className="border px-1 py-0.5 text-right font-semibold">
 	                              {hoursRow.totalHours || 0}
 	                            </td>
 	                          </tr>
 	                        );
 	                      })}
 	                      <tr className="bg-gray-50">
-	                        <td className="border px-2 py-1 font-semibold">Sum år</td>
+	                        <td className="border px-1 py-0.5 font-semibold">Sum år</td>
 	                        {CAUSES.map((cause) => (
 	                          <td
 	                            key={cause}
-	                            className="border px-2 py-1 text-right font-semibold"
+	                            className="border px-1 py-0.5 text-right font-semibold"
 	                          >
 	                            {totalHoursByCause[cause] || 0}
 	                          </td>
 	                        ))}
-	                        <td className="border px-2 py-1 text-right font-bold">
+	                        <td className="border px-1 py-0.5 text-right font-bold">
 	                          {totalHoursYear || 0}
 	                        </td>
 	                      </tr>
 	                    </tbody>
 	                  </table>
 	                </div>
-	                <div className="md:hidden space-y-3">
-	                  {MONTH_LABELS.map((label, index) => {
-	                    const hoursRow = perMonthHours[index];
-	                    return (
-	                      <div
-	                        key={label}
-	                        className="border border-gray-200 rounded-xl p-3 bg-white"
-	                      >
-	                        <div className="flex items-center justify-between mb-1">
-	                          <span className="font-semibold text-sm">{label}</span>
-	                          <span className="text-xs text-gray-600">
-	                            Totalt timer: <b>{hoursRow.totalHours || 0}</b>
-	                          </span>
-	                        </div>
-	                        <div className="mt-1 space-y-1 text-xs text-gray-800">
-	                          {CAUSES.map((cause) => (
-	                            <div
-	                              key={cause}
-	                              className="flex items-center justify-between"
-	                            >
-	                              <span>{cause}</span>
-	                              <span className="font-semibold">
-	                                {hoursRow.perCause[cause] || 0}
-	                              </span>
-	                            </div>
-	                          ))}
-	                        </div>
-	                      </div>
-	                    );
-	                  })}
-	                </div>
 	              </div>
-            </div>
+	            </div>
           </div>
 	        </main>
 	      )}
