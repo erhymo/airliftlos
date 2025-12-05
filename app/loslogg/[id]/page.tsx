@@ -99,21 +99,21 @@ export default function LosLoggBookingPage() {
 				return location !== null;
 			case 3:
 				return losType !== null;
-				case 4:
-			case 5:
-					return true; // ship landing / tåke-bomtur er valgfrie
-				case 6:
-					return losToAirportCount !== null;
-				case 7:
-					return enfjLandings !== null;
-				case 8:
-					return hoistCount !== null;
-				case 9:
-					return true; // kommentar kan være tom
-				case 10:
-					return sign.length === 3;
-				case 11:
-					return true; // oppsummering, her bruker vi egen «Send»
+					case 4:
+				case 5:
+						return true; // ship landing / tåke-bomtur er valgfrie
+					case 6:
+						return true; // antall LOS til flyplass er valgfritt – tomt felt i Excel hvis ikke valgt
+					case 7:
+						return enfjLandings !== null;
+					case 8:
+						return hoistCount !== null;
+					case 9:
+						return true; // kommentar kan være tom
+					case 10:
+						return sign.length === 3;
+					case 11:
+						return true; // oppsummering, her bruker vi egen «Send»
 			default:
 				return false;
 		}
@@ -570,7 +570,7 @@ export default function LosLoggBookingPage() {
 						type="button"
 						onClick={handleNext}
 						className="px-4 py-1.5 rounded-full bg-black text-white disabled:bg-gray-300 disabled:text-gray-600"
-						disabled={!canGoNext() || step === 10}
+							disabled={!canGoNext() || step === 11}
 					>
 						Neste
 					</button>
