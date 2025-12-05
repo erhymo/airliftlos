@@ -1558,33 +1558,26 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	              </button>
 	            </div>
 
-		            <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
-		              <span>
-		                Statistikk bygger på alle driftsrapporter som er lagret på denne
-		                enheten. Du kan nullstille for å starte på nytt.
-		              </span>
-		              {reports.length > 0 && (
-		                <div className="flex flex-wrap gap-2">
-		                  <button
-		                    type="button"
-		                    onClick={clearAllReports}
-		                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-red-600"
-		                  >
-		                    Nullstill statistikk
-		                  </button>
-		                  <button
-		                    type="button"
-		                    onClick={() => {
-		                      setStatsTo("");
-		                      setShowStatsSendDialog(true);
-		                    }}
-		                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-900"
-		                  >
-		                    Send statistikk
-		                  </button>
-		                </div>
-		              )}
-		            </div>
+			        <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
+			              <span>
+			                Statistikk bygger på alle driftsrapporter som er lagret på denne
+				                enheten, fordelt per år. Velg år nedenfor.
+			              </span>
+			              {reports.length > 0 && (
+			                <div className="flex flex-wrap gap-2">
+			                  <button
+				                    type="button"
+				                    onClick={() => {
+				                      setStatsTo("");
+				                      setShowStatsSendDialog(true);
+				                    }}
+				                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-900"
+				                  >
+				                    Send statistikk
+				                  </button>
+				                </div>
+				              )}
+				            </div>
 
 	            <div className="mb-4 flex flex-wrap gap-2">
               {availableYears.map((year) => (
