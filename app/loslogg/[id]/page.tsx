@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
 const MOCK_BOOKING = {
@@ -18,19 +21,20 @@ interface LosLoggBookingPageProps {
 export default function LosLoggBookingPage({ params }: LosLoggBookingPageProps) {
   const isDemo = params.id === MOCK_BOOKING.id;
   const booking = isDemo ? MOCK_BOOKING : null;
+	  const [techlogNumber, setTechlogNumber] = useState(() => (isDemo ? 90377 : 0));
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
       <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
         {booking ? (
           <>
-            <header className="space-y-1">
-              <h1 className="text-lg font-semibold">LOS-logg  {booking.vesselName}</h1>
-              <p className="text-sm text-gray-600">
-                Dette er en demo-visning av data som senere skal hentes fra
-                bestillingsmail fra Kystverket.
-              </p>
-            </header>
+	            <header className="space-y-1">
+	              <h1 className="text-lg font-semibold">LOS-logg  {booking.vesselName}</h1>
+	              <p className="text-sm text-gray-600">
+	                Dette er en demo-visning av data som senere skal hentes fra
+	                bestillingsmail fra Kystverket.
+	              </p>
+	            </header>
 
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-gray-700">
@@ -60,15 +64,48 @@ export default function LosLoggBookingPage({ params }: LosLoggBookingPageProps) 
               </dl>
             </section>
 
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium text-gray-700">
-                Skjema for LOS-logg (kommer senere)
-              </h2>
-              <p className="text-sm text-gray-600">
-                Her kommer felter for sign, techlognummer, sted, type, antall
-                loser, ship landing, ENFJ-landinger, hoist og kommentar.
-              </p>
-            </section>
+	            <section className="space-y-3">
+	              <h2 className="text-sm font-medium text-gray-700">Skjema for LOS-logg (demo)</h2>
+	              <div className="space-y-1 text-sm">
+	                <label className="flex items-center justify-between gap-3">
+	                  <span className="text-gray-700">Techlognummer</span>
+	                  <div className="flex items-center gap-2">
+	                    <button
+	                      type="button"
+	                      onClick={() => setTechlogNumber((n) => n - 1)}
+	                      className="h-8 w-8 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100"
+	                    >
+	                      20
+	                    </button>
+	                    <input
+	                      type="number"
+	                      inputMode="numeric"
+	                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right text-sm"
+	                      value={techlogNumber}
+	                      onChange={(e) => {
+	                        const value = parseInt(e.target.value, 10);
+	                        if (!Number.isNaN(value)) {
+	                          setTechlogNumber(value);
+	                        } else {
+	                          setTechlogNumber(0);
+	                        }
+	                      }}
+	                    />
+	                    <button
+	                      type="button"
+	                      onClick={() => setTechlogNumber((n) => n + 1)}
+	                      className="h-8 w-8 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100"
+	                    >
+	                      +
+	                    </button>
+	                  </div>
+	                </label>
+	                <p className="text-xs text-gray-500">
+	                  Forelpigi er techlognummeret hardkodet til 90377 for testing. Senere
+	                  skal dette fylles med siste brukte nummer automatisk.
+	                </p>
+	              </div>
+	            </section>
           </>
         ) : (
           <section className="space-y-2">
