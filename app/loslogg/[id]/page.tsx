@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { CAPTAINS, FIRST_OFFICERS } from "../../vaktapp/components/CrewPicker";
 
 const MOCK_BOOKING = {
@@ -19,27 +20,76 @@ type Location = "Mongstad" | "Sture" | "Melkøya" | "Kårstø" | "Los øvrig" | 
 type LosType = "Båt" | "Rigg";
 
 export default function LosLoggBookingPage() {
-	// Demo: vi bruker én mock-bestilling uansett id, slik at du alltid kan teste flyten.
-	const booking = MOCK_BOOKING;
+			const params = useParams<{ id: string }>();
+			const [booking, setBooking] = useState(MOCK_BOOKING);
+			const [loadingBooking, setLoadingBooking] = useState(true);
+			const [bookingError, setBookingError] = useState<string | null>(null);
 
-	const [step, setStep] = useState(0);
+			const [step, setStep] = useState(0);
 	const [techlogNumber, setTechlogNumber] = useState(90377);
 	const [location, setLocation] = useState<Location | null>(null);
 	const [losType, setLosType] = useState<LosType | null>(null);
 	const [shipLanding, setShipLanding] = useState(false);
 	const [tokeBomtur, setTokeBomtur] = useState(false);
-	const [enfjLandings, setEnfjLandings] = useState<number | null>(null);
+		const [losToAirportCount, setLosToAirportCount] = useState<number | null>(null);
+		const [enfjLandings, setEnfjLandings] = useState<number | null>(null);
 	const [hoistCount, setHoistCount] = useState<number | null>(null);
 	const [comment, setComment] = useState("");
 	const [sign, setSign] = useState("");
-	const [hasSent, setHasSent] = useState(false);
+		const [hasSent, setHasSent] = useState(false);
+		const [sending, setSending] = useState(false);
+		const [sendError, setSendError] = useState<string | null>(null);
+
+		useEffect(() => {
+			async function loadBooking() {
+				try {
+					const id = (params as { id?: string }).id;
+					if (!id) {
+						setLoadingBooking(false);
+						return;
+					}
+
+					const res = await fetch(`/api/los-bookings?id=${id}`);
+					if (!res.ok) {
+						console.warn(
+							"Klarte ikke ae hente los-booking, bruker demo-data i stedet",
+							res.status,
+						);
+						setLoadingBooking(false);
+						return;
+					}
+
+					const data = (await res.json()) as { booking?: Partial<typeof MOCK_BOOKING> & { id: string } };
+					if (data.booking) {
+						setBooking({
+							id: data.booking.id,
+							vesselName: data.booking.vesselName ?? MOCK_BOOKING.vesselName,
+							date: data.booking.date ?? MOCK_BOOKING.date,
+							orderNumber: data.booking.orderNumber ?? MOCK_BOOKING.orderNumber,
+							base: data.booking.base ?? MOCK_BOOKING.base,
+							pilots:
+								Array.isArray(data.booking.pilots) && data.booking.pilots.length > 0
+									? (data.booking.pilots as string[])
+									: MOCK_BOOKING.pilots,
+						});
+					}
+				} catch (error) {
+					console.error("Klarte ikke ae hente los-booking", error);
+					setBookingError("Klarte ikke ae hente bestilling. Viser demo-data.");
+				} finally {
+					setLoadingBooking(false);
+				}
+			}
+
+			loadBooking();
+		}, [params]);
 
 	const signers = useMemo(
 		() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")),
 		[],
 	);
 
-	const canGoNext = () => {
+		const canGoNext = () => {
 		switch (step) {
 			case 0:
 				return true; // bare gjennomse auto-info
@@ -49,45 +99,94 @@ export default function LosLoggBookingPage() {
 				return location !== null;
 			case 3:
 				return losType !== null;
-			case 4:
-		case 5:
-				return true; // ship landing / tåke-bomtur er valgfrie
-			case 6:
-				return enfjLandings !== null;
-			case 7:
-				return hoistCount !== null;
-			case 8:
-				return true; // kommentar kan være tom
-			case 9:
-				return sign.length === 3;
-			case 10:
-				return true; // oppsummering, her bruker vi egen «Send»
+				case 4:
+			case 5:
+					return true; // ship landing / tåke-bomtur er valgfrie
+				case 6:
+					return losToAirportCount !== null;
+				case 7:
+					return enfjLandings !== null;
+				case 8:
+					return hoistCount !== null;
+				case 9:
+					return true; // kommentar kan være tom
+				case 10:
+					return sign.length === 3;
+				case 11:
+					return true; // oppsummering, her bruker vi egen «Send»
 			default:
 				return false;
 		}
 	};
 
-	const handleNext = () => {
+		const handleNext = () => {
 		if (!canGoNext()) return;
-		setStep((s) => Math.min(s + 1, 10));
+			setStep((s) => Math.min(s + 1, 11));
 	};
 
 	const handlePrev = () => {
 		setStep((s) => Math.max(s - 1, 0));
 	};
 
-	const handleSend = () => {
-		// Her kommer faktisk kall til API/SharePoint senere
-		// Nå markerer vi bare lokalt at det er «sendt».
-		setHasSent(true);
-	};
+		const handleSend = async () => {
+			if (hasSent || sending) return;
+			setSending(true);
+			setSendError(null);
+			try {
+				const res = await fetch("/api/los-logg", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						bookingId: booking.id,
+						date: booking.date,
+						orderNumber: booking.orderNumber,
+						vesselName: booking.vesselName,
+						base: booking.base,
+						pilots: booking.pilots,
+						techlogNumber,
+						location,
+						losType,
+						shipLanding,
+						tokeBomtur,
+						losToAirportCount,
+						enfjLandings,
+						hoistCount,
+						comment,
+						sign,
+					}),
+				});
+				if (!res.ok) {
+					let message = "Klarte ikke å sende LOS-logg.";
+					try {
+						const data = (await res.json()) as { error?: string };
+						if (data.error) message = data.error;
+					} catch {
+						// ignorér JSON-feil
+					}
+					setSendError(message);
+					return;
+				}
+				setHasSent(true);
+			} catch (error) {
+				console.error("Klarte ikke å sende LOS-logg", error);
+				setSendError("Klarte ikke å sende LOS-logg.");
+			} finally {
+				setSending(false);
+			}
+		};
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-				<header className="space-y-1">
+					<header className="space-y-1">
 					<h1 className="text-lg font-semibold">LOS-logg – {booking.vesselName}</h1>
-					<p className="text-xs text-gray-500">Steg {step + 1} av 11</p>
+								<p className="text-xs text-gray-500">Steg {step + 1} av 12</p>
+							{loadingBooking && (
+								<p className="text-[11px] text-gray-500">Henter bestilling…</p>
+							)}
+							{bookingError && !loadingBooking && (
+								<p className="text-[11px] text-red-600">{bookingError}</p>
+							)}
 				</header>
 
 				{/* Steg 0: auto-info */}
@@ -257,8 +356,31 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 6: antall landinger ENFJ */}
+				{/* Steg 6: antall LOS til flyplass */}
 				{step === 6 && (
+					<section className="space-y-3">
+						<h2 className="text-sm font-medium text-gray-700">Antall LOS til flyplass</h2>
+						<div className="grid grid-cols-4 gap-2">
+							{[1, 2, 3, 4].map((n) => (
+								<button
+										key={n}
+										type="button"
+										onClick={() => setLosToAirportCount(n)}
+										className={`py-2 rounded-xl border text-sm ${
+											losToAirportCount === n
+												? "bg-blue-50 border-blue-500 text-blue-900"
+												: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+										}`}
+									>
+										{n}
+									</button>
+								))}
+						</div>
+					</section>
+				)}
+
+				{/* Steg 7: antall landinger ENFJ */}
+				{step === 7 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Antall landinger ENFJ</h2>
 						<div className="grid grid-cols-4 gap-2">
@@ -280,8 +402,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 7: antall hoist */}
-				{step === 7 && (
+				{/* Steg 8: antall hoist */}
+				{step === 8 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Antall hoist</h2>
 						<div className="grid grid-cols-4 gap-2">
@@ -303,8 +425,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 8: kommentar */}
-				{step === 8 && (
+				{/* Steg 9: kommentar */}
+				{step === 9 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Kommentar</h2>
 						<textarea
@@ -327,8 +449,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 9: signering (kapteiner + styrmenn) */}
-				{step === 9 && (
+				{/* Steg 10: signering (kapteiner + styrmenn) */}
+				{step === 10 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Signering</h2>
 						<p className="text-xs text-gray-600">
@@ -357,8 +479,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 10: oppsummering */}
-				{step === 10 && (
+				{/* Steg 11: oppsummering */}
+				{step === 11 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Oppsummering</h2>
 						<dl className="space-y-1 text-sm">
@@ -395,6 +517,10 @@ export default function LosLoggBookingPage() {
 								<dd className="font-medium">{tokeBomtur ? "Ja" : "Nei"}</dd>
 							</div>
 							<div className="flex justify-between">
+									<dt className="text-gray-600">LOS til flyplass</dt>
+									<dd className="font-medium">{losToAirportCount ?? "–"}</dd>
+								</div>
+								<div className="flex justify-between">
 								<dt className="text-gray-600">Landinger ENFJ</dt>
 								<dd className="font-medium">{enfjLandings ?? "–"}</dd>
 							</div>
@@ -413,18 +539,19 @@ export default function LosLoggBookingPage() {
 								<dd className="font-medium">{sign || "–"}</dd>
 							</div>
 						</dl>
-						{hasSent && (
-							<p className="text-xs text-green-700">
-								Demo: LOS-logg er markert som sendt (ingen data er faktisk lagret ennå).
-							</p>
-						)}
+							{sendError && (
+								<p className="text-xs text-red-700">{sendError}</p>
+							)}
+							{hasSent && !sendError && (
+								<p className="text-xs text-green-700">LOS-logg er sendt til Excel-loggen.</p>
+							)}
 						<button
 							type="button"
 							onClick={handleSend}
 							className="mt-2 w-full px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:bg-blue-300"
-							disabled={hasSent}
+								disabled={hasSent || sending}
 						>
-							Send (demo – ingen faktisk SharePoint-logging ennå)
+								{sending ? "Sender…" : hasSent ? "Sendt" : "Send LOS-logg"}
 						</button>
 					</section>
 				)}
