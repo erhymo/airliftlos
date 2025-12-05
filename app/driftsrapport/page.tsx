@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 type Base = "Bergen" | "Tromsø" | "Hammerfest";
+type StatsBaseFilter = "Alle" | Base;
 
 interface DriftsReport {
 	id: string;
@@ -156,18 +157,19 @@ function Section(props: { title: string; children: React.ReactNode }) {
   const [htiError, setHtiError] = useState<string | null>(null);
   const [useHti, setUseHti] = useState<"ja" | "nei">("nei");
 
-	  const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
-	  const [showArchive, setShowArchive] = useState(false);
-	  const [showStats, setShowStats] = useState(false);
-	  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
-		  const [resumeReport, setResumeReport] = useState<DriftsReport | null>(null);
-	  const [resumeStep, setResumeStep] = useState(0);
-	  const [resumeHour, setResumeHour] = useState(12);
-		  const [resumeComment, setResumeComment] = useState("");
-		  const [resumeSending, setResumeSending] = useState(false);
-		  const [showStatsSendDialog, setShowStatsSendDialog] = useState(false);
-		  const [statsTo, setStatsTo] = useState("");
-		  const [statsSending, setStatsSending] = useState(false);
+		  const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
+		  const [showArchive, setShowArchive] = useState(false);
+		  const [showStats, setShowStats] = useState(false);
+		  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+		  const [statsBase, setStatsBase] = useState<StatsBaseFilter>("Alle");
+			  const [resumeReport, setResumeReport] = useState<DriftsReport | null>(null);
+		  const [resumeStep, setResumeStep] = useState(0);
+		  const [resumeHour, setResumeHour] = useState(12);
+			  const [resumeComment, setResumeComment] = useState("");
+			  const [resumeSending, setResumeSending] = useState(false);
+			  const [showStatsSendDialog, setShowStatsSendDialog] = useState(false);
+			  const [statsTo, setStatsTo] = useState("");
+			  const [statsSending, setStatsSending] = useState(false);
 
   const report: DraftDriftsReport = useMemo(
     () => ({
@@ -694,16 +696,17 @@ function Section(props: { title: string; children: React.ReactNode }) {
 			
 				setStatsSending(true);
 				try {
-					const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
-						buildStatsForYear(selectedYear);
+							const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
+								buildStatsForYear(selectedYear, statsBase);
 				
-					// Kort og ryddig e-posttekst med bare nøkkeltall per måned
-					const totalReportsYear = perMonthCounts.reduce(
-						(acc, row) => acc + (row.totalReports || 0),
-						0
-					);
-					const lines: string[] = [];
-					lines.push(`Statistikk driftsrapporter ${selectedYear}`);
+							// Kort og ryddig e-posttekst med bare nøkkeltall per måned
+							const totalReportsYear = perMonthCounts.reduce(
+									(acc, row) => acc + (row.totalReports || 0),
+									0
+							);
+							const lines: string[] = [];
+							const baseLabel = statsBase === "Alle" ? "alle baser" : statsBase;
+							lines.push(`Statistikk driftsrapporter ${selectedYear} – ${baseLabel}`);
 					lines.push("");
 					lines.push("Nøkkeltall per måned:");
 					for (let i = 0; i < MONTH_LABELS.length; i++) {
@@ -718,18 +721,20 @@ function Section(props: { title: string; children: React.ReactNode }) {
 						);
 					}
 					lines.push("");
-					lines.push(
-						`Totalt for ${selectedYear}: ${totalReportsYear} rapporter, ${
-							totalHoursYear || 0
-						} timer stopp.`
-					);
+							lines.push(
+									`Totalt for ${selectedYear} (${baseLabel}): ${totalReportsYear} rapporter, ${
+												totalHoursYear || 0
+										} timer stopp.`
+							);
 					lines.push("");
 					lines.push("Se vedlagt PDF for full fordeling per årsak.");
 				
-					const plainText = lines.join("\n");
-					const subject = `Statistikk driftsrapporter ${selectedYear}`;
-					const title = subject;
-					const fileName = `Statistikk_driftsrapporter_${selectedYear}.pdf`;
+							const plainText = lines.join("\n");
+							const subject = `Statistikk driftsrapporter ${selectedYear} – ${baseLabel}`;
+							const title = subject;
+							const fileName = `Statistikk_driftsrapporter_${selectedYear}_${
+									statsBase === "Alle" ? "alle_baser" : statsBase
+							}.pdf`;
 				
 					const response = await fetch("/api/send-stats", {
 						method: "POST",
@@ -815,7 +820,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
     return Array.from(set).sort();
   })();
 
-  function buildStatsForYear(year: number) {
+	  function buildStatsForYear(year: number, baseFilter: StatsBaseFilter) {
     const perMonthCounts = MONTH_LABELS.map(() => {
       const perCause: Record<string, number> = {};
       for (const cause of CAUSES) {
@@ -832,11 +837,12 @@ function Section(props: { title: string; children: React.ReactNode }) {
       return { perCause, totalHours: 0 };
     });
 
-    for (const r of reports) {
+	    for (const r of reports) {
       const [yearStr, monthStr] = r.dato.split("-");
       const y = Number(yearStr);
       const m = Number(monthStr) - 1;
-      if (y !== year || m < 0 || m >= MONTH_LABELS.length) continue;
+	      if (y !== year || m < 0 || m >= MONTH_LABELS.length) continue;
+	      if (baseFilter !== "Alle" && r.base !== baseFilter) continue;
 
       const duration = r.varighetTimer || 0;
 
@@ -865,8 +871,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
     return { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear };
   }
 
-  const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
-    buildStatsForYear(selectedYear);
+	  const { perMonthCounts, perMonthHours, totalHoursByCause, totalHoursYear } =
+	    buildStatsForYear(selectedYear, statsBase);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -1558,10 +1564,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	              </button>
 	            </div>
 
-			        <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
+		        <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
 			              <span>
-			                Statistikk bygger på alle driftsrapporter som er lagret på denne
-				                enheten, fordelt per år. Velg år nedenfor.
+			                Statistikken bygger på driftsrapporter som er sendt (lagret sentralt).
+				                Velg år og eventuelt base nedenfor.
 			              </span>
 			              {reports.length > 0 && (
 			                <div className="flex flex-wrap gap-2">
@@ -1579,27 +1585,48 @@ function Section(props: { title: string; children: React.ReactNode }) {
 				              )}
 				            </div>
 
-	            <div className="mb-4 flex flex-wrap gap-2">
-              {availableYears.map((year) => (
-                <button
-                  key={year}
-                  onClick={() => setSelectedYear(year)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-                    selectedYear === year
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-900 border-gray-300"
-                  }`}
-                >
-                  {year}
-                </button>
-              ))}
-            </div>
+		            <div className="mb-4 flex flex-wrap gap-2">
+	  	            {availableYears.map((year) => (
+	  	              <button
+	  	                key={year}
+	  	                onClick={() => setSelectedYear(year)}
+	  	                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+	  	                  selectedYear === year
+	  	                    ? "bg-gray-900 text-white border-gray-900"
+	  	                    : "bg-white text-gray-900 border-gray-300"
+	  	                }`}
+	  	              >
+	  	                {year}
+	  	              </button>
+	  	            ))}
+	  	          </div>
+
+		            <div className="mb-4 flex flex-wrap items-center gap-2">
+	  	            <span className="text-xs text-gray-700 mr-1">Base:</span>
+	  	            {(["Alle", "Bergen", "Hammerfest", "Tromsø"] as StatsBaseFilter[]).map(
+	  	              (b) => (
+	  	                <button
+	  	                  key={b}
+	  	                  onClick={() => setStatsBase(b)}
+	  	                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+	  	                    statsBase === b
+	  	                      ? "bg-gray-900 text-white border-gray-900"
+	  	                      : "bg-white text-gray-900 border-gray-300"
+	  	                  }`}
+	  	                >
+	  	                  {b === "Alle" ? "Alle baser" : b}
+	  	                </button>
+	  	              )
+	  	            )}
+	  	          </div>
 
 	            <div className="space-y-6">
-	              <div>
-	                <h3 className="font-semibold mb-2 text-sm">
-	                  Antall driftsrapporter per måned og årsak – {selectedYear}
-	                </h3>
+		              <div>
+		                <h3 className="font-semibold mb-2 text-sm">
+		                  Antall driftsrapporter per måned og årsak – {selectedYear} ({
+		                    statsBase === "Alle" ? "alle baser" : statsBase
+		                  })
+		                </h3>
 	                <div className="overflow-x-auto">
 	                  <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
 	                    <thead className="bg-gray-50">
@@ -1638,10 +1665,12 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                </div>
 	              </div>
 
-	              <div>
-	                <h3 className="font-semibold mb-2 text-sm">
-	                  Antall timer stopp per måned og årsak – {selectedYear}
-	                </h3>
+		              <div>
+		                <h3 className="font-semibold mb-2 text-sm">
+		                  Antall timer stopp per måned og årsak – {selectedYear} ({
+		                    statsBase === "Alle" ? "alle baser" : statsBase
+		                  })
+		                </h3>
 	                <div className="overflow-x-auto">
 	                  <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
 	                    <thead className="bg-gray-50">
