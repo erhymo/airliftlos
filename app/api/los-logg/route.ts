@@ -130,20 +130,24 @@ async function appendRowToExcel(row: (string | number | null)[], sheetName: stri
 		);
 	}
 
-	const used = (await usedRes.json()) as { values?: unknown[][] };
-	const rowCount = used.values?.length ?? 1; // minst header-rad
-	const nextRow = rowCount + 1;
-	const address = `${sheetName}!A${nextRow}:R${nextRow}`;
+		const used = (await usedRes.json()) as { values?: unknown[][] };
+		const rowCount = used.values?.length ?? 1; // minst header-rad
+		const nextRow = rowCount + 1;
+		// Vi peker eksplisitt på arket via worksheets('{sheetName}') og bruker lokal adresse A:R
+		const address = `A${nextRow}:R${nextRow}`;
 
-	// Skriv raden inn i riktig område
-	const patchRes = await fetch(`${baseUrl}/range(address='${address}')`, {
-		method: "PATCH",
-		headers: {
-			Authorization: `Bearer ${token}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({ values: [row] }),
-	});
+		// Skriv raden inn i riktig område på riktig ark
+		const patchRes = await fetch(
+			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='${address}')`,
+			{
+				method: "PATCH",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ values: [row] }),
+			},
+		);
 
 	if (!patchRes.ok) {
 		const text = await patchRes.text().catch(() => "");
