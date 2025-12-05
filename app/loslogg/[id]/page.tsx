@@ -16,18 +16,12 @@ const MOCK_BOOKING = {
 type Location = "Mongstad" | "Sture" | "Melkøya" | "Kårstø" | "Los øvrig" | "Nyhamna";
 type LosType = "Båt" | "Rigg";
 
-interface LosLoggBookingPageProps {
-	params: {
-		id: string;
-	};
-}
-
-export default function LosLoggBookingPage({ params }: LosLoggBookingPageProps) {
-	const isDemo = params.id === MOCK_BOOKING.id;
-	const booking = isDemo ? MOCK_BOOKING : null;
+export default function LosLoggBookingPage() {
+	// Demo: vi bruker én mock-bestilling uansett id, slik at du alltid kan teste flyten.
+	const booking = MOCK_BOOKING;
 
 	const [step, setStep] = useState(0);
-	const [techlogNumber, setTechlogNumber] = useState(() => (isDemo ? 90377 : 0));
+	const [techlogNumber, setTechlogNumber] = useState(90377);
 	const [location, setLocation] = useState<Location | null>(null);
 	const [losType, setLosType] = useState<LosType | null>(null);
 	const [shipLanding, setShipLanding] = useState(false);
@@ -42,30 +36,6 @@ export default function LosLoggBookingPage({ params }: LosLoggBookingPageProps) 
 		() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")),
 		[],
 	);
-
-	if (!booking) {
-		return (
-			<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
-				<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-					<section className="space-y-2">
-						<h1 className="text-lg font-semibold">LOS-logg</h1>
-						<p className="text-sm text-gray-600">
-							Fant ingen bestilling for denne adressen. Denne siden er foreløpig kun satt opp
-							for en demo-bestilling (SOLA TS).
-						</p>
-					</section>
-					<div className="pt-2 flex justify-between text-sm">
-						<Link href="/loslogg" className="text-blue-600 hover:text-blue-700 underline">
-							Tilbake til LOS-logg
-						</Link>
-						<Link href="/" className="text-gray-500 hover:text-gray-700 underline">
-							Forsiden
-						</Link>
-					</div>
-				</main>
-			</div>
-		);
-	}
 
 	const canGoNext = () => {
 		switch (step) {
