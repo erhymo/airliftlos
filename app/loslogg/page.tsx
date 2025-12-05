@@ -10,34 +10,32 @@ const mockBookings = [
 	},
 ];
 
+const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb-NO");
+
 export default function LosLoggHome() {
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
 				<header className="space-y-1">
 					<h1 className="text-lg font-semibold">LOS-logg</h1>
-					<p className="text-sm text-gray-600">
-						Denne siden skal brukes til automatisk utfylling av LOS-logg fra bestillingsmail.
-						Forelpig viser vi bare en demo-bestilling.
-					</p>
+						<p className="text-sm text-gray-600">
+							Denne siden skal brukes til automatisk utfylling av LOS-logg fra bestillingsmail.
+							Foreløpig viser vi bare en demo-bestilling.
+						</p>
 				</header>
 
 				<section className="space-y-3">
-					<h2 className="text-sm font-medium text-gray-700">Åpne bestillinger (demo)</h2>
 					<div className="space-y-2">
 						{mockBookings.map((booking) => (
 							<Link
 								key={booking.id}
 								href={`/loslogg/${booking.id}`}
-								className="flex items-center justify-between rounded-lg border border-gray-200 bg-blue-50 px-4 py-3 text-sm hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+								className="flex items-center rounded-lg border border-gray-200 bg-blue-50 px-4 py-3 text-sm hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
 							>
 								<div className="space-y-0.5">
-									<p className="font-semibold tracking-wide">{booking.vesselName}</p>
-									<p className="text-xs text-gray-600">
-										{booking.date} • Ordre {booking.orderNumber} • {booking.base}
-									</p>
+									<p className="text-base font-semibold tracking-wide">{booking.vesselName}</p>
+									<p className="text-xs text-gray-600">{formatDate(booking.date)}</p>
 								</div>
-								<span className="text-xs font-medium text-blue-700">Åpne</span>
 							</Link>
 						))}
 					</div>

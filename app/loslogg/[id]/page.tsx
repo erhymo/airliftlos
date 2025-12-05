@@ -13,6 +13,8 @@ const MOCK_BOOKING = {
 	pilots: ["Los 1", "Los 2"],
 };
 
+const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb-NO");
+
 type Location = "Mongstad" | "Sture" | "Melkøya" | "Kårstø" | "Los øvrig" | "Nyhamna";
 type LosType = "Båt" | "Rigg";
 
@@ -93,10 +95,10 @@ export default function LosLoggBookingPage() {
 					<section className="space-y-2">
 						<h2 className="text-sm font-medium text-gray-700">Data fra bestillingsmail (demo)</h2>
 						<dl className="space-y-1 text-sm">
-							<div className="flex justify-between">
-								<dt className="text-gray-600">Dato</dt>
-								<dd className="font-medium">{booking.date}</dd>
-							</div>
+								<div className="flex justify-between">
+									<dt className="text-gray-600">Dato</dt>
+									<dd className="font-medium">{formatDate(booking.date)}</dd>
+								</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600">Ordrenr.</dt>
 								<dd className="font-medium">{booking.orderNumber}</dd>
@@ -364,10 +366,10 @@ export default function LosLoggBookingPage() {
 								<dt className="text-gray-600">Fartøy</dt>
 								<dd className="font-medium">{booking.vesselName}</dd>
 							</div>
-							<div className="flex justify-between">
-								<dt className="text-gray-600">Dato</dt>
-								<dd className="font-medium">{booking.date}</dd>
-							</div>
+								<div className="flex justify-between">
+									<dt className="text-gray-600">Dato</dt>
+									<dd className="font-medium">{formatDate(booking.date)}</dd>
+								</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600">Ordrenr.</dt>
 								<dd className="font-medium">{booking.orderNumber}</dd>
