@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
 
-const CAPTAINS = [
+export const CAPTAINS = [
   "BFA",
   "GUN",
   "FOL",
@@ -18,7 +18,7 @@ const CAPTAINS = [
   "OHN",
 ].sort((a, b) => a.localeCompare(b, "nb-NO"));
 
-const FIRST_OFFICERS = [
+export const FIRST_OFFICERS = [
   "LUN",
   "KIR",
   "DAM",
