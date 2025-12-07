@@ -90,39 +90,36 @@ export default function LosLoggBookingPage() {
 	);
 
 		const canGoNext = () => {
-		switch (step) {
-			case 0:
-				return true; // bare gjennomse auto-info
-			case 1:
-				return techlogNumber > 0;
-			case 2:
-				return location !== null;
-			case 3:
-				return losType !== null;
-					case 4:
+			switch (step) {
+				case 0:
+					return true; // bare gjennomse auto-info
+				case 1:
+					return techlogNumber > 0;
+				case 2:
+					return location !== null;
+				case 3:
+					return losType !== null;
+				case 4:
+					return true; // ship landing / tåke / LOS til flyplass er valgfrie
 				case 5:
-						return true; // ship landing / tåke-bomtur er valgfrie
-					case 6:
-						return true; // antall LOS til flyplass er valgfritt – tomt felt i Excel hvis ikke valgt
-					case 7:
-						return enfjLandings !== null;
-					case 8:
-						return hoistCount !== null;
-					case 9:
-						return true; // kommentar kan være tom
-					case 10:
-						return sign.length === 3;
-					case 11:
-						return true; // oppsummering, her bruker vi egen «Send»
-			default:
-				return false;
-		}
-	};
+					return enfjLandings !== null;
+				case 6:
+					return hoistCount !== null;
+				case 7:
+					return true; // kommentar kan være tom
+				case 8:
+					return sign.length === 3;
+				case 9:
+					return true; // oppsummering, her bruker vi egen «Send»
+				default:
+					return false;
+			}
+		};
 
-		const handleNext = () => {
-		if (!canGoNext()) return;
-			setStep((s) => Math.min(s + 1, 11));
-	};
+			const handleNext = () => {
+			if (!canGoNext()) return;
+				setStep((s) => Math.min(s + 1, 9));
+		};
 
 	const handlePrev = () => {
 		setStep((s) => Math.max(s - 1, 0));
@@ -179,8 +176,8 @@ export default function LosLoggBookingPage() {
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
 					<header className="space-y-1">
-					<h1 className="text-lg font-semibold">LOS-logg – {booking.vesselName}</h1>
-								<p className="text-xs text-gray-500">Steg {step + 1} av 12</p>
+						<h1 className="text-lg font-semibold">LOS-logg – {booking.vesselName}</h1>
+								<p className="text-xs text-gray-500">Steg {step + 1} av 10</p>
 							{loadingBooking && (
 								<p className="text-[11px] text-gray-500">Henter bestilling…</p>
 							)}
@@ -224,22 +221,22 @@ export default function LosLoggBookingPage() {
 				{/* Steg 1: techlognummer */}
 				{step === 1 && (
 					<section className="space-y-3">
-						<h2 className="text-sm font-medium text-gray-700">Techlognummer</h2>
+						<h2 className="text-base sm:text-lg font-semibold text-gray-800">Techlognummer</h2>
 						<div className="space-y-1 text-sm">
 							<label className="flex items-center justify-between gap-3">
-								<span className="text-gray-700">Techlognummer</span>
+								<span className="text-base font-semibold text-gray-800">Techlognummer</span>
 								<div className="flex items-center gap-2">
 									<button
 										type="button"
 										onClick={() => setTechlogNumber((n) => Math.max(0, n - 1))}
-										className="h-8 w-8 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100"
+										className="h-9 w-9 rounded-md border border-gray-300 bg-gray-50 text-base font-semibold text-gray-700 hover:bg-gray-100"
 									>
 										-
 									</button>
 									<input
 										type="number"
 										inputMode="numeric"
-										className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right text-sm"
+										className="w-28 rounded-md border border-gray-300 px-2 py-1.5 text-right text-lg font-semibold tracking-wide"
 										value={techlogNumber}
 										onChange={(e) => {
 											const value = parseInt(e.target.value, 10);
@@ -251,7 +248,7 @@ export default function LosLoggBookingPage() {
 									<button
 										type="button"
 										onClick={() => setTechlogNumber((n) => n + 1)}
-										className="h-8 w-8 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100"
+										className="h-9 w-9 rounded-md border border-gray-300 bg-gray-50 text-base font-semibold text-gray-700 hover:bg-gray-100"
 									>
 										+
 									</button>
@@ -259,7 +256,7 @@ export default function LosLoggBookingPage() {
 							</label>
 							<p className="text-xs text-gray-500">
 								Foreløpig er techlognummeret hardkodet til 90377 som startverdi for testing. Senere
-								skal dette fylles automatisk med siste brukte nummer.
+									skal dette fylles automatisk med siste brukte nummer.
 							</p>
 						</div>
 					</section>
@@ -313,74 +310,72 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 4: Ship landing (valgfri) */}
+				{/* Steg 4: Ship landing / tåke / LOS til flyplass (valgfrie) */}
 				{step === 4 && (
-					<section className="space-y-3">
-						<h2 className="text-sm font-medium text-gray-700">Ship landing</h2>
-						<button
-							type="button"
-							onClick={() => setShipLanding((v) => !v)}
-							className={`w-full text-left px-4 py-3 rounded-xl border text-sm ${
-								shipLanding
-									? "bg-blue-50 border-blue-500 text-blue-900"
-									: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-							}`}
-						>
-							Ship landing
-						</button>
-						<p className="text-xs text-gray-500">
-							Hvis du ikke trykker på noe her og går videre, registreres det som «ikke ship
-							landing».
-						</p>
-					</section>
-				)}
-
-				{/* Steg 5: Tåke/bomtur ship (valgfri) */}
-				{step === 5 && (
-					<section className="space-y-3">
-						<h2 className="text-sm font-medium text-gray-700">Tåke/bomtur ship</h2>
-						<button
-							type="button"
-							onClick={() => setTokeBomtur((v) => !v)}
-							className={`w-full text-left px-4 py-3 rounded-xl border text-sm ${
-								tokeBomtur
-									? "bg-blue-50 border-blue-500 text-blue-900"
-									: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-							}`}
-						>
-							Tåke/bomtur ship
-						</button>
-						<p className="text-xs text-gray-500">
-							Hvis du ikke trykker på noe her og går videre, registreres det som «nei».
-						</p>
-					</section>
-				)}
-
-				{/* Steg 6: antall LOS til flyplass */}
-				{step === 6 && (
-					<section className="space-y-3">
-						<h2 className="text-sm font-medium text-gray-700">Antall LOS til flyplass</h2>
-						<div className="grid grid-cols-4 gap-2">
-							{[1, 2, 3, 4].map((n) => (
+					<section className="space-y-4">
+						<h2 className="text-sm font-medium text-gray-700">Ship landing / tåke / LOS til flyplass</h2>
+						<div className="space-y-3">
+							<div className="space-y-1">
 								<button
-										key={n}
-										type="button"
-										onClick={() => setLosToAirportCount(n)}
-										className={`py-2 rounded-xl border text-sm ${
-											losToAirportCount === n
-												? "bg-blue-50 border-blue-500 text-blue-900"
-												: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-										}`}
-									>
-										{n}
-									</button>
-								))}
+									type="button"
+									onClick={() => setShipLanding((v) => !v)}
+									className={`w-full text-left px-4 py-3 rounded-xl border text-sm ${
+										shipLanding
+											? "bg-blue-50 border-blue-500 text-blue-900"
+											: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+									}`}
+								>
+									Ship landing
+								</button>
+								<p className="text-xs text-gray-500">
+									Hvis du ikke trykker på noe her og går videre, registreres det som «ikke ship
+									landing».
+								</p>
+							</div>
+							<div className="space-y-1">
+								<button
+									type="button"
+									onClick={() => setTokeBomtur((v) => !v)}
+									className={`w-full text-left px-4 py-3 rounded-xl border text-sm ${
+										tokeBomtur
+											? "bg-blue-50 border-blue-500 text-blue-900"
+											: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+									}`}
+								>
+									Tåke/bomtur ship
+								</button>
+								<p className="text-xs text-gray-500">
+									Hvis du ikke trykker på noe her og går videre, registreres det som «nei».
+								</p>
+							</div>
+							<div className="space-y-2">
+								<p className="text-sm font-medium text-gray-700">Antall LOS til flyplass (valgfritt)</p>
+								<div className="grid grid-cols-4 gap-2">
+									{[1, 2, 3, 4].map((n) => (
+										<button
+											key={n}
+											type="button"
+											onClick={() => setLosToAirportCount(n)}
+											className={`py-2 rounded-xl border text-sm ${
+												losToAirportCount === n
+													? "bg-blue-50 border-blue-500 text-blue-900"
+													: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+											}`}
+										>
+											{n}
+										</button>
+									))}
+								</div>
+								<p className="text-xs text-gray-500">
+									Hvis du ikke velger noe her, blir feltet tomt i Excel.
+								</p>
+							</div>
 						</div>
 					</section>
 				)}
 
-				{/* Steg 7: antall landinger ENFJ */}
-				{step === 7 && (
+				{/* Steg 5: antall landinger ENFJ */}
+				{step === 5 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Antall landinger ENFJ</h2>
 						<div className="grid grid-cols-4 gap-2">
@@ -402,8 +397,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 8: antall hoist */}
-				{step === 8 && (
+				{/* Steg 6: antall hoist */}
+				{step === 6 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Antall hoist</h2>
 						<div className="grid grid-cols-4 gap-2">
@@ -425,8 +420,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 9: kommentar */}
-				{step === 9 && (
+				{/* Steg 7: kommentar */}
+				{step === 7 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Kommentar</h2>
 						<textarea
@@ -449,8 +444,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 10: signering (kapteiner + styrmenn) */}
-				{step === 10 && (
+				{/* Steg 8: signering (kapteiner + styrmenn) */}
+				{step === 8 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Signering</h2>
 						<p className="text-xs text-gray-600">
@@ -479,8 +474,8 @@ export default function LosLoggBookingPage() {
 					</section>
 				)}
 
-				{/* Steg 11: oppsummering */}
-				{step === 11 && (
+				{/* Steg 9: oppsummering */}
+				{step === 9 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Oppsummering</h2>
 						<dl className="space-y-1 text-sm">
@@ -570,7 +565,7 @@ export default function LosLoggBookingPage() {
 						type="button"
 						onClick={handleNext}
 						className="px-4 py-1.5 rounded-full bg-black text-white disabled:bg-gray-300 disabled:text-gray-600"
-							disabled={!canGoNext() || step === 11}
+								disabled={!canGoNext() || step === 9}
 					>
 						Neste
 					</button>
