@@ -99,10 +99,10 @@ export default function LosLoggBookingPage() {
 					return location !== null;
 				case 3:
 					return losType !== null;
-				case 4:
-					return true; // ship landing / tåke / LOS til flyplass er valgfrie
-				case 5:
-					return enfjLandings !== null;
+					case 4:
+						return true; // ship landing / tåke / LOS til flyplass er valgfrie
+					case 5:
+						return true; // antall landinger ENFJ kan være tomt
 				case 6:
 					return hoistCount !== null;
 				case 7:
