@@ -48,6 +48,29 @@ type SendReportResponseBody = {
 	} | null;
 };
 
+const SIGNATURE_OPTIONS: string[] = [
+	"Bjørn Frode Amundsen",
+	"Bjørnar Lund",
+	"Claus Tjalve",
+	"Dagfinn Damsgaard",
+	"Einar Turlid",
+	"Henning Hansen",
+	"Ivan Småland",
+	"Kristian Krog",
+	"Leif Hus",
+	"Mikal Onhstad",
+	"Nils Roger Leithe",
+	"Per Kristian Kongsvik",
+	"Sigbjørn Brækhus",
+	"Stian Follaug",
+	"Terje Gundersen",
+	"Tom Østrem",
+	"Vidar Loose",
+	"Åge Mæland",
+	"Øyvind Bache",
+	"Øyvind Myhre",
+];
+
 function getDefaultDate() {
   const d = new Date();
   const year = d.getFullYear();
@@ -1337,17 +1360,24 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	        </StepShell>
 	      )}
 
-        {step === 9 && (
-          <StepShell onPrev={() => setStep(8)} onNext={() => setStep(10)}>
-            <Section title="Signatur">
-              <input
-                value={signatur}
-                onChange={(e) => setSignatur(e.target.value)}
-                className="w-full border rounded-xl p-3 text-base text-gray-900"
-              />
-            </Section>
-          </StepShell>
-        )}
+	        {step === 9 && (
+	          <StepShell onPrev={() => setStep(8)} onNext={() => setStep(10)}>
+	            <Section title="Signatur">
+	              <select
+	                value={SIGNATURE_OPTIONS.includes(signatur) ? signatur : ""}
+	                onChange={(e) => setSignatur(e.target.value)}
+	                className="w-full border rounded-xl p-3 text-base text-gray-900 bg-white"
+	              >
+	                <option value="">Velg navn (valgfritt)</option>
+	                {SIGNATURE_OPTIONS.map((name) => (
+	                  <option key={name} value={name}>
+	                    {name}
+	                  </option>
+	                ))}
+	              </select>
+	            </Section>
+	          </StepShell>
+	        )}
 
         {step === 10 && (
           <div className="mx-auto w-full max-w-md p-4">
