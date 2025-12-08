@@ -186,6 +186,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		  const [showStats, setShowStats] = useState(false);
 		  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
 		  const [statsBase, setStatsBase] = useState<StatsBaseFilter>("Alle");
+			  const [sending, setSending] = useState(false);
 			  const [resumeReport, setResumeReport] = useState<DriftsReport | null>(null);
 		  const [resumeStep, setResumeStep] = useState(0);
 		  const [resumeHour, setResumeHour] = useState(12);
@@ -487,98 +488,104 @@ function Section(props: { title: string; children: React.ReactNode }) {
       prev.includes(line) ? prev.filter((l) => l !== line) : [...prev, line]
     );
   }
-
-	  async function handleSend() {
-	    const newReport = await saveCurrent();
-
-    const [year, month, day] = dato.split("-");
-    const datoTekst = `${day}-${month}-${year}`;
-
-		      const linjer = [
-		      `Base: ${base}`,
-		      `Dato: ${datoTekst}`,
-		      `Tidspunkt: ${tid}`,
-		      `Årsak: ${arsaker.join(", ") || "ikke valgt"}`,
-		      `Begrunnelse: ${teknisk || "(tom)"}`,
-		      `Andre kommentarer: ${annen || "(tom)"}`,
-		      `Antatt varighet: ${varighetTimer} timer`,
-		      varighetTekst && `Merknad varighet: ${varighetTekst}`,
-		      `Estimert gjenopptakelse: kl ${gjenopptakTimer}:00`,
-		      gjenopptakTekst && `Merknad gjenopptakelse: ${gjenopptakTekst}`,
-		      `Neste oppfølging: kl ${oppfolgingTimer}:00`,
-		      oppfolgingTekst && `Merknad oppfølging: ${oppfolgingTekst}`,
-		      `Vurdering alternativ løsning: ${alternativ || "(tom)"}`,
-		    ];
-
-    if (selectedMetarLines.length > 0) {
-      linjer.push("");
-      linjer.push("METAR/TAF:");
-      linjer.push(...selectedMetarLines);
-    }
-
-    if (useHti === "ja" && selectedHtiUrls.length > 0) {
-      linjer.push("");
-      linjer.push(
-        `HTI-kart: ${selectedHtiUrls.length} bilde(r) lagt ved nederst i PDF.`
-      );
-    }
-
-    linjer.push(`Signatur: ${signatur || "(tom)"}`);
-
-    const plainText =
-      linjer.filter(Boolean).join("\n") +
-      "\n\nVedlagt driftsrapport som PDF.";
-
-    const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
-    const fileName = `Driftsforstyrrelse_${base}_${day}-${month}-${year}.pdf`;
-    const title = `Driftsrapport ${base} ${dato}`;
-    const fromName = `LOS Helikopter ${base}`;
-
-		    const response = await fetch("/api/send-report", {
-		      method: "POST",
-		      headers: {
-		        "Content-Type": "application/json",
-		      },
-		      body: JSON.stringify({
-		        subject,
-		        body: plainText,
-		        fileName,
-		        title,
-		        fromName,
-					base,
-		        htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
-						reportType: "driftsrapport",
-						driftsReport: newReport,
-		      }),
-		    });
-
-		    let data: SendReportResponseBody | null = null;
+	
+		  async function handleSend() {
+		    if (sending) return;
+		    setSending(true);
 		    try {
-		      data = await response.json();
-		    } catch {
-		      // Ignorer JSON-feil – vi håndterer bare statuskode
+		      const newReport = await saveCurrent();
+		
+		      const [year, month, day] = dato.split("-");
+		      const datoTekst = `${day}-${month}-${year}`;
+		
+		      const linjer = [
+		        `Base: ${base}`,
+		        `Dato: ${datoTekst}`,
+		        `Tidspunkt: ${tid}`,
+		        `Årsak: ${arsaker.join(", ") || "ikke valgt"}`,
+		        `Begrunnelse: ${teknisk || "(tom)"}`,
+		        `Andre kommentarer: ${annen || "(tom)"}`,
+		        `Antatt varighet: ${varighetTimer} timer`,
+		        varighetTekst && `Merknad varighet: ${varighetTekst}`,
+		        `Estimert gjenopptakelse: kl ${gjenopptakTimer}:00`,
+		        gjenopptakTekst && `Merknad gjenopptakelse: ${gjenopptakTekst}`,
+		        `Neste oppfølging: kl ${oppfolgingTimer}:00`,
+		        oppfolgingTekst && `Merknad oppfølging: ${oppfolgingTekst}`,
+		        `Vurdering alternativ løsning: ${alternativ || "(tom)"}`,
+		      ];
+		
+		      if (selectedMetarLines.length > 0) {
+		        linjer.push("");
+		        linjer.push("METAR/TAF:");
+		        linjer.push(...selectedMetarLines);
+		      }
+		
+		      if (useHti === "ja" && selectedHtiUrls.length > 0) {
+		        linjer.push("");
+		        linjer.push(
+		          `HTI-kart: ${selectedHtiUrls.length} bilde(r) lagt ved nederst i PDF.`
+		        );
+		      }
+		
+		      linjer.push(`Signatur: ${signatur || "(tom)"}`);
+		
+		      const plainText =
+		        linjer.filter(Boolean).join("\n") +
+		        "\n\nVedlagt driftsrapport som PDF.";
+		
+		      const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
+		      const fileName = `Driftsforstyrrelse_${base}_${day}-${month}-${year}.pdf`;
+		      const title = `Driftsrapport ${base} ${dato}`;
+		      const fromName = `LOS Helikopter ${base}`;
+		
+		      const response = await fetch("/api/send-report", {
+		        method: "POST",
+		        headers: {
+		          "Content-Type": "application/json",
+		        },
+		        body: JSON.stringify({
+		          subject,
+		          body: plainText,
+		          fileName,
+		          title,
+		          fromName,
+		          base,
+		          htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
+		          reportType: "driftsrapport",
+		          driftsReport: newReport,
+		        }),
+		      });
+		
+		      let data: SendReportResponseBody | null = null;
+		      try {
+		        data = await response.json();
+		      } catch {
+		        // Ignorer JSON-feil – vi håndterer bare statuskode
+		      }
+		
+		      if (!response.ok) {
+		        const msg =
+		          (data && (data.error || data.details)) ||
+		          "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
+		        alert(msg);
+		        return;
+		      }
+		
+		      if (data && data.sharepoint && data.sharepoint.ok === false) {
+		        const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
+		        alert(
+		          "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
+		            spMsg
+		        );
+		      } else {
+		        alert("Driftsrapport sendt til faste mottakere.");
+		      }
+		      reset();
+		      router.push("/");
+		    } finally {
+		      setSending(false);
 		    }
-
-	    if (!response.ok) {
-	      const msg =
-	        (data && (data.error || data.details)) ||
-	        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
-	      alert(msg);
-	      return;
-	    }
-
-	    if (data && data.sharepoint && data.sharepoint.ok === false) {
-	      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
-	      alert(
-	        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
-	          spMsg
-	      );
-	    } else {
-	      alert("Driftsrapport sendt til faste mottakere.");
-	    }
-	    reset();
-	    router.push("/");
-  }
+		  }
 
 	  async function resendReport(r: DriftsReport) {
 	    const [year, month, day] = r.dato.split("-");
@@ -1510,10 +1517,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
                   Rediger
                 </button>
                 <button
-                  onClick={handleSend}
-                  className="py-3 rounded-xl bg-black text-white"
+	                onClick={handleSend}
+	                disabled={sending}
+	                className="py-3 rounded-xl bg-black text-white disabled:bg-gray-500 disabled:opacity-80"
                 >
-                  Send
+	                {sending ? "Sender..." : "Send"}
                 </button>
               </div>
             </div>
