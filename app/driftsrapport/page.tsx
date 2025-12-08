@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 type Base = "Bergen" | "Hammerfest";
-type StatsBaseFilter = "Alle" | Base | "Tromsø";
+type StatsBaseFilter = "Alle" | Base;
 
 interface DriftsReport {
 	id: string;
@@ -1663,7 +1663,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 
 	            <div className="mb-4 flex flex-wrap items-center gap-2">
 		            <span className="text-xs text-gray-700 mr-1">Base:</span>
-		            {(["Alle", "Bergen", "Hammerfest", "Tromsø"] as StatsBaseFilter[]).map(
+		            {(["Alle", "Bergen", "Hammerfest"] as StatsBaseFilter[]).map(
 		              (b) => (
 	  	                <button
 	  	                  key={b}
