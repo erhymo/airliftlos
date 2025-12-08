@@ -656,31 +656,43 @@ export async function POST(req: Request) {
       }
     }
 
-	    // Legg til base- og type-spesifikke mottakere
-	    let to: { email: string }[] = TO_ADDRESSES.map((email) => ({ email }));
-	    let cc: { email: string }[] = [];
-
-	    if (reportType === "driftsrapport" && base === "Bergen") {
-	      // Driftsrapport fra Bergen: egen mottakerliste + ønskede kopier
-	      to = [
-	        { email: "aina.giskeodegard.balsnes@kystverket.no" },
-	        { email: "kjell.asle.djupevag@kystverket.no" },
-	        { email: "losformidling.kvitsoy@kystverket.no" },
-	      ];
-	      cc = [
-	        { email: "erlend.haugsbo@airlift.no" },
-	        { email: "loshelikopter.bergen@airlift.no" },
-	        { email: "tom.ostrem@airlift.no" },
-	      ];
-	    } else {
-	      // Standard: bruk faste TO_ADDRESSES og eventuelle base-spesifikke kopier
-	      if (base === "Bergen") {
-	        cc.push({ email: "loshelikopter.bergen@airlift.no" });
-	      }
-	      if (base === "Hammerfest") {
-	        cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
-	      }
-	    }
+		    // Legg til base- og type-spesifikke mottakere
+		    let to: { email: string }[] = TO_ADDRESSES.map((email) => ({ email }));
+		    let cc: { email: string }[] = [];
+		
+		    if (reportType === "driftsrapport" && base === "Bergen") {
+		      // Driftsrapport fra Bergen: egen mottakerliste + ønskede kopier
+		      to = [
+		        { email: "aina.giskeodegard.balsnes@kystverket.no" },
+		        { email: "kjell.asle.djupevag@kystverket.no" },
+		        { email: "losformidling.kvitsoy@kystverket.no" },
+		      ];
+		      cc = [
+		        { email: "erlend.haugsbo@airlift.no" },
+		        { email: "loshelikopter.bergen@airlift.no" },
+		        { email: "tom.ostrem@airlift.no" },
+		      ];
+		    } else if (reportType === "driftsrapport" && base === "Hammerfest") {
+		      // Driftsrapport fra Hammerfest: egen mottakerliste + ønskede kopier
+		      to = [
+		        { email: "aina.giskeodegard.balsnes@kystverket.no" },
+		        { email: "roy.arne.rotnes@kystverket.no" },
+		        { email: "losformidling.nordland@kystverket.no" },
+		      ];
+		      cc = [
+		        { email: "erlend.haugsbo@airlift.no" },
+		        { email: "loshelikopter.hammerfest@airlift.no" },
+		        { email: "tom.ostrem@airlift.no" },
+		      ];
+		    } else {
+		      // Standard: bruk faste TO_ADDRESSES og eventuelle base-spesifikke kopier
+		      if (base === "Bergen") {
+		        cc.push({ email: "loshelikopter.bergen@airlift.no" });
+		      }
+		      if (base === "Hammerfest") {
+		        cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
+		      }
+		    }
 
 	    // Ikke send e-post for vaktrapporter, kun lagre lokalt + SharePoint.
 	    if (reportType !== "vaktrapport") {
