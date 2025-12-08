@@ -874,7 +874,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
   })();
 
 	  function buildStatsForYear(year: number, baseFilter: StatsBaseFilter) {
-    const perMonthCounts = MONTH_LABELS.map(() => {
+	    const perMonthCounts = MONTH_LABELS.map(() => {
       const perCause: Record<string, number> = {};
       for (const cause of CAUSES) {
         perCause[cause] = 0;
@@ -891,9 +891,12 @@ function Section(props: { title: string; children: React.ReactNode }) {
     });
 
 	    for (const r of reports) {
-      const [yearStr, monthStr] = r.dato.split("-");
-      const y = Number(yearStr);
-      const m = Number(monthStr) - 1;
+	      // Historiske rapporter fra Tromsø skal ikke inngå i statistikken
+	      if ((r as any).base === "Tromsø") continue;
+
+	      const [yearStr, monthStr] = r.dato.split("-");
+	      const y = Number(yearStr);
+	      const m = Number(monthStr) - 1;
 	      if (y !== year || m < 0 || m >= MONTH_LABELS.length) continue;
 	      if (baseFilter !== "Alle" && r.base !== baseFilter) continue;
 
