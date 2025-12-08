@@ -86,7 +86,8 @@ function getDefaultTime() {
   return `${h}:${m}`;
 }
 
-const STORAGE_KEY = "driftsrapport_reports_v1";
+	// Ny nøkkel for lokal lagring slik at gamle testdata ikke lastes inn etter "go live"
+	const STORAGE_KEY = "driftsrapport_reports_v2";
 
 function loadReports(): DriftsReport[] {
   if (typeof window === "undefined") return [];
