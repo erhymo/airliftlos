@@ -5,8 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-type Base = "Bergen" | "Tromsø" | "Hammerfest";
-type StatsBaseFilter = "Alle" | Base;
+type Base = "Bergen" | "Hammerfest";
+type StatsBaseFilter = "Alle" | Base | "Tromsø";
 
 interface DriftsReport {
 	id: string;
@@ -986,10 +986,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
         <main>
         {step === 0 && (
           <StepShell onNext={() => setStep(1)}>
-            <Section title="Base, dato og klokkeslett">
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 gap-2">
-                  {(["Bergen", "Tromsø", "Hammerfest"] as Base[]).map((b) => (
+	            <Section title="Base, dato og klokkeslett">
+	              <div className="space-y-3">
+	                <div className="grid grid-cols-1 gap-2">
+	                  {(["Bergen", "Hammerfest"] as Base[]).map((b) => (
                     <label
                       key={b}
                       className={`p-3 border rounded-xl flex items-center gap-3 ${
@@ -1661,10 +1661,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	  	            ))}
 	  	          </div>
 
-		            <div className="mb-4 flex flex-wrap items-center gap-2">
-	  	            <span className="text-xs text-gray-700 mr-1">Base:</span>
-	  	            {(["Alle", "Bergen", "Hammerfest", "Tromsø"] as StatsBaseFilter[]).map(
-	  	              (b) => (
+	            <div className="mb-4 flex flex-wrap items-center gap-2">
+		            <span className="text-xs text-gray-700 mr-1">Base:</span>
+		            {(["Alle", "Bergen", "Hammerfest", "Tromsø"] as StatsBaseFilter[]).map(
+		              (b) => (
 	  	                <button
 	  	                  key={b}
 	  	                  onClick={() => setStatsBase(b)}
