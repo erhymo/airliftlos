@@ -436,23 +436,24 @@ function Section(props: { title: string; children: React.ReactNode }) {
     const [year, month, day] = dato.split("-");
     const datoTekst = `${day}-${month}-${year}`;
 
-      const linjer = [
-      `Base: ${base}`,
-      `Dato: ${datoTekst}`,
-      `Årsak: ${arsaker.join(", ") || "ikke valgt"}`,
-        "Begrunnelse:",
-      teknisk || "(tom)",
-        "Andre kommentarer:",
-      annen || "(tom)",
-      `Antatt varighet: ${varighetTimer} timer`,
-      varighetTekst && `Merknad varighet: ${varighetTekst}`,
-      `Estimert gjenopptakelse: kl ${gjenopptakTimer}:00`,
-      gjenopptakTekst && `Merknad gjenopptakelse: ${gjenopptakTekst}`,
-      `Neste oppfølging: kl ${oppfolgingTimer}:00`,
-      oppfolgingTekst && `Merknad oppfølging: ${oppfolgingTekst}`,
-      "Vurdering alternativ løsning:",
-      alternativ || "(tom)",
-    ];
+		      const linjer = [
+		      `Base: ${base}`,
+		      `Dato: ${datoTekst}`,
+		      `Tidspunkt: ${tid}`,
+		      `Årsak: ${arsaker.join(", ") || "ikke valgt"}`,
+		        "Begrunnelse:",
+		      teknisk || "(tom)",
+		        "Andre kommentarer:",
+		      annen || "(tom)",
+		      `Antatt varighet: ${varighetTimer} timer`,
+		      varighetTekst && `Merknad varighet: ${varighetTekst}`,
+		      `Estimert gjenopptakelse: kl ${gjenopptakTimer}:00`,
+		      gjenopptakTekst && `Merknad gjenopptakelse: ${gjenopptakTekst}`,
+		      `Neste oppfølging: kl ${oppfolgingTimer}:00`,
+		      oppfolgingTekst && `Merknad oppfølging: ${oppfolgingTekst}`,
+		      "Vurdering alternativ løsning:",
+		      alternativ || "(tom)",
+		    ];
 
     if (selectedMetarLines.length > 0) {
       linjer.push("");
@@ -528,23 +529,24 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    const [year, month, day] = r.dato.split("-");
 	    const datoTekst = `${day}-${month}-${year}`;
 	
-        const linjer = [
-	      `Base: ${r.base}`,
-	      `Dato: ${datoTekst}`,
-	      `Årsak: ${r.arsaker.join(", ") || "ikke valgt"}`,
-          "Begrunnelse:",
-	      r.teknisk || "(tom)",
-          "Andre kommentarer:",
-	      r.annen || "(tom)",
-	      `Antatt varighet: ${r.varighetTimer} timer`,
-	      r.varighetTekst && `Merknad varighet: ${r.varighetTekst}`,
-	      `Estimert gjenopptakelse: kl ${r.gjenopptakTimer}:00`,
-	      r.gjenopptakTekst && `Merknad gjenopptakelse: ${r.gjenopptakTekst}`,
-	      `Neste oppfølging: kl ${r.oppfolgingTimer}:00`,
-	      r.oppfolgingTekst && `Merknad oppfølging: ${r.oppfolgingTekst}`,
-	      "Vurdering alternativ løsning:",
-	      r.alternativ || "(tom)",
-	    ];
+		        const linjer = [
+			      `Base: ${r.base}`,
+			      `Dato: ${datoTekst}`,
+			      `Tidspunkt: ${r.tid}`,
+			      `Årsak: ${r.arsaker.join(", ") || "ikke valgt"}`,
+		          "Begrunnelse:",
+			      r.teknisk || "(tom)",
+		          "Andre kommentarer:",
+			      r.annen || "(tom)",
+			      `Antatt varighet: ${r.varighetTimer} timer`,
+			      r.varighetTekst && `Merknad varighet: ${r.varighetTekst}`,
+			      `Estimert gjenopptakelse: kl ${r.gjenopptakTimer}:00`,
+			      r.gjenopptakTekst && `Merknad gjenopptakelse: ${r.gjenopptakTekst}`,
+			      `Neste oppfølging: kl ${r.oppfolgingTimer}:00`,
+			      r.oppfolgingTekst && `Merknad oppfølging: ${r.oppfolgingTekst}`,
+			      "Vurdering alternativ løsning:",
+			      r.alternativ || "(tom)",
+			    ];
 	
 	    if (r.metarLines && r.metarLines.length > 0) {
 	      linjer.push("");

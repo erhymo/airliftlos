@@ -92,26 +92,49 @@ export async function createPdf(
   });
   y -= 20;
 
-  const lines: string[] = [];
+  const boldPrefixes = [
+    "Base:",
+    "Dato:",
+    "Tidspunkt:",
+    "Årsak:",
+    "Begrunnelse:",
+    "Andre kommentarer:",
+    "Antatt varighet:",
+    "Merknad varighet:",
+    "Estimert gjenopptakelse:",
+    "Merknad gjenopptakelse:",
+    "Neste oppfølging:",
+    "Merknad oppfølging:",
+    "Vurdering alternativ løsning:",
+    "METAR/TAF:",
+    "HTI-kart:",
+    "Signatur:",
+  ];
+
+  const lines: { text: string; bold: boolean }[] = [];
   for (const rawLine of body.split("\n")) {
-    if (!rawLine.trim()) {
-      lines.push("");
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      lines.push({ text: "", bold: false });
       continue;
     }
+    const isBold = boldPrefixes.some((prefix) => trimmed.startsWith(prefix));
     const wrapped = wrapText(rawLine, 90);
-    lines.push(...wrapped);
+    for (const part of wrapped) {
+      lines.push({ text: part, bold: isBold });
+    }
   }
 
   for (const line of lines) {
-    if (!line) {
+    if (!line.text) {
       y -= 16;
       continue;
     }
-    page.drawText(line, {
+    page.drawText(line.text, {
       x: marginX,
       y,
       size: 11,
-      font,
+      font: line.bold ? boldFont : font,
       color: rgb(0, 0, 0),
     });
     y -= 16;
