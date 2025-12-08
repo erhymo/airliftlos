@@ -43,3 +43,43 @@ export async function GET() {
   }
 }
 
+
+export async function DELETE(req: Request) {
+	const accessCode = process.env.ACCESS_CODE;
+
+	if (accessCode) {
+		const cookieStore = await cookies();
+		const accessCookie = cookieStore.get("airliftlos_access");
+		if (!accessCookie || accessCookie.value !== "ok") {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+		}
+	}
+
+	let payload: { id?: string };
+	try {
+		payload = (await req.json()) as { id?: string };
+	} catch {
+		return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+	}
+
+	const { id } = payload;
+	if (!id || typeof id !== "string") {
+		return NextResponse.json({ error: "Missing id" }, { status: 400 });
+	}
+
+	try {
+		const db = getDb();
+		await db.collection("driftsrapporter").doc(id).delete();
+		return NextResponse.json({ ok: true });
+	} catch (error) {
+		console.error("Failed to delete driftsrapport from Firestore", error);
+		return NextResponse.json(
+			{
+				ok: false,
+				error: "Klarte ikke å slette driftsrapport fra Firestore",
+			},
+			{ status: 500 }
+		);
+	}
+}
+

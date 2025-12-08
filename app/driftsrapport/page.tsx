@@ -351,14 +351,48 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    setShowArchive(false);
 	  }
 
-	  function deleteReport(id: string) {
-	    if (!window.confirm("Vil du slette denne driftsrapporten fra denne enheten?")) {
-	      return;
-	    }
-	    const next = reports.filter((r) => r.id !== id);
-	    setReports(next);
-	    saveReports(next);
-	  }
+		  async function deleteReport(id: string) {
+		    if (!window.confirm("Vil du slette denne driftsrapporten?")) {
+		      return;
+		    }
+
+		    try {
+		      const res = await fetch("/api/driftsrapporter", {
+		        method: "DELETE",
+		        headers: {
+		          "Content-Type": "application/json",
+		        },
+		        body: JSON.stringify({ id }),
+		      });
+
+		      if (!res.ok) {
+		        let data: { ok?: boolean; error?: string; details?: string } | null = null;
+		        try {
+		          data = (await res.json()) as {
+		            ok?: boolean;
+		            error?: string;
+		            details?: string;
+		          };
+		        } catch {
+		          // Ignorer JSON-feil
+		        }
+		        const msg =
+		          (data && (data.error || data.details)) ||
+		          "Klarte ikke å slette driftsrapporten fra databasen. Prøv igjen senere.";
+		        alert(msg);
+		        return;
+		      }
+		    } catch {
+		      alert(
+		        "Klarte ikke å slette driftsrapporten. Sjekk nettverket og prøv igjen."
+		      );
+		      return;
+		    }
+
+		    const next = reports.filter((r) => r.id !== id);
+		    setReports(next);
+		    saveReports(next);
+		  }
 
 	  function clearAllReports() {
 	    if (
