@@ -868,9 +868,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
         set.add(yearNum);
       }
     }
-    if (set.size === 0) {
-      set.add(nowYear);
-    }
+	    // Sørg for at inneværende år alltid finnes i listen, slik at f.eks.
+	    // 2026 dukker opp automatisk i statistikkvisningen når vi går inn i 2026,
+	    // selv før første rapport for det året er registrert.
+	    set.add(nowYear);
     return Array.from(set).sort();
   })();
 
