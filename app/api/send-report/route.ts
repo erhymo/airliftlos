@@ -92,53 +92,84 @@ export async function createPdf(
   });
   y -= 20;
 
-  const boldPrefixes = [
-    "Base:",
-    "Dato:",
-    "Tidspunkt:",
-    "Årsak:",
-    "Begrunnelse:",
-    "Andre kommentarer:",
-    "Antatt varighet:",
-    "Merknad varighet:",
-    "Estimert gjenopptakelse:",
-    "Merknad gjenopptakelse:",
-    "Neste oppfølging:",
-    "Merknad oppfølging:",
-    "Vurdering alternativ løsning:",
-    "METAR/TAF:",
-    "HTI-kart:",
-    "Signatur:",
-  ];
+	  const boldPrefixes = [
+	    "Base:",
+	    "Dato:",
+	    "Tidspunkt:",
+	    "Årsak:",
+	    "Begrunnelse:",
+	    "Andre kommentarer:",
+	    "Antatt varighet:",
+	    "Merknad varighet:",
+	    "Estimert gjenopptakelse:",
+	    "Merknad gjenopptakelse:",
+	    "Neste oppfølging:",
+	    "Merknad oppfølging:",
+	    "Vurdering alternativ løsning:",
+	    "METAR/TAF:",
+	    "HTI-kart:",
+	    "Signatur:",
+	  ];
 
-  const lines: { text: string; bold: boolean }[] = [];
-  for (const rawLine of body.split("\n")) {
-    const trimmed = rawLine.trim();
-    if (!trimmed) {
-      lines.push({ text: "", bold: false });
-      continue;
-    }
-    const isBold = boldPrefixes.some((prefix) => trimmed.startsWith(prefix));
-    const wrapped = wrapText(rawLine, 90);
-    for (const part of wrapped) {
-      lines.push({ text: part, bold: isBold });
-    }
-  }
+	  const lines: { text: string }[] = [];
+	  for (const rawLine of body.split("\n")) {
+	    const trimmed = rawLine.trim();
+	    if (!trimmed) {
+	      lines.push({ text: "" });
+	      continue;
+	    }
+	    const wrapped = wrapText(rawLine, 90);
+	    for (const part of wrapped) {
+	      lines.push({ text: part });
+	    }
+	  }
 
-  for (const line of lines) {
-    if (!line.text) {
-      y -= 16;
-      continue;
-    }
-    page.drawText(line.text, {
-      x: marginX,
-      y,
-      size: 11,
-      font: line.bold ? boldFont : font,
-      color: rgb(0, 0, 0),
-    });
-    y -= 16;
-  }
+	  for (const line of lines) {
+	    const raw = line.text;
+	    const trimmed = raw.trim();
+	    if (!trimmed) {
+	      y -= 16;
+	      continue;
+	    }
+
+	    const prefix = boldPrefixes.find((p) => trimmed.startsWith(p));
+	    if (!prefix) {
+	      // Vanlig linje uten spesialetikett – alt i normal skrift
+	      page.drawText(trimmed, {
+	        x: marginX,
+	        y,
+	        size: 11,
+	        font,
+	        color: rgb(0, 0, 0),
+	      });
+	    } else {
+	      const label = prefix;
+	      const rest = trimmed.slice(label.length); // kan være tom eller starte med mellomrom
+
+	      // Først: selve etiketten (f.eks. "Base:") i fet skrift
+	      page.drawText(label, {
+	        x: marginX,
+	        y,
+	        size: 11,
+	        font: boldFont,
+	        color: rgb(0, 0, 0),
+	      });
+
+	      // Deretter: innholdet etter kolon i vanlig skrift, på samme linje
+	      if (rest) {
+	        const labelWidth = boldFont.widthOfTextAtSize(label, 11);
+	        page.drawText(rest, {
+	          x: marginX + labelWidth,
+	          y,
+	          size: 11,
+	          font,
+	          color: rgb(0, 0, 0),
+	        });
+	      }
+	    }
+
+	    y -= 16;
+	  }
 
   // Diskré footer nederst på hovedsiden
   const footerY = 40;
