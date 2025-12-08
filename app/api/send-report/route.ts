@@ -656,17 +656,34 @@ export async function POST(req: Request) {
       }
     }
 
-    // Legg til base-spesifikke kopi-adresser
-    const cc: { email: string }[] = [];
-    if (base === "Bergen") {
-      cc.push({ email: "loshelikopter.bergen@airlift.no" });
-    }
-    if (base === "Hammerfest") {
-      cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
-    }
+	    // Legg til base- og type-spesifikke mottakere
+	    let to: { email: string }[] = TO_ADDRESSES.map((email) => ({ email }));
+	    let cc: { email: string }[] = [];
 
-    // Ikke send e-post for vaktrapporter, kun lagre lokalt + SharePoint.
-    if (reportType !== "vaktrapport") {
+	    if (reportType === "driftsrapport" && base === "Bergen") {
+	      // Driftsrapport fra Bergen: egen mottakerliste + ønskede kopier
+	      to = [
+	        { email: "aina.giskeodegard.balsnes@kystverket.no" },
+	        { email: "kjell.asle.djupevag@kystverket.no" },
+	        { email: "losformidling.kvitsoy@kystverket.no" },
+	      ];
+	      cc = [
+	        { email: "erlend.haugsbo@airlift.no" },
+	        { email: "loshelikopter.bergen@airlift.no" },
+	        { email: "tom.ostrem@airlift.no" },
+	      ];
+	    } else {
+	      // Standard: bruk faste TO_ADDRESSES og eventuelle base-spesifikke kopier
+	      if (base === "Bergen") {
+	        cc.push({ email: "loshelikopter.bergen@airlift.no" });
+	      }
+	      if (base === "Hammerfest") {
+	        cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
+	      }
+	    }
+
+	    // Ikke send e-post for vaktrapporter, kun lagre lokalt + SharePoint.
+	    if (reportType !== "vaktrapport") {
       const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: {
@@ -674,14 +691,14 @@ export async function POST(req: Request) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          personalizations: [
-            {
-              to: TO_ADDRESSES.map((email) => ({ email })),
-              // Kopi-adresser per base (Bergen/Hammerfest)
-              ...(cc.length > 0 ? { cc } : {}),
-              subject,
-            },
-          ],
+	          personalizations: [
+	            {
+	              to,
+	              // Kopi-adresser per base (Bergen/Hammerfest) eller spesifikt for Bergen driftsrapport
+	              ...(cc.length > 0 ? { cc } : {}),
+	              subject,
+	            },
+	          ],
           from: {
             email: fromEmail as string,
             name: fromName || "LOS Helikopter",
