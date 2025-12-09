@@ -33,7 +33,7 @@ export default function Home() {
             href="/driftsrapport"
             className="block w-full rounded-lg bg-gray-100 text-gray-900 text-center py-4 px-4 text-base font-medium border border-gray-300 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
-            Driftsrapport
+	            Driftsforstyrrelse
           </Link>
         </div>
 

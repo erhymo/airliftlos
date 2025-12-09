@@ -347,16 +347,16 @@ function Section(props: { title: string; children: React.ReactNode }) {
 			return newReport;
 	  }
 
-	  function openExisting(r: DriftsReport) {
+		  function openExisting(r: DriftsReport) {
 	    resetFrom(r);
 	    setStep(10);
 	    setShowArchive(false);
-	  }
+		  }
 
-		  async function deleteReport(id: string) {
-		    if (!window.confirm("Vil du slette denne driftsrapporten?")) {
-		      return;
-		    }
+			  async function deleteReport(id: string) {
+			    if (!window.confirm("Vil du slette denne driftsforstyrrelsen?")) {
+			      return;
+			    }
 
 		    try {
 		      const res = await fetch("/api/driftsrapporter", {
@@ -367,7 +367,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		        body: JSON.stringify({ id }),
 		      });
 
-		      if (!res.ok) {
+			      if (!res.ok) {
 		        let data: { ok?: boolean; error?: string; details?: string } | null = null;
 		        try {
 		          data = (await res.json()) as {
@@ -378,16 +378,16 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		        } catch {
 		          // Ignorer JSON-feil
 		        }
-		        const msg =
-		          (data && (data.error || data.details)) ||
-		          "Klarte ikke å slette driftsrapporten fra databasen. Prøv igjen senere.";
+			        const msg =
+			          (data && (data.error || data.details)) ||
+			          "Klarte ikke å slette driftsforstyrrelsen fra databasen. Prøv igjen senere.";
 		        alert(msg);
 		        return;
 		      }
-		    } catch {
-		      alert(
-		        "Klarte ikke å slette driftsrapporten. Sjekk nettverket og prøv igjen."
-		      );
+			    } catch {
+			      alert(
+			        "Klarte ikke å slette driftsforstyrrelsen. Sjekk nettverket og prøv igjen."
+			      );
 		      return;
 		    }
 
@@ -396,14 +396,14 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		    saveReports(next);
 		  }
 
-	  function clearAllReports() {
-	    if (
-	      !window.confirm(
-	        "Vil du slette alle lagrede driftsrapporter (arkiv og statistikk) fra denne enheten?"
-	      )
-	    ) {
-	      return;
-	    }
+		  function clearAllReports() {
+		    if (
+		      !window.confirm(
+		        "Vil du slette alle lagrede driftsforstyrrelser (arkiv og statistikk) fra denne enheten?"
+		      )
+		    ) {
+		      return;
+		    }
 	    setReports([]);
 	    saveReports([]);
 	  }
@@ -529,13 +529,13 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		
 		      linjer.push(`Signatur: ${signatur || "(tom)"}`);
 		
-		      const plainText =
-		        linjer.filter(Boolean).join("\n") +
-		        "\n\nVedlagt driftsrapport som PDF.";
-		
-		      const subject = `LOS-helikopter ${base} – driftsrapport ${dato}`;
+			      const plainText =
+			        linjer.filter(Boolean).join("\n") +
+			        "\n\nVedlagt driftsforstyrrelse som PDF.";
+				
+			      const subject = `LOS-helikopter ${base} – driftsforstyrrelse ${dato}`;
 		      const fileName = `Driftsforstyrrelse_${base}_${day}-${month}-${year}.pdf`;
-		      const title = `Driftsrapport ${base} ${dato}`;
+			      const title = `Driftsforstyrrelse ${base} ${dato}`;
 		      const fromName = `LOS Helikopter ${base}`;
 		
 		      const response = await fetch("/api/send-report", {
@@ -566,7 +566,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		      if (!response.ok) {
 		        const msg =
 		          (data && (data.error || data.details)) ||
-		          "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
+			          "Klarte ikke å sende driftsforstyrrelse. Prøv igjen senere.";
 		        alert(msg);
 		        return;
 		      }
@@ -574,11 +574,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		      if (data && data.sharepoint && data.sharepoint.ok === false) {
 		        const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
 		        alert(
-		          "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
+			          "Driftsforstyrrelse sendt på e-post, men det var en feil mot SharePoint:\n" +
 		            spMsg
 		        );
 		      } else {
-		        alert("Driftsrapport sendt til faste mottakere.");
+			        alert("Driftsforstyrrelse sendt til faste mottakere.");
 		      }
 		      reset();
 		      router.push("/");
@@ -622,13 +622,13 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	
 	    linjer.push(`Signatur: ${r.signatur || "(tom)"}`);
 	
-	    const plainText =
-	      linjer.filter(Boolean).join("\n") +
-	      "\n\nVedlagt driftsrapport som PDF.";
-	
-	    const subject = `LOS-helikopter ${r.base} – driftsrapport ${r.dato}`;
+		    const plainText =
+		      linjer.filter(Boolean).join("\n") +
+		      "\n\nVedlagt driftsforstyrrelse som PDF.";
+				
+		    const subject = `LOS-helikopter ${r.base} – driftsforstyrrelse ${r.dato}`;
 	    const fileName = `Driftsforstyrrelse_${r.base}_${day}-${month}-${year}.pdf`;
-	    const title = `Driftsrapport ${r.base} ${r.dato}`;
+		    const title = `Driftsforstyrrelse ${r.base} ${r.dato}`;
 	    const fromName = `LOS Helikopter ${r.base}`;
 	
 	    const response = await fetch("/api/send-report", {
@@ -658,7 +658,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    if (!response.ok) {
 	      const msg =
 	        (data && (data.error || data.details)) ||
-	        "Klarte ikke å sende driftsrapport. Prøv igjen senere.";
+		        "Klarte ikke å sende driftsforstyrrelse. Prøv igjen senere.";
 	      alert(msg);
 	      return;
 	    }
@@ -666,11 +666,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    if (data && data.sharepoint && data.sharepoint.ok === false) {
 	      const spMsg = data.sharepoint.error || "Ukjent feil mot SharePoint.";
 	      alert(
-	        "Driftsrapport sendt på e-post, men det var en feil mot SharePoint:\n" +
+		        "Driftsforstyrrelse sendt på e-post, men det var en feil mot SharePoint:\n" +
 	          spMsg
 	      );
 	    } else {
-	      alert("Driftsrapport sendt til faste mottakere.");
+		      alert("Driftsforstyrrelse sendt til faste mottakere.");
 	    }
 	  }
 
@@ -687,7 +687,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	
 	      const linjer = [
 	        `Base: ${resumeReport.base}`,
-	        `Gjelder driftsrapport sendt ${resumeReport.dato} kl ${resumeReport.tid}.`,
+		      `Gjelder driftsforstyrrelse sendt ${resumeReport.dato} kl ${resumeReport.tid}.`,
 	        "",
 	        `Driften er gjenopptatt kl ${hourLabel}:00.`,
 	        "",
@@ -767,7 +767,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 							);
 							const lines: string[] = [];
 							const baseLabel = statsBase === "Alle" ? "alle baser" : statsBase;
-							lines.push(`Statistikk driftsrapporter ${selectedYear} – ${baseLabel}`);
+						lines.push(`Statistikk driftsforstyrrelser ${selectedYear} – ${baseLabel}`);
 					lines.push("");
 					lines.push("Nøkkeltall per måned:");
 					for (let i = 0; i < MONTH_LABELS.length; i++) {
@@ -790,10 +790,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 					lines.push("");
 					lines.push("Se vedlagt PDF for full fordeling per årsak.");
 				
-							const plainText = lines.join("\n");
-							const subject = `Statistikk driftsrapporter ${selectedYear} – ${baseLabel}`;
-							const title = subject;
-							const fileName = `Statistikk_driftsrapporter_${selectedYear}_${
+						const plainText = lines.join("\n");
+						const subject = `Statistikk driftsforstyrrelser ${selectedYear} – ${baseLabel}`;
+						const title = subject;
+						const fileName = `Statistikk_driftsforstyrrelser_${selectedYear}_${
 									statsBase === "Alle" ? "alle_baser" : statsBase
 							}.pdf`;
 				
@@ -943,16 +943,16 @@ function Section(props: { title: string; children: React.ReactNode }) {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 bg-white/80 backdrop-blur border-b text-gray-900">
         <div className="mx-auto max-w-md p-4 space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
-              >
-                Til forsiden
-              </Link>
-              <h1 className="text-xl font-semibold">Driftsrapport</h1>
-            </div>
+	            <div className="flex items-center justify-between gap-3">
+	              <div className="flex items-center gap-3">
+	                <Link
+	                  href="/"
+	                  className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
+	                >
+	                  Til forsiden
+	                </Link>
+	                <h1 className="text-xl font-semibold">Driftsforstyrrelse</h1>
+	              </div>
             <Image
               src="/Airlift-logo.png"
               alt="Airlift-logo"
@@ -961,9 +961,9 @@ function Section(props: { title: string; children: React.ReactNode }) {
               className="h-8 w-auto"
             />
           </div>
-          <p className="text-sm text-gray-600">
-            Stegvis driftsrapport for LOS-helikopter.
-          </p>
+	          <p className="text-sm text-gray-600">
+	            Stegvis driftsforstyrrelse for LOS-helikopter.
+	          </p>
           <div className="flex justify-end gap-2">
             <button
               onClick={() => {
@@ -1618,17 +1618,17 @@ function Section(props: { title: string; children: React.ReactNode }) {
               }}
               className="w-full py-3 rounded-xl bg-black text-white"
             >
-              Ny driftsrapport
+	              Ny driftsforstyrrelse
             </button>
           </div>
         </main>
       )}
 
-	      {showStats && (
-	        <main className="mx-auto max-w-3xl p-4">
-	          <div className="bg-white rounded-2xl shadow p-4 text-gray-900">
-	            <div className="flex items-center justify-between gap-2 mb-4">
-	              <h2 className="text-lg font-semibold">Statistikk driftsrapporter</h2>
+		      {showStats && (
+		        <main className="mx-auto max-w-3xl p-4">
+		          <div className="bg-white rounded-2xl shadow p-4 text-gray-900">
+		            <div className="flex items-center justify-between gap-2 mb-4">
+		              <h2 className="text-lg font-semibold">Statistikk driftsforstyrrelser</h2>
 	              <button
 	                onClick={() => setShowStats(false)}
 	                className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
@@ -1639,7 +1639,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 
 		        <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
 			              <span>
-			                Statistikken bygger på driftsrapporter som er sendt (lagret sentralt).
+			                Statistikken bygger på driftsforstyrrelser som er sendt (lagret sentralt).
 				                Velg år og eventuelt base nedenfor.
 			              </span>
 			              {reports.length > 0 && (
@@ -1696,7 +1696,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	            <div className="space-y-6">
 		              <div>
 		                <h3 className="font-semibold mb-2 text-sm">
-		                  Antall driftsrapporter per måned og årsak – {selectedYear} ({
+		                  Antall driftsforstyrrelser per måned og årsak – {selectedYear} ({
 		                    statsBase === "Alle" ? "alle baser" : statsBase
 		                  })
 		                </h3>
@@ -1846,10 +1846,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	          <div className="mx-auto w-full max-w-md p-4">
 	            <div className="bg-white rounded-2xl shadow p-4">
 	              <h2 className="text-lg font-semibold mb-1">Gjenoppta drift</h2>
-	              <p className="text-sm text-gray-700 mb-4">
-	                Dette gjelder driftsrapporten for {resumeReport.base} {" "}
-	                {resumeReport.dato} kl {resumeReport.tid}.
-	              </p>
+		              <p className="text-sm text-gray-700 mb-4">
+		                Dette gjelder driftsforstyrrelsen for {resumeReport.base} {" "}
+		                {resumeReport.dato} kl {resumeReport.tid}.
+		              </p>
 
 	              {resumeStep === 0 && (
 	                <div className="space-y-3">
@@ -1893,10 +1893,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                  <div>
 	                    <b>Base:</b> {resumeReport.base}
 	                  </div>
-	                  <div>
-	                    <b>Gjelder driftsrapport:</b> {resumeReport.dato} kl{" "}
-	                    {resumeReport.tid}
-	                  </div>
+		                  <div>
+		                    <b>Gjelder driftsforstyrrelse:</b> {resumeReport.dato} kl{" "}
+		                    {resumeReport.tid}
+		                  </div>
 	                  <div>
 	                    <b>Drift gjenopptas:</b> kl{" "}
 	                    {String(resumeHour).padStart(2, "0")}:00
@@ -1907,10 +1907,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                      {resumeComment || "(ingen kommentar)"}
 	                    </div>
 	                  </div>
-	                  <p className="text-xs text-gray-600 mt-1">
-	                    Meldingen sendes til de samme mottakerne som den opprinnelige
-	                    driftsrapporten, men uten PDF-vedlegg.
-	                  </p>
+		                  <p className="text-xs text-gray-600 mt-1">
+		                    Meldingen sendes til de samme mottakerne som den opprinnelige
+		                    driftsforstyrrelsen, men uten PDF-vedlegg.
+		                  </p>
 	                </div>
 	              )}
 

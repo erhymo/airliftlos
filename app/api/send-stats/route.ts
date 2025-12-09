@@ -189,10 +189,10 @@ async function createStatsPdf(
 		y = headerBottomY;
 	}
 
-	function drawCountsTable() {
-		const heading = `Antall driftsrapporter per måned og årsak${
-			year ? ` – ${year}` : ""
-		}`;
+		function drawCountsTable() {
+			const heading = `Antall driftsforstyrrelser per måned og årsak${
+				year ? ` – ${year}` : ""
+			}`;
 		drawTableHeader(heading, "Måned", "Totalt");
 
 		for (let i = 0; i < MONTH_LABELS.length; i++) {

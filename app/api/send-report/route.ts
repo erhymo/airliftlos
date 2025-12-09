@@ -283,7 +283,7 @@ interface SendReportPayload {
   htiImageUrls?: string[];
   /** Type rapport (brukes til f.eks. SharePoint-opplasting) */
   reportType?: "driftsrapport" | "vaktrapport";
-  /** Strukturert driftsrapport som kan lagres i Firestore */
+	/** Strukturert driftsforstyrrelse som kan lagres i Firestore */
   driftsReport?: DriftsReportRecord;
 }
 
@@ -644,16 +644,16 @@ export async function POST(req: Request) {
             sentAt: Date.now(),
           });
         firestoreResult = { ok: true };
-      } catch (err) {
-        console.error(
-          "Firestore: klarte ikke å lagre driftsrapport i Firestore",
-          (err as Error).message
-        );
-        firestoreResult = {
-          ok: false,
-          error: "Klarte ikke å lagre driftsrapport i Firestore",
-        };
-      }
+	      } catch (err) {
+	        console.error(
+	          "Firestore: klarte ikke å lagre driftsforstyrrelse i Firestore",
+	          (err as Error).message
+	        );
+	        firestoreResult = {
+	          ok: false,
+	          error: "Klarte ikke å lagre driftsforstyrrelse i Firestore",
+	        };
+	      }
     }
 
 		    // Legg til base- og type-spesifikke mottakere

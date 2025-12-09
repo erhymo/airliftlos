@@ -99,7 +99,7 @@ export function AccessGuard({ children }: Props) {
         <p className="text-xs text-gray-500">
           Koden trenger bare å tastes inn én gang per telefon. Når den er
           godkjent kan alle som bruker denne telefonen sende
-          vakt- og driftsrapporter.
+	          vakt- og driftsforstyrrelser.
         </p>
       </main>
     </div>
