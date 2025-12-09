@@ -165,8 +165,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
   const [gjenopptakTimer, setGjenopptakTimer] = useState(0);
   const [gjenopptakTekst, setGjenopptakTekst] = useState("");
   const [oppfolgingTimer, setOppfolgingTimer] = useState(0);
-  const [oppfolgingTekst, setOppfolgingTekst] = useState("");
-  const [alternativ, setAlternativ] = useState("");
+	const [oppfolgingTekst, setOppfolgingTekst] = useState("");
+	const [isDraggingVarighet, setIsDraggingVarighet] = useState(false);
+	const [isDraggingGjenopptak, setIsDraggingGjenopptak] = useState(false);
+	const [isDraggingOppfolging, setIsDraggingOppfolging] = useState(false);
+	const [alternativ, setAlternativ] = useState("");
   const [signatur, setSignatur] = useState("");
   const [metarTafPairs, setMetarTafPairs] = useState<
     { metar?: string; taf?: string }[]
@@ -189,8 +192,9 @@ function Section(props: { title: string; children: React.ReactNode }) {
 			  const [sending, setSending] = useState(false);
 			  const [resumeReport, setResumeReport] = useState<DriftsReport | null>(null);
 		  const [resumeStep, setResumeStep] = useState(0);
-		  const [resumeHour, setResumeHour] = useState(12);
-			  const [resumeComment, setResumeComment] = useState("");
+			const [resumeHour, setResumeHour] = useState(12);
+			const [isDraggingResume, setIsDraggingResume] = useState(false);
+				const [resumeComment, setResumeComment] = useState("");
 			  const [resumeSending, setResumeSending] = useState(false);
 			  const [showStatsSendDialog, setShowStatsSendDialog] = useState(false);
 			  const [statsTo, setStatsTo] = useState("");
@@ -1295,19 +1299,33 @@ function Section(props: { title: string; children: React.ReactNode }) {
           <StepShell onPrev={() => setStep(4)} onNext={() => setStep(6)}>
             <Section title="Antatt varighet">
               <div className="space-y-3">
-                <div className="px-4">
-                  <input
-                    type="range"
-                    min={0}
-                    max={24}
-                    value={varighetTimer}
-                    onChange={(e) => setVarighetTimer(Number(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="text-sm text-gray-700 mt-1">
-                    {varighetTimer} timer
-                  </div>
-                </div>
+	              <div className="px-4 relative pt-6">
+	                {isDraggingVarighet && (
+	                  <div
+	                    className="pointer-events-none absolute -top-2 -translate-y-full -translate-x-1/2 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 shadow-sm"
+	                    style={{ left: `${(varighetTimer / 24) * 100}%` }}
+	                  >
+	                    {varighetTimer} timer
+	                  </div>
+	                )}
+	                <input
+	                  type="range"
+	                  min={0}
+	                  max={24}
+	                  value={varighetTimer}
+	                  onChange={(e) => setVarighetTimer(Number(e.target.value))}
+	                  className="w-full"
+	                  onMouseDown={() => setIsDraggingVarighet(true)}
+	                  onMouseUp={() => setIsDraggingVarighet(false)}
+	                  onMouseLeave={() => setIsDraggingVarighet(false)}
+	                  onTouchStart={() => setIsDraggingVarighet(true)}
+	                  onTouchEnd={() => setIsDraggingVarighet(false)}
+	                  onBlur={() => setIsDraggingVarighet(false)}
+	                />
+	                <div className="mt-1 text-sm text-gray-700">
+	                  {varighetTimer} timer
+	                </div>
+	              </div>
                 <textarea
                   value={varighetTekst}
                   onChange={(e) => setVarighetTekst(e.target.value)}
@@ -1324,19 +1342,33 @@ function Section(props: { title: string; children: React.ReactNode }) {
           <StepShell onPrev={() => setStep(5)} onNext={() => setStep(7)}>
             <Section title="Estimert tidspunkt for gjenopptakelse">
               <div className="space-y-3">
-                <div className="px-4">
-                  <input
-                    type="range"
-                    min={0}
-                    max={24}
-                    value={gjenopptakTimer}
-                    onChange={(e) => setGjenopptakTimer(Number(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="text-sm text-gray-700 mt-1">
-                    Kl {gjenopptakTimer}:00
-                  </div>
-                </div>
+	              <div className="px-4 relative pt-6">
+	                {isDraggingGjenopptak && (
+	                  <div
+	                    className="pointer-events-none absolute -top-2 -translate-y-full -translate-x-1/2 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 shadow-sm"
+	                    style={{ left: `${(gjenopptakTimer / 24) * 100}%` }}
+	                  >
+	                    Kl {gjenopptakTimer}:00
+	                  </div>
+	                )}
+	                <input
+	                  type="range"
+	                  min={0}
+	                  max={24}
+	                  value={gjenopptakTimer}
+	                  onChange={(e) => setGjenopptakTimer(Number(e.target.value))}
+	                  className="w-full"
+	                  onMouseDown={() => setIsDraggingGjenopptak(true)}
+	                  onMouseUp={() => setIsDraggingGjenopptak(false)}
+	                  onMouseLeave={() => setIsDraggingGjenopptak(false)}
+	                  onTouchStart={() => setIsDraggingGjenopptak(true)}
+	                  onTouchEnd={() => setIsDraggingGjenopptak(false)}
+	                  onBlur={() => setIsDraggingGjenopptak(false)}
+	                />
+	                <div className="mt-1 text-sm text-gray-700">
+	                  Kl {gjenopptakTimer}:00
+	                </div>
+	              </div>
                 <textarea
                   value={gjenopptakTekst}
                   onChange={(e) => setGjenopptakTekst(e.target.value)}
@@ -1353,19 +1385,33 @@ function Section(props: { title: string; children: React.ReactNode }) {
           <StepShell onPrev={() => setStep(6)} onNext={() => setStep(8)}>
             <Section title="Oppfølging (neste tidspunkt for oppdatering)">
               <div className="space-y-3">
-                <div className="px-4">
-                  <input
-                    type="range"
-                    min={0}
-                    max={24}
-                    value={oppfolgingTimer}
-                    onChange={(e) => setOppfolgingTimer(Number(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="text-sm text-gray-700 mt-1">
-                    Kl {oppfolgingTimer}:00
-                  </div>
-                </div>
+	              <div className="px-4 relative pt-6">
+	                {isDraggingOppfolging && (
+	                  <div
+	                    className="pointer-events-none absolute -top-2 -translate-y-full -translate-x-1/2 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 shadow-sm"
+	                    style={{ left: `${(oppfolgingTimer / 24) * 100}%` }}
+	                  >
+	                    Kl {oppfolgingTimer}:00
+	                  </div>
+	                )}
+	                <input
+	                  type="range"
+	                  min={0}
+	                  max={24}
+	                  value={oppfolgingTimer}
+	                  onChange={(e) => setOppfolgingTimer(Number(e.target.value))}
+	                  className="w-full"
+	                  onMouseDown={() => setIsDraggingOppfolging(true)}
+	                  onMouseUp={() => setIsDraggingOppfolging(false)}
+	                  onMouseLeave={() => setIsDraggingOppfolging(false)}
+	                  onTouchStart={() => setIsDraggingOppfolging(true)}
+	                  onTouchEnd={() => setIsDraggingOppfolging(false)}
+	                  onBlur={() => setIsDraggingOppfolging(false)}
+	                />
+	                <div className="mt-1 text-sm text-gray-700">
+	                  Kl {oppfolgingTimer}:00
+	                </div>
+	              </div>
                 <textarea
                   value={oppfolgingTekst}
                   onChange={(e) => setOppfolgingTekst(e.target.value)}
@@ -1857,19 +1903,33 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                    Velg tidspunkt for når driften skal være oppe og gå igjen
 	                    (klokkeslett).
 	                  </div>
-	                  <div className="px-2">
-	                    <input
-	                      type="range"
-	                      min={0}
-	                      max={23}
-	                      value={resumeHour}
-	                      onChange={(e) => setResumeHour(Number(e.target.value))}
-	                      className="w-full"
-	                    />
-	                    <div className="mt-1 text-sm text-gray-800">
-	                      Kl {String(resumeHour).padStart(2, "0")}:00
-	                    </div>
-	                  </div>
+				          <div className="px-2 relative pt-6">
+				            {isDraggingResume && (
+				              <div
+				                className="pointer-events-none absolute -top-2 -translate-y-full -translate-x-1/2 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 shadow-sm"
+				                style={{ left: `${(resumeHour / 23) * 100}%` }}
+				              >
+				                Kl {String(resumeHour).padStart(2, "0")}:00
+				              </div>
+				            )}
+				            <input
+				              type="range"
+				              min={0}
+				              max={23}
+				              value={resumeHour}
+				              onChange={(e) => setResumeHour(Number(e.target.value))}
+				              className="w-full"
+				              onMouseDown={() => setIsDraggingResume(true)}
+				              onMouseUp={() => setIsDraggingResume(false)}
+				              onMouseLeave={() => setIsDraggingResume(false)}
+				              onTouchStart={() => setIsDraggingResume(true)}
+				              onTouchEnd={() => setIsDraggingResume(false)}
+				              onBlur={() => setIsDraggingResume(false)}
+				            />
+				            <div className="mt-1 text-sm text-gray-800">
+				              Kl {String(resumeHour).padStart(2, "0")}:00
+				            </div>
+				          </div>
 	                </div>
 	              )}
 
