@@ -1314,7 +1314,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                  max={24}
 	                  value={varighetTimer}
 	                  onChange={(e) => setVarighetTimer(Number(e.target.value))}
-	                  className="w-full"
+	                  className="w-full time-slider"
 	                  onMouseDown={() => setIsDraggingVarighet(true)}
 	                  onMouseUp={() => setIsDraggingVarighet(false)}
 	                  onMouseLeave={() => setIsDraggingVarighet(false)}
@@ -1357,7 +1357,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                  max={24}
 	                  value={gjenopptakTimer}
 	                  onChange={(e) => setGjenopptakTimer(Number(e.target.value))}
-	                  className="w-full"
+	                  className="w-full time-slider"
 	                  onMouseDown={() => setIsDraggingGjenopptak(true)}
 	                  onMouseUp={() => setIsDraggingGjenopptak(false)}
 	                  onMouseLeave={() => setIsDraggingGjenopptak(false)}
@@ -1400,7 +1400,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                  max={24}
 	                  value={oppfolgingTimer}
 	                  onChange={(e) => setOppfolgingTimer(Number(e.target.value))}
-	                  className="w-full"
+	                  className="w-full time-slider"
 	                  onMouseDown={() => setIsDraggingOppfolging(true)}
 	                  onMouseUp={() => setIsDraggingOppfolging(false)}
 	                  onMouseLeave={() => setIsDraggingOppfolging(false)}
@@ -1918,7 +1918,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 				              max={23}
 				              value={resumeHour}
 				              onChange={(e) => setResumeHour(Number(e.target.value))}
-				              className="w-full"
+				              className="w-full time-slider"
 				              onMouseDown={() => setIsDraggingResume(true)}
 				              onMouseUp={() => setIsDraggingResume(false)}
 				              onMouseLeave={() => setIsDraggingResume(false)}
