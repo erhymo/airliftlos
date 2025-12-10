@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { SIGNATURE_OPTIONS } from "../../lib/signatures";
 
 type Base = "Bergen" | "Hammerfest";
 type StatsBaseFilter = "Alle" | Base;
@@ -39,39 +40,16 @@ interface DriftsReport {
 type DraftDriftsReport = Omit<DriftsReport, "createdAt">;
 
 type SendReportResponseBody = {
-	ok?: boolean;
-	error?: string;
-	details?: string;
-	sharepoint?: {
 		ok?: boolean;
 		error?: string;
-	} | null;
-};
+		details?: string;
+		sharepoint?: {
+			ok?: boolean;
+			error?: string;
+		} | null;
+	};
 
-const SIGNATURE_OPTIONS: string[] = [
-	"Bjørn Frode Amundsen",
-	"Bjørnar Lund",
-	"Claus Tjalve",
-	"Dagfinn Damsgaard",
-	"Einar Turlid",
-	"Henning Hansen",
-	"Ivan Småland",
-	"Kristian Krog",
-	"Leif Hus",
-	"Mikal Onhstad",
-	"Nils Roger Leithe",
-	"Per Kristian Kongsvik",
-	"Sigbjørn Brækhus",
-	"Stian Follaug",
-	"Terje Gundersen",
-	"Tom Østrem",
-	"Vidar Loose",
-	"Åge Mæland",
-	"Øyvind Bache",
-	"Øyvind Myhre",
-];
-
-function getDefaultDate() {
+	function getDefaultDate() {
   const d = new Date();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");

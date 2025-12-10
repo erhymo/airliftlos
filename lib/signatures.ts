@@ -1,0 +1,23 @@
+export const SIGNATURE_OPTIONS: string[] = [
+  "Bjørn Frode Amundsen",
+  "Bjørnar Lund",
+  "Claus Tjalve",
+  "Dagfinn Damsgaard",
+  "Einar Turlid",
+  "Henning Hansen",
+  "Ivan Småland",
+  "Kristian Krog",
+  "Leif Hus",
+  "Mikal Onhstad",
+  "Nils Roger Leithe",
+  "Per Kristian Kongsvik",
+  "Sigbjørn Brækhus",
+  "Stian Follaug",
+  "Terje Gundersen",
+  "Tom Østrem",
+  "Vidar Loose",
+  "Åge Mæland",
+  "Øyvind Bache",
+  "Øyvind Myhre",
+];
+
