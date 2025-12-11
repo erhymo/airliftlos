@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const TO_ADDRESSES = [
-  "oyvind.myhre@airlift.no",
-  "tom.ostrem@airlift.no",
-];
+	const TO_ADDRESSES = [
+	  "oyvind.myhre@airlift.no",
+	  "tom.ostrem@airlift.no",
+	];
 
 interface ResumeDriftPayload {
   subject: string;
@@ -40,22 +40,44 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { subject, body, fromName, base } = payload;
+	  const { subject, body, fromName, base } = payload;
 
-  if (!subject || !body) {
+	  if (!subject || !body) {
     return NextResponse.json(
       { error: "subject and body are required" },
       { status: 400 }
     );
   }
 
-  const cc: { email: string }[] = [];
-  if (base === "Bergen") {
-    cc.push({ email: "loshelikopter.bergen@airlift.no" });
-  }
-  if (base === "Hammerfest") {
-    cc.push({ email: "loshelikopter.hammerfest@airlift.no" });
-  }
+	  // Bruk samme mottakerlogikk som for selve driftsforstyrrelsen
+	  let to: { email: string }[] = TO_ADDRESSES.map((email) => ({ email }));
+	  let cc: { email: string }[] = [];
+
+	  if (base === "Bergen") {
+	    // Driftsforstyrrelse fra Bergen: samme liste som hovedrapporten
+	    to = [
+	      { email: "aina.giskeodegard.balsnes@kystverket.no" },
+	      { email: "kjell.asle.djupevag@kystverket.no" },
+	      { email: "losformidling.kvitsoy@kystverket.no" },
+	    ];
+	    cc = [
+	      { email: "erlend.haugsbo@airlift.no" },
+	      { email: "loshelikopter.bergen@airlift.no" },
+	      { email: "tom.ostrem@airlift.no" },
+	    ];
+	  } else if (base === "Hammerfest") {
+	    // Driftsforstyrrelse fra Hammerfest: samme liste som hovedrapporten
+	    to = [
+	      { email: "aina.giskeodegard.balsnes@kystverket.no" },
+	      { email: "roy.arne.rotnes@kystverket.no" },
+	      { email: "losformidling.nordland@kystverket.no" },
+	    ];
+	    cc = [
+	      { email: "erlend.haugsbo@airlift.no" },
+	      { email: "loshelikopter.hammerfest@airlift.no" },
+	      { email: "tom.ostrem@airlift.no" },
+	    ];
+	  }
 
   try {
     const sgResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -64,14 +86,14 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        personalizations: [
-          {
-            to: TO_ADDRESSES.map((email) => ({ email })),
-            ...(cc.length > 0 ? { cc } : {}),
-            subject,
-          },
-        ],
+	      body: JSON.stringify({
+	        personalizations: [
+	          {
+	            to,
+	            ...(cc.length > 0 ? { cc } : {}),
+	            subject,
+	          },
+	        ],
         from: {
           email: fromEmail,
           name: fromName || "LOS Helikopter",
