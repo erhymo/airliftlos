@@ -267,6 +267,7 @@ interface DriftsReportRecord {
   metarLines: string[];
   htiImageUrls?: string[];
   createdAt: number;
+	  createdOnDeviceId?: string;
   gjenopptattKl?: number;
   gjenopptattKommentar?: string;
   gjenopptattSendtAt?: number;

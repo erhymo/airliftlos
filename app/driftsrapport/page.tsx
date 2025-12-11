@@ -29,6 +29,8 @@ interface DriftsReport {
 	htiImageUrls?: string[];
 	/** Når rapporten ble lagret lokalt */
 	createdAt: number;
+		/** Hvilken enhet (telefon) som opprettet og sendte denne rapporten */
+		createdOnDeviceId?: string;
 	/** Faktisk tidspunkt (klokkeslett) for gjenopptatt drift, hvis sendt */
 	gjenopptattKl?: number;
 	/** Kommentar som ble sendt ved gjenopptatt drift */
@@ -64,8 +66,10 @@ function getDefaultTime() {
   return `${h}:${m}`;
 }
 
-	// Ny nøkkel for lokal lagring slik at gamle testdata ikke lastes inn etter "go live"
-	const STORAGE_KEY = "driftsrapport_reports_v2";
+		// Ny nøkkel for lokal lagring slik at gamle testdata ikke lastes inn etter "go live"
+		const STORAGE_KEY = "driftsrapport_reports_v2";
+		// Stabil ID per enhet, brukes til å avgjøre hvem som kan gjenoppta drift
+		const DEVICE_ID_KEY = "driftsrapport_device_id";
 
 function loadReports(): DriftsReport[] {
   if (typeof window === "undefined") return [];
@@ -84,6 +88,19 @@ function saveReports(reports: DriftsReport[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
 }
+
+	function getOrCreateDeviceId(): string {
+	  if (typeof window === "undefined") return "server";
+	  try {
+	    const existing = localStorage.getItem(DEVICE_ID_KEY);
+	    if (existing) return existing;
+	    const id = crypto.randomUUID();
+	    localStorage.setItem(DEVICE_ID_KEY, id);
+	    return id;
+	  } catch {
+	    return "unknown";
+	  }
+	}
 
 
 
@@ -130,7 +147,9 @@ function Section(props: { title: string; children: React.ReactNode }) {
 }
 
 	export default function DriftsrapportPage() {
-	  const router = useRouter();
+		  const router = useRouter();
+			// Stabil ID for denne enheten (telefonen)
+			const [deviceId] = useState<string>(() => getOrCreateDeviceId());
   const [step, setStep] = useState(0);
   const [base, setBase] = useState<Base>("Bergen");
   const [dato, setDato] = useState(getDefaultDate);
@@ -316,11 +335,12 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setUseHti(r.htiImageUrls && r.htiImageUrls.length > 0 ? "ja" : "nei");
   }
 
-	  async function saveCurrent(): Promise<DriftsReport> {
-	    const newReport: DriftsReport = {
-	      ...report,
-	      createdAt: Date.now(),
-	    };
+		  async function saveCurrent(): Promise<DriftsReport> {
+		    const newReport: DriftsReport = {
+		      ...report,
+		      createdAt: Date.now(),
+		      createdOnDeviceId: deviceId,
+		    };
 	    const next = [newReport, ...reports].sort(
 	      (a, b) => b.createdAt - a.createdAt
 	    );
@@ -1553,7 +1573,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
         )}
       </main>
       )}
-      {showArchive && !showStats && (
+	      {showArchive && !showStats && (
         <main className="mx-auto max-w-md p-4">
           <div className="bg-white rounded-2xl shadow divide-y">
             <div className="p-4 font-semibold">Arkiv (nyeste øverst)</div>
@@ -1564,74 +1584,77 @@ function Section(props: { title: string; children: React.ReactNode }) {
               </div>
             )}
 
-	            {reports.map((r) => {
-	              const alreadyResumed = Boolean(r.gjenopptattSendtAt);
-	              const resumedLabelTime =
-	                typeof r.gjenopptattKl === "number"
-	                  ? String(r.gjenopptattKl).padStart(2, "0") + ":00"
-	                  : null;
-	              return (
-	                <div key={r.id} className="p-4">
-	                  <div className="text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-	                    <div>
-	                      <div className="font-medium">
-	                        {r.base} – {r.dato} {r.tid}
-	                      </div>
-	                      <div className="text-gray-900 text-sm">
-	                        {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
-	                        {new Date(r.createdAt).toLocaleString()}
-	                      </div>
-	                      {alreadyResumed && (
-	                        <div className="mt-1 text-xs text-gray-700">
-	                          Drift gjenopptatt
-	                          {resumedLabelTime ? ` kl ${resumedLabelTime}` : ""}
-	                          {r.gjenopptattSendtAt
-	                            ? ` (melding sendt ${new Date(
-	                                r.gjenopptattSendtAt
-	                              ).toLocaleString()})`
-	                            : ""}
-	                        </div>
-	                      )}
-	                    </div>
-	
-	                    <div className="flex-1 flex flex-col gap-2 sm:items-end">
-	                      <div className="flex gap-2 justify-end">
-	                        <button
-	                          onClick={() => openExisting(r)}
-	                          className="text-blue-600 underline"
-	                        >
-	                          Åpne
-	                        </button>
-	                        <button
-	                          className="text-gray-900 underline"
-	                          onClick={() => resendReport(r)}
-	                        >
-	                          Send på nytt
-	                        </button>
-	                        <button
-	                          className="text-red-600 underline"
-	                          onClick={() => deleteReport(r.id)}
-	                        >
-	                          Slett
-	                        </button>
-	                      </div>
-	                      <button
-	                        type="button"
-	                        onClick={() => startResumeFlow(r)}
-	                        disabled={alreadyResumed}
-	                        className={`mt-1 w-full sm:w-auto px-3 py-2 rounded-xl text-sm font-semibold border transition ${
-	                          alreadyResumed
-	                            ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
-	                            : "bg-blue-600 text-white border-blue-700"
-	                        }`}
-	                      >
-	                        {alreadyResumed ? "Drift er gjenopptatt" : "Gjenoppta drift"}
-	                      </button>
-	                    </div>
-	                  </div>
-	                </div>
-	              );
-	            })}
+		            {reports.map((r) => {
+		              const alreadyResumed = Boolean(r.gjenopptattSendtAt);
+		              const canResumeOnThisDevice =
+		                !alreadyResumed && (!r.createdOnDeviceId || r.createdOnDeviceId === deviceId);
+		              const isResumeDisabled = alreadyResumed || !canResumeOnThisDevice;
+		              const resumedLabelTime =
+		                typeof r.gjenopptattKl === "number"
+		                  ? String(r.gjenopptattKl).padStart(2, "0") + ":00"
+		                  : null;
+		              return (
+		                <div key={r.id} className="p-4">
+		                  <div className="text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		                    <div>
+		                      <div className="font-medium">
+		                        {r.base} – {r.dato} {r.tid}
+		                      </div>
+		                      <div className="text-gray-900 text-sm">
+		                        {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
+		                        {new Date(r.createdAt).toLocaleString()}
+		                      </div>
+		                      {alreadyResumed && (
+		                        <div className="mt-1 text-xs text-gray-700">
+		                          Drift gjenopptatt
+		                          {resumedLabelTime ? ` kl ${resumedLabelTime}` : ""}
+		                          {r.gjenopptattSendtAt
+		                            ? ` (melding sendt ${new Date(
+		                                r.gjenopptattSendtAt
+		                              ).toLocaleString()})`
+		                            : ""}
+		                        </div>
+		                      )}
+		                    </div>
+		
+		                    <div className="flex-1 flex flex-col gap-2 sm:items-end">
+		                      <div className="flex gap-2 justify-end">
+		                        <button
+		                          onClick={() => openExisting(r)}
+		                          className="text-blue-600 underline"
+		                        >
+		                          Åpne
+		                        </button>
+		                        <button
+		                          className="text-gray-900 underline"
+		                          onClick={() => resendReport(r)}
+		                        >
+		                          Send på nytt
+		                        </button>
+		                        <button
+		                          className="text-red-600 underline"
+		                          onClick={() => deleteReport(r.id)}
+		                        >
+		                          Slett
+		                        </button>
+		                      </div>
+		                      <button
+		                        type="button"
+		                        onClick={() => startResumeFlow(r)}
+		                        disabled={isResumeDisabled}
+		                        className={`mt-1 w-full sm:w-auto px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+		                          isResumeDisabled
+		                            ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
+		                            : "bg-blue-600 text-white border-blue-700"
+		                        }`}
+		                      >
+		                        {alreadyResumed ? "Drift er gjenopptatt" : "Gjenoppta drift"}
+		                      </button>
+		                    </div>
+		                  </div>
+		                </div>
+		              );
+		            })}
           </div>
 
           <div className="mt-4">
