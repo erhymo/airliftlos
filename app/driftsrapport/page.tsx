@@ -911,7 +911,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
 
 		    for (const r of reports) {
 		      // Historiske rapporter fra Tromsø skal ikke inngå i statistikken
-		      if (r.base === "Tromsø") continue;
+		      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+		      if ((r as any).base === "Tromsø") continue;
 
 	      const [yearStr, monthStr] = r.dato.split("-");
 	      const y = Number(yearStr);
