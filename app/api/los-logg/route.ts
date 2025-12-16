@@ -138,25 +138,40 @@ async function appendRowToExcel(row: (string | number | null)[], sheetName: stri
 		const address = `A${nextRow}:R${nextRow}`;
 
 		// Skriv raden inn i riktig område på riktig ark
-		const patchRes = await fetch(
-			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='${address}')`,
-			{
-				method: "PATCH",
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"Content-Type": "application/json",
+			const patchRes = await fetch(
+				`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='${address}')`,
+				{
+					method: "PATCH",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ values: [row] }),
 				},
-				body: JSON.stringify({ values: [row] }),
-			},
-		);
+			);
+	
+		if (!patchRes.ok) {
+			const text = await patchRes.text().catch(() => "");
+			console.error("LOS-logg: Feil ved skriving til Excel", text);
 
-	if (!patchRes.ok) {
-		const text = await patchRes.text().catch(() => "");
-		console.error("LOS-logg: Feil ved skriving til Excel", text);
-		throw new Error(
-			`Klarte ikke å skrive rad til Excel (status ${patchRes.status}). Se logg for detaljer.`,
-		);
-	}
+			// Prøv å hente ut en mer forklarende feilmelding fra Graph-responsen
+			let detailedMessage = "";
+			try {
+				const parsed = JSON.parse(text) as { error?: { message?: string } };
+				if (parsed.error?.message) {
+					detailedMessage = parsed.error.message;
+				}
+			} catch {
+				// Ignorer JSON-parse-feil, vi faller tilbake til statuskode-meldingen
+			}
+
+			const baseMessage = `Klarte ikke å skrive rad til Excel (status ${patchRes.status}).`;
+			const combined = detailedMessage
+				? `${baseMessage} Detaljer fra Microsoft Graph: ${detailedMessage}`
+				: `${baseMessage} Se logg for flere detaljer.`;
+
+			throw new Error(combined);
+		}
 }
 
 export async function POST(req: Request) {
