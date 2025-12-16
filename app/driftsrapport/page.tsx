@@ -1873,9 +1873,9 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		                disabled={statsSending}
 		              />
 							<div className="mt-3">
-								<p className="text-xs text-gray-700 mb-1">
-									Passord (kun Tom  d8strem):
-								</p>
+							<p className="text-xs text-gray-700 mb-1">
+								Passord
+							</p>
 								<input
 									type="password"
 									value={statsPassword}
