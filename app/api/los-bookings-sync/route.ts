@@ -187,8 +187,32 @@ export async function GET(req: Request) {
   let created = 0;
   let updated = 0;
   const mailboxStats: MailboxStat[] = [];
+  const runStartedAt = Date.now();
 
   for (const mailbox of MAILBOXES) {
+    const metaRef = db.collection("losBookingsSyncMeta").doc(mailbox.email);
+    const metaSnap = await metaRef.get();
+    const lastProcessed = (metaSnap.exists
+      ? ((metaSnap.get("lastProcessedReceivedDateTime") as string | null) ?? null)
+      : null) as string | null;
+    let newLastProcessed: string | null = null;
+
+    if (!metaSnap.exists) {
+      const nowIso = new Date(runStartedAt).toISOString();
+      await metaRef.set({
+        lastProcessedReceivedDateTime: nowIso,
+        createdAt: runStartedAt,
+        updatedAt: runStartedAt,
+      });
+      // Frste gang for denne postboksen: marker "start n" og hopp over historiske meldinger.
+      mailboxStats.push({
+        mailbox: mailbox.email,
+        status: "ok",
+        messageCount: 0,
+      });
+      continue;
+    }
+
     const url = new URL(
       `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox.email)}/mailFolders/Inbox/messages`,
     );
@@ -234,6 +258,12 @@ export async function GET(req: Request) {
     });
 
     for (const msg of messages) {
+      const received = msg.receivedDateTime ?? null;
+      if (lastProcessed && received && received <= lastProcessed) {
+        // Allerede håndtert i en tidligere runde – hopp over.
+        continue;
+      }
+
       totalMessages += 1;
       const bodyHtml = msg.body?.content ?? "";
       const bodyText = htmlToText(bodyHtml);
@@ -244,9 +274,9 @@ export async function GET(req: Request) {
       const shipName = extractLine(bodyText, /Skip:?\s*([^\n\r]+)/i);
       const pilotName = extractLine(bodyText, /Los:?\s*([^\n\r]+)/i);
 
-	      const dateIso = parseDateFromText(bodyText, msg.receivedDateTime ?? undefined);
+      const dateIso = parseDateFromText(bodyText, msg.receivedDateTime ?? undefined);
 
-	      const gt = await lookupGtForVessel(shipName);
+      const gt = await lookupGtForVessel(shipName);
 
       const now = Date.now();
       const docRef = db.collection("losBookings").doc(msg.id);
@@ -279,6 +309,20 @@ export async function GET(req: Request) {
         await docRef.set(baseData, { merge: true });
         updated += 1;
       }
+
+      if (received && (!newLastProcessed || received > newLastProcessed)) {
+        newLastProcessed = received;
+      }
+    }
+ 
+    if (newLastProcessed) {
+      await metaRef.set(
+        {
+          lastProcessedReceivedDateTime: newLastProcessed,
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
     }
   }
 
