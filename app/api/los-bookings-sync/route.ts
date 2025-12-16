@@ -19,6 +19,14 @@ type GraphMessage = {
   } | null;
 };
 
+type MailboxStat = {
+  mailbox: string;
+  status: "ok" | "error";
+  httpStatus?: number;
+  messageCount?: number;
+  errorText?: string;
+};
+
 const MAILBOXES = [
   { email: "loshelikopter.bergen@airlift.no", base: "Bergen" },
   { email: "loshelikopter.hammerfest@airlift.no", base: "Hammerfest" },
@@ -178,6 +186,7 @@ export async function GET(req: Request) {
   let totalMessages = 0;
   let created = 0;
   let updated = 0;
+  const mailboxStats: MailboxStat[] = [];
 
   for (const mailbox of MAILBOXES) {
     const url = new URL(
@@ -206,11 +215,23 @@ export async function GET(req: Request) {
         res.status,
         text,
       );
+      mailboxStats.push({
+        mailbox: mailbox.email,
+        status: "error",
+        httpStatus: res.status,
+        errorText: text.slice(0, 300),
+      });
       continue;
     }
 
     const data = (await res.json()) as { value?: GraphMessage[] };
     const messages = data.value ?? [];
+
+    mailboxStats.push({
+      mailbox: mailbox.email,
+      status: "ok",
+      messageCount: messages.length,
+    });
 
     for (const msg of messages) {
       totalMessages += 1;
@@ -261,6 +282,6 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, totalMessages, created, updated });
+  return NextResponse.json({ ok: true, totalMessages, created, updated, mailboxStats });
 }
 
