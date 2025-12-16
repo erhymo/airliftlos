@@ -21,6 +21,7 @@ type LosLoggPayload = {
 	date?: string | null;
 	orderNumber?: string | null;
 	vesselName?: string | null;
+		gt?: number | null;
 	base?: string | null;
 	pilots?: string[];
 	techlogNumber?: number | null;

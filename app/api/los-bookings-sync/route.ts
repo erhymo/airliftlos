@@ -103,6 +103,60 @@ function parseDateFromText(text: string, fallbackIso?: string | null): string | 
   return null;
 }
 
+async function lookupGtForVessel(
+  vesselName: string | null | undefined,
+): Promise<number | null> {
+  if (!vesselName) return null;
+
+  const sessionId = process.env.KYSTVERKET_SHIPSEARCH_SESSION;
+  if (!sessionId) {
+    // Ingen API-nøkkel konfigurert ennå – la GT være manuell inntil videre.
+    return null;
+  }
+
+  try {
+    const res = await fetch(
+      "https://a3cloud.kystverket.no/api/kystverket/shipsearch/free-text",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          gm_session_id: sessionId,
+        } as Record<string, string>,
+        body: JSON.stringify({ FreeText: vesselName }),
+      },
+    );
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.warn(
+        "LOS-bookings-sync: ShipSearch free-text feilet",
+        res.status,
+        text.slice(0, 500),
+      );
+      return null;
+    }
+
+    // Vi kjenner ikke den endelige datastrukturen ennå.
+    // Logg et utdrag første gang slik at vi kan justere GT-parsingen senere.
+    const json = (await res.json().catch(() => null)) as unknown;
+    console.info(
+      "LOS-bookings-sync: ShipSearch free-text respons (utdrag)",
+      typeof json === "string"
+        ? json.slice(0, 500)
+        : JSON.stringify(json, null, 2).slice(0, 500),
+    );
+
+    // Inntil vi har sett faktisk respons og felt for bruttotonnasje (GT),
+    // returnerer vi null slik at GT fortsatt kan fylles inn manuelt.
+    return null;
+  } catch (error) {
+    console.error("LOS-bookings-sync: feil ved ShipSearch-oppslag", error);
+    return null;
+  }
+}
+
 export async function GET(req: Request) {
   const syncSecret = process.env.LOS_SYNC_SECRET;
   if (syncSecret) {
@@ -169,7 +223,9 @@ export async function GET(req: Request) {
       const shipName = extractLine(bodyText, /Skip:?\s*([^\n\r]+)/i);
       const pilotName = extractLine(bodyText, /Los:?\s*([^\n\r]+)/i);
 
-      const dateIso = parseDateFromText(bodyText, msg.receivedDateTime ?? undefined);
+	      const dateIso = parseDateFromText(bodyText, msg.receivedDateTime ?? undefined);
+
+	      const gt = await lookupGtForVessel(shipName);
 
       const now = Date.now();
       const docRef = db.collection("losBookings").doc(msg.id);
@@ -180,6 +236,7 @@ export async function GET(req: Request) {
         date: dateIso ?? null,
         orderNumber: orderNumber ?? null,
         base: mailbox.base,
+        gt: gt ?? null,
         pilots: pilotName ? [pilotName] : [],
         fromLocation: fromLocation ?? null,
         toLocation: toLocation ?? null,

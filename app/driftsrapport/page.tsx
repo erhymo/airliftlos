@@ -195,6 +195,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 			  const [resumeSending, setResumeSending] = useState(false);
 			  const [showStatsSendDialog, setShowStatsSendDialog] = useState(false);
 			  const [statsTo, setStatsTo] = useState("");
+			  const [statsPassword, setStatsPassword] = useState("");
 			  const [statsSending, setStatsSending] = useState(false);
 
   const report: DraftDriftsReport = useMemo(
@@ -752,6 +753,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	  }
 
 			async function handleSendStats() {
+				if (!statsPassword.trim()) {
+					alert("Skriv inn passord for å sende statistikk.");
+					return;
+				}
+
 				if (!statsTo.trim()) {
 					alert("Skriv inn minst én e-postadresse.");
 					return;
@@ -807,10 +813,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
 						body: JSON.stringify({
 							subject,
 							body: plainText,
-							fileName,
-							title,
-							to: statsTo,
-							year: selectedYear,
+								fileName,
+								title,
+								to: statsTo,
+								password: statsPassword,
+								year: selectedYear,
 							stats: {
 								perMonthCounts,
 								perMonthHours,
@@ -835,9 +842,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 						return;
 					}
 				
-					alert("Statistikk er sendt på e-post.");
-					setShowStatsSendDialog(false);
-					setStatsTo("");
+						alert("Statistikk er sendt på e-post.");
+						setShowStatsSendDialog(false);
+						setStatsTo("");
+						setStatsPassword("");
 				} finally {
 					setStatsSending(false);
 				}
@@ -901,9 +909,9 @@ function Section(props: { title: string; children: React.ReactNode }) {
       return { perCause, totalHours: 0 };
     });
 
-	    for (const r of reports) {
-	      // Historiske rapporter fra Tromsø skal ikke inngå i statistikken
-	      if ((r as any).base === "Tromsø") continue;
+		    for (const r of reports) {
+		      // Historiske rapporter fra Tromsø skal ikke inngå i statistikken
+		      if (r.base === "Tromsø") continue;
 
 	      const [yearStr, monthStr] = r.dato.split("-");
 	      const y = Number(yearStr);
@@ -1863,6 +1871,19 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		                placeholder="fornavn.etternavn@firma.no, annen@epost.no"
 		                disabled={statsSending}
 		              />
+							<div className="mt-3">
+								<p className="text-xs text-gray-700 mb-1">
+									Passord (kun Tom  d8strem):
+								</p>
+								<input
+									type="password"
+									value={statsPassword}
+									onChange={(e) => setStatsPassword(e.target.value)}
+									className="w-full border rounded-xl p-3 text-sm text-gray-900"
+									placeholder="Passord"
+									disabled={statsSending}
+								/>
+							</div>
 		              <div className="mt-4 flex justify-end gap-2">
 		                <button
 		                  type="button"

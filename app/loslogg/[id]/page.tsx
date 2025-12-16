@@ -11,8 +11,9 @@ const MOCK_BOOKING = {
 	date: "2025-01-03",
 	orderNumber: "123456",
 	base: "Bergen",
-	pilots: ["Los 1", "Los 2"],
-};
+		pilots: ["Los 1", "Los 2"],
+		gt: null as number | null,
+	};
 
 const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb-NO");
 
@@ -71,6 +72,7 @@ export default function LosLoggBookingPage() {
 								Array.isArray(data.booking.pilots) && data.booking.pilots.length > 0
 									? (data.booking.pilots as string[])
 									: MOCK_BOOKING.pilots,
+							gt: typeof data.booking.gt === "number" ? data.booking.gt : null,
 						});
 					}
 				} catch (error) {
@@ -133,13 +135,14 @@ export default function LosLoggBookingPage() {
 				const res = await fetch("/api/los-logg", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						bookingId: booking.id,
-						date: booking.date,
-						orderNumber: booking.orderNumber,
-						vesselName: booking.vesselName,
-						base: booking.base,
-						pilots: booking.pilots,
+						body: JSON.stringify({
+							bookingId: booking.id,
+							date: booking.date,
+							orderNumber: booking.orderNumber,
+							vesselName: booking.vesselName,
+							gt: booking.gt,
+							base: booking.base,
+							pilots: booking.pilots,
 						techlogNumber,
 						location,
 						losType,
@@ -202,6 +205,12 @@ export default function LosLoggBookingPage() {
 							<div className="flex justify-between">
 								<dt className="text-gray-600">Fartøy</dt>
 								<dd className="font-medium">{booking.vesselName}</dd>
+							</div>
+							<div className="flex justify-between">
+								<dt className="text-gray-600">GT (bruttotonnasje)</dt>
+								<dd className="font-medium">
+									{typeof booking.gt === "number" ? booking.gt.toLocaleString("nb-NO") : "–"}
+								</dd>
 							</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600">Base</dt>
@@ -283,6 +292,32 @@ export default function LosLoggBookingPage() {
 										</button>
 									),
 								)}
+						</div>
+						<div className="mt-4 space-y-1">
+							<label className="text-sm font-medium text-gray-700" htmlFor="gt-input">
+								GT (bruttotonnasje) – valgfritt nå, påkrevd fra 2026
+							</label>
+							<input
+								id="gt-input"
+								type="number"
+								inputMode="numeric"
+								className="w-full rounded-md border border-gray-300 px-3 py-2 text-right text-sm"
+								value={booking.gt ?? ""}
+								onChange={(e) => {
+									const value = e.target.value.trim();
+									if (value === "") {
+										setBooking((prev) => ({ ...prev, gt: null }));
+										return;
+									}
+									const parsed = Number.parseInt(value, 10);
+									if (Number.isNaN(parsed)) return;
+									setBooking((prev) => ({ ...prev, gt: parsed }));
+								}}
+							/>
+							<p className="text-[11px] text-gray-500">
+								Hvis vi finner GT automatisk fra ShipRep vil feltet fylles inn her, ellers kan du skrive det inn
+								manuelt.
+							</p>
 						</div>
 					</section>
 				)}
@@ -483,10 +518,16 @@ export default function LosLoggBookingPage() {
 								<dt className="text-gray-600">Fartøy</dt>
 								<dd className="font-medium">{booking.vesselName}</dd>
 							</div>
-								<div className="flex justify-between">
-									<dt className="text-gray-600">Dato</dt>
-									<dd className="font-medium">{formatDate(booking.date)}</dd>
-								</div>
+							<div className="flex justify-between">
+								<dt className="text-gray-600">GT</dt>
+								<dd className="font-medium">
+									{typeof booking.gt === "number" ? booking.gt.toLocaleString("nb-NO") : "–"}
+								</dd>
+							</div>
+							<div className="flex justify-between">
+								<dt className="text-gray-600">Dato</dt>
+								<dd className="font-medium">{formatDate(booking.date)}</dd>
+							</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600">Ordrenr.</dt>
 								<dd className="font-medium">{booking.orderNumber}</dd>

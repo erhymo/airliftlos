@@ -58,6 +58,8 @@ interface SendStatsPayload {
 	fromName?: string;
 	year?: number;
 	stats?: StatsTablesPayload;
+	/** Ekstra passordkrav for å sende statistikk (kun Tom Østrem skal ha dette) */
+	password?: string;
 }
 
 async function loadLogoImage(pdf: PDFDocument): Promise<PDFImage | undefined> {
@@ -378,7 +380,21 @@ export async function POST(req: Request) {
 	    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 	  }
 
-	  const { subject, body, to, title, fileName, fromName, year, stats } = payload;
+		const { subject, body, to, title, fileName, fromName, year, stats, password } =
+			payload;
+
+	const statsPasswordEnv = process.env.STATS_SEND_PASSWORD;
+
+	// Hvis STATS_SEND_PASSWORD er satt i miljøvariabler, krever vi at
+	// klienten sender inn korrekt passord for å få lov til å sende statistikk.
+	if (statsPasswordEnv) {
+		if (!password || password !== statsPasswordEnv) {
+			return NextResponse.json(
+				{ error: "Feil passord for å sende statistikk" },
+				{ status: 403 },
+			);
+		}
+	}
 
   if (!subject || !body || !to || !title || !fileName) {
     return NextResponse.json(
