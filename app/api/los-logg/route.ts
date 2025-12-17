@@ -121,43 +121,58 @@ async function appendRowToExcel(row: (string | number | null)[], sheetName: stri
 		.filter(Boolean)
 		.map((segment) => encodeURIComponent(segment))
 		.join("/");
-	const baseUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/workbook`;
+		const baseUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/workbook`;
 
-	// Finn neste ledige rad basert på brukt område i arket
-	const usedRes = await fetch(
-		`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/usedRange(valuesOnly=true)`,
-		{ headers: { Authorization: `Bearer ${token}` } },
-	);
-	if (!usedRes.ok) {
-		const text = await usedRes.text().catch(() => "");
-		console.error(
-			`LOS-logg: Klarte ikke å lese brukt område for arket ${sheetName}. Status ${usedRes.status}. Respons:`,
-			text,
+		// Finn neste ledige rad basert på siste brukte rad i selve LOS-griden.
+		// Vi bruker kolonne C (Sign) som "anker" siden den alltid er utfylt for faktiske rader.
+		const usedRes = await fetch(
+			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='C:C')/usedRange(valuesOnly=true)`,
+			{ headers: { Authorization: `Bearer ${token}` } },
 		);
-		throw new Error(
-			`Klarte ikke å lese brukt område for arket ${sheetName} (status ${usedRes.status}).`,
-		);
-	}
+		if (!usedRes.ok) {
+			const text = await usedRes.text().catch(() => "");
+			console.error(
+				`LOS-logg: Klarte ikke å lese brukt område (kolonne C) for arket ${sheetName}. Status ${usedRes.status}. Respons:`,
+				text,
+			);
+			throw new Error(
+				`Klarte ikke å lese brukt område for arket ${sheetName} (status ${usedRes.status}).`,
+			);
+		}
 
-		const used = (await usedRes.json()) as { values?: unknown[][] };
-		const rowCount = used.values?.length ?? 1; // minst header-rad
-		const nextRow = rowCount + 1;
+		const used = (await usedRes.json()) as { values?: unknown[][]; address?: string; addressLocal?: string };
+		const rowCount = used.values?.length ?? 0;
+
+		// Finn start-raden til usedRange fra adressen, f.eks. "Januar!C5:C200" -> startRow = 5
+		let startRow = 1;
+		const addr = used.address ?? used.addressLocal;
+		if (typeof addr === "string") {
+			const afterBang = addr.split("!")[1] ?? ""; // f.eks. "C5:C200" eller "C5"
+			const firstCell = afterBang.split(":")[0]; // "C5"
+			const match = firstCell.match(/(\d+)/);
+			if (match) {
+				startRow = Number.parseInt(match[1], 10) || 1;
+			}
+		}
+
+		// Neste rad er rett under siste faktiske verdi i kolonne C
+		const nextRow = rowCount > 0 ? startRow + rowCount : startRow;
 		// Vi peker eksplisitt på arket via worksheets('{sheetName}') og bruker lokal adresse A:R
 		const address = `A${nextRow}:R${nextRow}`;
 
 		// Skriv raden inn i riktig område på riktig ark
-			const patchRes = await fetch(
-				`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='${address}')`,
-				{
-					method: "PATCH",
-					headers: {
-						Authorization: `Bearer ${token}`,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({ values: [row] }),
+		const patchRes = await fetch(
+			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='${address}')`,
+			{
+				method: "PATCH",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
 				},
-			);
-	
+				body: JSON.stringify({ values: [row] }),
+			},
+		);
+
 		if (!patchRes.ok) {
 			const text = await patchRes.text().catch(() => "");
 			console.error("LOS-logg: Feil ved skriving til Excel", text);
