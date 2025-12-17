@@ -58,7 +58,8 @@ export default async function LosLoggHome() {
 				<header className="space-y-1">
 					<h1 className="text-lg font-semibold">LOS-logg</h1>
 					<p className="text-sm text-gray-600">
-						Her ser du åpne LOS-bestillinger fra Kystverket som venter på at LOS-logg fylles ut.
+						Her ser du åpne LOS-bestillinger fra Kystverket. Velg en bestilling, kontroller forhåndsutfylt info,
+						fyll ut resten og trykk «Send LOS-logg». Når du sender, oppdateres LOS-logg og status i appen automatisk.
 					</p>
 				</header>
 
