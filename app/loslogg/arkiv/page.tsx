@@ -7,7 +7,7 @@ type ArchiveRow = {
 	id: string;
 	date: string;
 	orderNumber: string;
-	techlogNumber: number | null;
+	techlogNumber: string;
 	vesselName: string;
 };
 
@@ -45,19 +45,19 @@ export default async function LosLoggArchivePage({
 	const monthParam = Array.isArray(monthParamRaw) ? monthParamRaw[0] : monthParamRaw;
 	const db = getDb();
 
-	let rows: ArchiveRow[] = [];
-	try {
-		const snapshot = await db
-			.collection("losBookings")
-			.where("status", "==", "closed")
-			.get();
+		let rows: ArchiveRow[] = [];
+		try {
+			const snapshot = await db
+				.collection("losBookings")
+				.where("status", "==", "closed")
+				.get();
 
 			rows = snapshot.docs
 				.map((doc) => {
 					const data = doc.data() as {
 						date?: string | null;
 						orderNumber?: string | null;
-						techlogNumber?: number | null;
+						techlogNumber?: number | string | null;
 						vesselName?: string | null;
 					};
 
@@ -66,7 +66,9 @@ export default async function LosLoggArchivePage({
 						date: data.date ?? "",
 						orderNumber: data.orderNumber ?? "",
 						techlogNumber:
-							typeof data.techlogNumber === "number" ? data.techlogNumber : null,
+							data.techlogNumber !== undefined && data.techlogNumber !== null
+								? String(data.techlogNumber)
+								: "",
 						vesselName: data.vesselName ?? "Ukjent fartøy",
 					};
 				})
@@ -199,7 +201,7 @@ export default async function LosLoggArchivePage({
 												{row.orderNumber || "-"}
 											</td>
 											<td className="px-2 py-1.5 text-gray-900">
-												{row.techlogNumber ?? "-"}
+												{row.techlogNumber || "-"}
 											</td>
 												<td className="px-2 py-1.5 text-gray-900">
 													{row.vesselName}
