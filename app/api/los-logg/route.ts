@@ -116,47 +116,61 @@ async function appendRowToExcel(row: (string | number | null)[], sheetName: stri
 		throw new Error("LOS-logg: Mangler Graph-token for å skrive til Excel.");
 	}
 
-	const encodedPath = excelPath
-		.split("/")
-		.filter(Boolean)
-		.map((segment) => encodeURIComponent(segment))
-		.join("/");
+		const encodedPath = excelPath
+			.split("/")
+			.filter(Boolean)
+			.map((segment) => encodeURIComponent(segment))
+			.join("/");
 		const baseUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/workbook`;
 
-		// Finn neste ledige rad basert på siste brukte rad i selve LOS-griden.
-		// Vi bruker kolonne C (Sign) som "anker" siden den alltid er utfylt for faktiske rader.
-		const usedRes = await fetch(
-			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='C:C')/usedRange(valuesOnly=true)`,
+		// Finn neste ledige rad i selve LOS-griden ved å se etter første "tomme" rad
+		// under header-raden (der kolonne C har teksten "Sign"). En rad regnes som
+		// tom hvis nøkkelfeltene vi fyller (Sign, Ordrenummer, Navn på fartøy) er
+		// tomme – vi ignorerer formatering og evt. formler i andre kolonner.
+		const rangeRes = await fetch(
+			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='A1:R500')`,
 			{ headers: { Authorization: `Bearer ${token}` } },
 		);
-		if (!usedRes.ok) {
-			const text = await usedRes.text().catch(() => "");
+		if (!rangeRes.ok) {
+			const text = await rangeRes.text().catch(() => "");
 			console.error(
-				`LOS-logg: Klarte ikke å lese brukt område (kolonne C) for arket ${sheetName}. Status ${usedRes.status}. Respons:`,
+				`LOS-logg: Klarte ikke å lese område A1:R500 for arket ${sheetName}. Status ${rangeRes.status}. Respons:`,
 				text,
 			);
 			throw new Error(
-				`Klarte ikke å lese brukt område for arket ${sheetName} (status ${usedRes.status}).`,
+				`Klarte ikke å lese brukt område for arket ${sheetName} (status ${rangeRes.status}).`,
 			);
 		}
 
-		const used = (await usedRes.json()) as { values?: unknown[][]; address?: string; addressLocal?: string };
-		const rowCount = used.values?.length ?? 0;
+		const rangeData = (await rangeRes.json()) as { values?: unknown[][] };
+		const values = (rangeData.values ?? []) as (string | number | null)[][];
 
-		// Finn start-raden til usedRange fra adressen, f.eks. "Januar!C5:C200" -> startRow = 5
-		let startRow = 1;
-		const addr = used.address ?? used.addressLocal;
-		if (typeof addr === "string") {
-			const afterBang = addr.split("!")[1] ?? ""; // f.eks. "C5:C200" eller "C5"
-			const firstCell = afterBang.split(":")[0]; // "C5"
-			const match = firstCell.match(/(\d+)/);
-			if (match) {
-				startRow = Number.parseInt(match[1], 10) || 1;
+		// Finn header-raden for griden (der kolonne C har "Sign"), så vi starter søket under den
+		let startIndex = 0;
+		for (let i = 0; i < values.length; i += 1) {
+			const cell = values[i]?.[2]; // kolonne C
+			if (typeof cell === "string" && cell.trim().toLowerCase() === "sign") {
+				startIndex = i + 1;
+				break;
 			}
 		}
 
-		// Neste rad er rett under siste faktiske verdi i kolonne C
-		const nextRow = rowCount > 0 ? startRow + rowCount : startRow;
+		// Finn første rad der nøkkelfeltene vi fyller er helt tomme
+		// C (Sign), E (Ordrenummer), G (Navn på fartøy).
+		let nextRow = values.length + 1; // fallback hvis vi ikke finner tom rad
+		for (let i = startIndex; i < values.length; i += 1) {
+			const rowValues = values[i] ?? [];
+			const signVal = rowValues[2]; // C
+			const orderVal = rowValues[4]; // E
+			const vesselVal = rowValues[6]; // G
+			const isEmpty = [signVal, orderVal, vesselVal].every((v) => v === null || v === "" || typeof v === "undefined");
+			if (isEmpty) {
+				// Range A1:R500 starter på rad 1, så vi legger til 1 for å få faktisk radnummer
+				nextRow = i + 1;
+				break;
+			}
+		}
+
 		// Vi peker eksplisitt på arket via worksheets('{sheetName}') og bruker lokal adresse A:R
 		const address = `A${nextRow}:R${nextRow}`;
 
