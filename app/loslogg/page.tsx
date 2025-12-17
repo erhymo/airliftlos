@@ -2,6 +2,10 @@ import Link from "next/link";
 import { getDb } from "../../lib/firebaseAdmin";
 import LosLoggClient from "./LosLoggClient";
 
+// Sørg for at denne siden alltid henter ferske data fra Firestore
+// (ikke statisk bygges eller caches for lenge).
+export const dynamic = "force-dynamic";
+
 type DisplayBooking = {
 	id: string;
 	vesselName: string;
