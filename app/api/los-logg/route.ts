@@ -36,6 +36,14 @@ type LosLoggPayload = {
 	sign?: string | null;
 };
 
+	function getExcelVesselName(raw?: string | null): string {
+		if (!raw) return "";
+		// Fjern eventuelle koder/registreringer i parentes til slutt,
+		// f.eks. "ALFA FINLANDIA (C6D7Y)" -> "ALFA FINLANDIA".
+		const withoutParen = raw.replace(/\s*\([^)]*\)\s*$/, "");
+		return withoutParen.trim();
+	}
+
 function getExcelDateAndSheet(dateIso?: string | null) {
 	const d = dateIso ? new Date(dateIso) : new Date();
 	if (Number.isNaN(d.getTime())) {
@@ -212,6 +220,7 @@ export async function POST(req: Request) {
 
 		const { excelDate, sheetName } = getExcelDateAndSheet(body.date);
 		const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
+			const vesselForExcel = getExcelVesselName(body.vesselName ?? "");
 
 		const row: (string | number | null)[] = [
 			null, // A Fakt.
@@ -220,7 +229,7 @@ export async function POST(req: Request) {
 			excelDate, // D Dato (DD.MM.ÅÅÅÅ)
 			body.orderNumber ?? "", // E Ordrenummer
 			body.techlogNumber ?? "", // F Techlognummer
-			body.vesselName ?? "", // G Navn på fartøy
+				vesselForExcel, // G Navn på fartøy (uten registreringskode i parentes)
 			body.location ?? "", // H Sted
 			body.losType ?? "", // I Type
 			hasLos ? 1 : "", // J Skriv 1 hvis LOS
