@@ -31,14 +31,16 @@ export const FIRST_OFFICERS = [
 ].sort((a, b) => a.localeCompare(b, "nb-NO"));
 
 const TECHNICIANS = [
-  "MÆL",
-  "KRO",
-  "DYP",
-  "STE",
-  "FIK",
-  "HØV",
-  "ROT",
-  "ADS",
+	"MÆL",
+	"KRO",
+	"DYP",
+	"STE",
+	"FIK",
+	"HØV",
+	"ROT",
+	"ADS",
+	"FES",
+	"HES",
 ].sort((a, b) => a.localeCompare(b, "nb-NO"));
 
 function parseCrew(initialCrew: string) {
