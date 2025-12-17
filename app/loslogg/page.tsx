@@ -26,28 +26,36 @@ export default async function LosLoggHome() {
 	let bookings: DisplayBooking[] = [];
 
 	try {
-		const db = getDb();
-		const snapshot = await db
-			.collection("losBookings")
-			.orderBy("createdAt", "desc")
-			.get();
+			const db = getDb();
+			const snapshot = await db
+				.collection("losBookings")
+				.orderBy("createdAt", "desc")
+				.get();
 
-		bookings = snapshot.docs.map((doc) => {
-			const data = doc.data() as {
-				vesselName?: string;
-				date?: string;
-				fromLocation?: string | null;
-				toLocation?: string | null;
-			};
+			bookings = snapshot.docs.reduce<DisplayBooking[]>((acc, doc) => {
+				const data = doc.data() as {
+					vesselName?: string;
+					date?: string;
+					fromLocation?: string | null;
+					toLocation?: string | null;
+					status?: string | null;
+				};
 
-			return {
-				id: doc.id,
-				vesselName: data.vesselName ?? "Ukjent fartøy",
-				date: data.date ?? new Date().toISOString().slice(0, 10),
-				fromLocation: data.fromLocation ?? null,
-				toLocation: data.toLocation ?? null,
-			};
-		});
+				// Vis bare åpne bestillinger. De som har fått LOS-logg sendt til Excel blir
+				// merket med status "closed" i Firestore og skjules her.
+				if (data.status === "closed") {
+					return acc;
+				}
+
+				acc.push({
+					id: doc.id,
+					vesselName: data.vesselName ?? "Ukjent fartøy",
+					date: data.date ?? new Date().toISOString().slice(0, 10),
+					fromLocation: data.fromLocation ?? null,
+					toLocation: data.toLocation ?? null,
+				});
+				return acc;
+			}, []);
 	} catch (error) {
 		console.error("Klarte ikke å hente los-bookinger fra Firestore", error);
 	}

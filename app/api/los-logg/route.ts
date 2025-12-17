@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getDb } from "../../../lib/firebaseAdmin";
 
 const MONTH_SHEETS = [
 	"Januar",
@@ -251,7 +252,7 @@ export async function POST(req: Request) {
 		const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
 			const vesselForExcel = getExcelVesselName(body.vesselName ?? "");
 
-		const row: (string | number | null)[] = [
+			const row: (string | number | null)[] = [
 			null, // A Fakt.
 			null, // B Løpenummer
 			body.sign.toUpperCase(), // C Sign
@@ -269,12 +270,42 @@ export async function POST(req: Request) {
 			body.losToAirportCount ?? "", // O Antall los til flyplass
 			body.enfjLandings ?? "", // P Antall landinger ENFJ
 			body.hoistCount ?? "", // Q Hoists
-			body.comment ?? "", // R Kommentar
-		];
+				body.comment ?? "", // R Kommentar
+			];
+		
+			await appendRowToExcel(row, sheetName);
 
-		await appendRowToExcel(row, sheetName);
-
-		return NextResponse.json({ ok: true });
+			// Hvis denne LOS-loggen hører til en importert bestilling, marker den som lukket
+			// i Firestore slik at den ikke lenger vises som åpen i LOS-logg-listen.
+			if (body.bookingId) {
+				try {
+					const db = getDb();
+					const ref = db.collection("losBookings").doc(body.bookingId);
+					const snap = await ref.get();
+					if (snap.exists) {
+						await ref.set(
+							{
+								status: "closed",
+								losLogSentAt: Date.now(),
+								losLogSign: body.sign?.toUpperCase() ?? null,
+							},
+							{ merge: true },
+						);
+					} else {
+						console.warn(
+							"LOS-logg: bookingId finnes ikke i losBookings, hopper over status-oppdatering",
+							body.bookingId,
+						);
+					}
+				} catch (err) {
+					console.error(
+						"LOS-logg: klarte ikke å markere losBookings-dokument som lukket etter sending til Excel",
+						err,
+					);
+				}
+			}
+		
+			return NextResponse.json({ ok: true });
 	} catch (error) {
 		console.error("Feil i LOS-logg POST", error);
 		const message =
