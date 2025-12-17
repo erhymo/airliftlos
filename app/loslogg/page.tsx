@@ -55,13 +55,21 @@ export default async function LosLoggHome() {
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-				<header className="space-y-1">
-					<h1 className="text-lg font-semibold">LOS-logg</h1>
-					<p className="text-sm text-gray-600">
-						Her ser du åpne LOS-bestillinger fra Kystverket. Velg en bestilling, kontroller forhåndsutfylt info,
-						fyll ut resten og trykk «Send LOS-logg». Når du sender, oppdateres LOS-logg og status i appen automatisk.
-					</p>
-				</header>
+					<header className="space-y-1">
+						<div className="flex items-center justify-between gap-2">
+							<h1 className="text-lg font-semibold">LOS-logg</h1>
+							<Link
+								href="/loslogg/arkiv"
+								className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+							>
+								Arkiv
+							</Link>
+						</div>
+						<p className="text-sm text-gray-600">
+							Her ser du åpne LOS-bestillinger fra Kystverket. Velg en bestilling, kontroller forhåndsutfylt info,
+							fyll ut resten og trykk «Send LOS-logg». Når du sender, oppdateres LOS-logg og status i appen automatisk.
+						</p>
+					</header>
 
 				<LosLoggClient initialBookings={bookings} />
 

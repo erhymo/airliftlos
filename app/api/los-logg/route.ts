@@ -283,14 +283,16 @@ export async function POST(req: Request) {
 					const ref = db.collection("losBookings").doc(body.bookingId);
 					const snap = await ref.get();
 					if (snap.exists) {
-						await ref.set(
-							{
+							const updateData: Record<string, unknown> = {
 								status: "closed",
 								losLogSentAt: Date.now(),
 								losLogSign: body.sign?.toUpperCase() ?? null,
-							},
-							{ merge: true },
-						);
+							};
+							if (typeof body.techlogNumber === "number") {
+								updateData.techlogNumber = body.techlogNumber;
+							}
+
+							await ref.set(updateData, { merge: true });
 					} else {
 						console.warn(
 							"LOS-logg: bookingId finnes ikke i losBookings, hopper over status-oppdatering",
