@@ -14,18 +14,6 @@ type DisplayBooking = {
 	toLocation?: string | null;
 };
 
-	const mockBookings: DisplayBooking[] = [
-	{
-		id: "sola-ts-demo",
-		vesselName: "SOLA TS",
-		date: "2025-01-03",
-		fromLocation: null,
-		toLocation: null,
-	},
-	];
-
-	const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb-NO");
-
 export default async function LosLoggHome() {
 	let bookings: DisplayBooking[] = [];
 
@@ -64,20 +52,17 @@ export default async function LosLoggHome() {
 		console.error("Klarte ikke å hente los-bookinger fra Firestore", error);
 	}
 
-		const displayBookings = bookings.length > 0 ? bookings : mockBookings;
-
-		return (
+	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
 				<header className="space-y-1">
 					<h1 className="text-lg font-semibold">LOS-logg</h1>
-						<p className="text-sm text-gray-600">
-									Denne siden skal brukes til automatisk utfylling av LOS-logg fra bestillingsmail.
-									Foreløpig viser vi enten åpne bestillinger (hvis noen finnes) eller en demo-bestilling.
-						</p>
+					<p className="text-sm text-gray-600">
+						Her ser du åpne LOS-bestillinger fra Kystverket som venter på at LOS-logg fylles ut.
+					</p>
 				</header>
 
-					<LosLoggClient initialBookings={displayBookings} />
+				<LosLoggClient initialBookings={bookings} />
 
 				<div className="pt-2">
 					<Link
