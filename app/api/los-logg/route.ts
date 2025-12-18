@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getDb } from "../../../lib/firebaseAdmin";
+import { saveGtForVessel } from "../../../lib/vesselGt";
 
 const MONTH_SHEETS = [
 	"Januar",
@@ -276,6 +277,19 @@ export async function POST(req: Request) {
 		
 			await appendRowToExcel(row, sheetName);
 
+			// Lagre GT mot fartøynavnet slik at neste bestilling for samme båt
+			// kan få GT forhåndsutfylt automatisk.
+			if (typeof body.gt === "number" && body.vesselName) {
+				try {
+					await saveGtForVessel(body.vesselName, body.gt, "manual");
+				} catch (err) {
+					console.warn(
+						"LOS-logg: klarte ikke å oppdatere vesselGt med manuell GT-verdi",
+						err,
+					);
+				}
+			}
+
 			// Hvis denne LOS-loggen hører til en importert bestilling, marker den som lukket
 			// i Firestore slik at den ikke lenger vises som åpen i LOS-logg-listen.
 			if (body.bookingId) {
@@ -284,7 +298,7 @@ export async function POST(req: Request) {
 					const ref = db.collection("losBookings").doc(body.bookingId);
 					const snap = await ref.get();
 					if (snap.exists) {
-							const updateData: Record<string, unknown> = {
+								const updateData: Record<string, unknown> = {
 								status: "closed",
 								losLogSentAt: Date.now(),
 								losLogSign: body.sign?.toUpperCase() ?? null,
@@ -292,6 +306,9 @@ export async function POST(req: Request) {
 							if (typeof body.techlogNumber === "number") {
 								updateData.techlogNumber = body.techlogNumber;
 							}
+								if (typeof body.gt === "number") {
+									updateData.gt = body.gt;
+								}
 
 							await ref.set(updateData, { merge: true });
 					} else {
