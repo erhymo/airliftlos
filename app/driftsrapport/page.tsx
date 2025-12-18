@@ -1618,7 +1618,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		                        {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
 		                        {new Date(r.createdAt).toLocaleString()}
 		                      </div>
-		                      {alreadyResumed && (
+                      {treatedAsResumed && (
 		                        <div className="mt-1 text-xs text-gray-700">
 		                          Drift gjenopptatt
 		                          {resumedLabelTime ? ` kl ${resumedLabelTime}` : ""}
