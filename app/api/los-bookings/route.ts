@@ -1,62 +1,51 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getDb } from "../../../lib/firebaseAdmin";
 
 type FirestoreLosBooking = {
-	id: string;
-	[key: string]: unknown;
+  id: string;
+  [key: string]: unknown;
 };
 
 export async function GET(req: Request) {
-  const accessCode = process.env.ACCESS_CODE;
+  try {
+    const url = new URL(req.url);
+    const id = url.searchParams.get("id");
+    const db = getDb();
 
-  // Krev tilgangs-cookie hvis ACCESS_CODE er satt (samme mønster som andre API)
-  if (accessCode) {
-    const cookieStore = await cookies();
-    const accessCookie = cookieStore.get("airliftlos_access");
-    if (!accessCookie || accessCookie.value !== "ok") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (id) {
+      const doc = await db.collection("losBookings").doc(id).get();
+      if (!doc.exists) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      const data = doc.data() as Record<string, unknown>;
+      return NextResponse.json({ ok: true, booking: { id: doc.id, ...data } });
     }
-  }
 
-	try {
-		const url = new URL(req.url);
-		const id = url.searchParams.get("id");
-			const db = getDb();
+    const snapshot = await db
+      .collection("losBookings")
+      .orderBy("createdAt", "desc")
+      .get();
 
-			if (id) {
-				const doc = await db.collection("losBookings").doc(id).get();
-				if (!doc.exists) {
-					return NextResponse.json({ error: "Not found" }, { status: 404 });
-				}
-				const data = doc.data() as Record<string, unknown>;
-				return NextResponse.json({ ok: true, booking: { id: doc.id, ...data } });
-			}
+    const bookings: FirestoreLosBooking[] = snapshot.docs.reduce<FirestoreLosBooking[]>(
+      (acc, doc) => {
+        const data = doc.data() as Record<string, unknown> & { status?: string | null };
 
-			const snapshot = await db
-				.collection("losBookings")
-				.orderBy("createdAt", "desc")
-				.get();
+        // Skjul bestillinger som er markert som ferdige (status "closed").
+        if (data.status === "closed") {
+          return acc;
+        }
 
-			const bookings: FirestoreLosBooking[] = snapshot.docs.reduce<FirestoreLosBooking[]>(
-				(acc, doc) => {
-					const data = doc.data() as Record<string, unknown> & { status?: string | null };
+        acc.push({
+          id: doc.id,
+          ...data,
+        });
 
-					// Skjul bestillinger som er markert som ferdige (status "closed").
-					if (data.status === "closed") {
-						return acc;
-					}
+        return acc;
+      },
+      [],
+    );
 
-					acc.push({
-						id: doc.id,
-						...data,
-					});
-					return acc;
-				},
-				[],
-			);
-
-			return NextResponse.json({ ok: true, bookings });
+    return NextResponse.json({ ok: true, bookings });
   } catch (error) {
     console.error("Failed to fetch losBookings from Firestore", error);
     return NextResponse.json(
@@ -65,4 +54,3 @@ export async function GET(req: Request) {
     );
   }
 }
-
