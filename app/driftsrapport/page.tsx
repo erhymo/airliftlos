@@ -1593,15 +1593,20 @@ function Section(props: { title: string; children: React.ReactNode }) {
               </div>
             )}
 
-		            {reports.map((r) => {
-		              const alreadyResumed = Boolean(r.gjenopptattSendtAt);
-		              const canResumeOnThisDevice =
-		                !alreadyResumed && (!r.createdOnDeviceId || r.createdOnDeviceId === deviceId);
-		              const isResumeDisabled = alreadyResumed || !canResumeOnThisDevice;
-		              const resumedLabelTime =
-		                typeof r.gjenopptattKl === "number"
-		                  ? String(r.gjenopptattKl).padStart(2, "0") + ":00"
-		                  : null;
+            {reports.map((r) => {
+	              const alreadyResumedFromServer = Boolean(r.gjenopptattSendtAt);
+	              const hasCreatorDevice = Boolean(r.createdOnDeviceId);
+	              // Historiske rapporter uten createdOnDeviceId skal ikke kunne gjenopptas
+	              // med den nye funksjonen. Vi behandler dem som "allerede gjenopptatt"
+	              // i UI slik at knappen blir grået ut og ikke kan trykkes.
+	              const treatedAsResumed = alreadyResumedFromServer || !hasCreatorDevice;
+	              const canResumeOnThisDevice =
+	                !treatedAsResumed && r.createdOnDeviceId === deviceId;
+	              const isResumeDisabled = treatedAsResumed || !canResumeOnThisDevice;
+	              const resumedLabelTime =
+	                typeof r.gjenopptattKl === "number"
+	                  ? String(r.gjenopptattKl).padStart(2, "0") + ":00"
+	                  : null;
 		              return (
 		                <div key={r.id} className="p-4">
 		                  <div className="text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1656,8 +1661,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		                            ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
 		                            : "bg-blue-600 text-white border-blue-700"
 		                        }`}
-		                      >
-		                        {alreadyResumed ? "Drift er gjenopptatt" : "Gjenoppta drift"}
+	                        >
+	                        {treatedAsResumed ? "Drift er gjenopptatt" : "Gjenoppta drift"}
 		                      </button>
 		                    </div>
 		                  </div>
