@@ -128,10 +128,10 @@ async function appendRowToExcel(row: (string | number | null)[], sheetName: stri
 		// under header-raden (der kolonne C har teksten "Sign"). En rad regnes som
 		// tom hvis nøkkelfeltene vi fyller (Sign, Ordrenummer, Navn på fartøy) er
 		// tomme – vi ignorerer formatering og evt. formler i andre kolonner.
-		const rangeRes = await fetch(
-			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='A1:R500')`,
-			{ headers: { Authorization: `Bearer ${token}` } },
-		);
+			const rangeRes = await fetch(
+				`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='A1:S500')`,
+				{ headers: { Authorization: `Bearer ${token}` } },
+			);
 		if (!rangeRes.ok) {
 			const text = await rangeRes.text().catch(() => "");
 			console.error(
@@ -172,8 +172,8 @@ async function appendRowToExcel(row: (string | number | null)[], sheetName: stri
 			}
 		}
 
-		// Vi peker eksplisitt på arket via worksheets('{sheetName}') og bruker lokal adresse A:R
-		const address = `A${nextRow}:R${nextRow}`;
+			// Vi peker eksplisitt på arket via worksheets('{sheetName}') og bruker lokal adresse A:S
+			const address = `A${nextRow}:S${nextRow}`;
 
 		// Skriv raden inn i riktig område på riktig ark
 		const patchRes = await fetch(
@@ -248,29 +248,30 @@ export async function POST(req: Request) {
 			);
 		}
 
-		const { excelDate, sheetName } = getExcelDateAndSheet(body.date);
-		const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
+			const { excelDate, sheetName } = getExcelDateAndSheet(body.date);
+			const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
 			const vesselForExcel = getExcelVesselName(body.vesselName ?? "");
 
 			const row: (string | number | null)[] = [
-			null, // A Fakt.
-			null, // B Løpenummer
-			body.sign.toUpperCase(), // C Sign
-			excelDate, // D Dato (DD.MM.ÅÅÅÅ)
-			body.orderNumber ?? "", // E Ordrenummer
-			body.techlogNumber ?? "", // F Techlognummer
+				null, // A Fakt.
+				null, // B Løpenummer
+				body.sign.toUpperCase(), // C Sign
+				excelDate, // D Dato (DD.MM.ÅÅÅÅ)
+				body.orderNumber ?? "", // E Ordrenummer
+				body.techlogNumber ?? "", // F Techlognummer
 				vesselForExcel, // G Navn på fartøy (uten registreringskode i parentes)
-			body.location ?? "", // H Sted
-			body.losType ?? "", // I Type
-			hasLos ? 1 : "", // J Skriv 1 hvis LOS
-			hasLos ? body.pilots?.[0] ?? "" : "", // K Los 1
-			hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "", // L Los 2
-			body.shipLanding ? 1 : "", // M Ship landing
-			body.tokeBomtur ? 1 : "", // N Ekstra flagg (1/blank)
-			body.losToAirportCount ?? "", // O Antall los til flyplass
-			body.enfjLandings ?? "", // P Antall landinger ENFJ
-			body.hoistCount ?? "", // Q Hoists
-				body.comment ?? "", // R Kommentar
+				body.gt ?? "", // H GT
+				body.location ?? "", // I Sted
+				body.losType ?? "", // J Type
+				hasLos ? 1 : "", // K Skriv 1 hvis LOS
+				hasLos ? body.pilots?.[0] ?? "" : "", // L Los 1
+				hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "", // M Los 2
+				body.shipLanding ? 1 : "", // N Ship landing
+				body.tokeBomtur ? 1 : "", // O Ekstra flagg (1/blank)
+				body.losToAirportCount ?? "", // P Antall los til flyplass
+				body.enfjLandings ?? "", // Q Antall landinger ENFJ
+				body.hoistCount ?? "", // R Hoists
+				body.comment ?? "", // S Kommentar
 			];
 		
 			await appendRowToExcel(row, sheetName);
