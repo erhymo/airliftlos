@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, FormEvent } from "react";
 
 const ADMIN_STORAGE_KEY = "airliftlos_admin";
@@ -88,20 +89,25 @@ export default function AdminPage() {
         <header className="space-y-1">
           <h1 className="text-lg font-semibold">Admin / statistikk</h1>
           <p className="text-sm text-gray-600">
-            Du er logget inn som admin. Her vil du etter hvert finne månedsskjema,
-            verifisering og statistikk for LOS-oppdrag.
+            Du er logget inn som admin. Her finner du månedsskjema og senere statistikk for LOS-oppdrag.
           </p>
         </header>
 
-        <section className="space-y-2 text-sm text-gray-700">
-          <p>
-            I neste steg legger vi inn:
-          </p>
+        <section className="space-y-3 text-sm text-gray-700">
+          <p>Første byggekloss er klar:</p>
           <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
-            <li>Oversikt over alle oppdrag måned for måned, med avkrysning og låsing.</li>
-            <li>Mulighet for å lukke en måned og sende PDF til Kystverket og Fedje.</li>
-            <li>En egen knapp for statestikk med nøkkeltall og e-postutsending.</li>
+            <li>Månedsskjema med én linje per oppdrag (samme kolonner som i Excel).</li>
+            <li>Månedsvelger øverst slik at du kan bla bakover i tid.</li>
           </ul>
+
+          <div className="pt-1">
+            <Link
+              href="/admin/skjema"
+              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            >
+              Åpne månedsskjema
+            </Link>
+          </div>
         </section>
 
         <div className="flex items-center justify-between pt-2">
@@ -117,4 +123,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
