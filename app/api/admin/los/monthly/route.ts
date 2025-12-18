@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import { getDb } from "../../../../lib/firebaseAdmin";
+import { getDb } from "../../../../../lib/firebaseAdmin";
 
 const MONTH_NAMES: Record<string, string> = {
   "01": "Januar",
