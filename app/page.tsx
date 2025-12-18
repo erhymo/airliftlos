@@ -8,13 +8,15 @@ export default function Home() {
         <header className="space-y-1">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-semibold">LOS Helikopter</h1>
-            <Image
-              src="/Airlift-logo.png"
-              alt="Airlift-logo"
-              width={140}
-              height={32}
-              className="h-8 w-auto"
-            />
+	            <Link href="/admin" aria-label="Admin / statistikk">
+	              <Image
+	                src="/Airlift-logo.png"
+	                alt="Airlift-logo"
+	                width={140}
+	                height={32}
+	                className="h-8 w-auto"
+	              />
+	            </Link>
           </div>
           <p className="text-sm text-gray-600">
             Velg hvilken rapport du vil fylle ut.
