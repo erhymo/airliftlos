@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getDb } from "../../../lib/firebaseAdmin";
 import { saveGtForVessel } from "../../../lib/vesselGt";
 
@@ -215,16 +214,6 @@ async function appendRowToExcel(row: (string | number | null)[], sheetName: stri
 
 export async function POST(req: Request) {
 	try {
-		// Enkelt ACCESS_CODE-sjekk (som resten av appen)
-		const accessCode = process.env.ACCESS_CODE;
-		if (accessCode) {
-			const cookieStore = await cookies();
-			const accessCookie = cookieStore.get("airliftlos_access");
-			if (!accessCookie || accessCookie.value !== "ok") {
-				return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-			}
-		}
-
 		const body = (await req.json()) as LosLoggPayload;
 
 		// Valider påkrevde felt
@@ -292,38 +281,66 @@ export async function POST(req: Request) {
 
 			// Hvis denne LOS-loggen hører til en importert bestilling, marker den som lukket
 			// i Firestore slik at den ikke lenger vises som åpen i LOS-logg-listen.
-			if (body.bookingId) {
-				try {
-					const db = getDb();
-					const ref = db.collection("losBookings").doc(body.bookingId);
-					const snap = await ref.get();
-					if (snap.exists) {
+				if (body.bookingId) {
+					try {
+						const db = getDb();
+						const ref = db.collection("losBookings").doc(body.bookingId);
+						const snap = await ref.get();
+						if (snap.exists) {
+								const now = Date.now();
 								const updateData: Record<string, unknown> = {
 								status: "closed",
-								losLogSentAt: Date.now(),
+								losLogSentAt: now,
 								losLogSign: body.sign?.toUpperCase() ?? null,
+								// Felter for admin-/statistikkområde
+								adminExcelDate: excelDate,
+								adminSheetName: sheetName,
+								adminRowData: {
+									factNumber: null,
+									serialNumber: null,
+									sign: body.sign?.toUpperCase() ?? "",
+									date: excelDate,
+									orderNumber: body.orderNumber ?? "",
+									techlogNumber: body.techlogNumber ?? "",
+									vesselName: vesselForExcel,
+									gt: body.gt ?? "",
+									location: body.location ?? "",
+									losType: body.losType ?? "",
+									hasLos,
+									los1: hasLos ? body.pilots?.[0] ?? "" : "",
+									los2: hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "",
+									shipLanding: !!body.shipLanding,
+									tokeBomtur: !!body.tokeBomtur,
+									losToAirportCount: body.losToAirportCount ?? "",
+									enfjLandings: body.enfjLandings ?? "",
+									hoistCount: body.hoistCount ?? "",
+									comment: body.comment ?? "",
+								},
+								adminVerified: false,
+								adminVerifiedAt: null,
+								adminUpdatedAt: now,
 							};
-							if (typeof body.techlogNumber === "number") {
-								updateData.techlogNumber = body.techlogNumber;
-							}
-								if (typeof body.gt === "number") {
-									updateData.gt = body.gt;
+								if (typeof body.techlogNumber === "number") {
+									updateData.techlogNumber = body.techlogNumber;
 								}
-
-							await ref.set(updateData, { merge: true });
-					} else {
-						console.warn(
-							"LOS-logg: bookingId finnes ikke i losBookings, hopper over status-oppdatering",
-							body.bookingId,
+									if (typeof body.gt === "number") {
+										updateData.gt = body.gt;
+									}
+						
+								await ref.set(updateData, { merge: true });
+						} else {
+							console.warn(
+								"LOS-logg: bookingId finnes ikke i losBookings, hopper over status-oppdatering",
+								body.bookingId,
+							);
+						}
+					} catch (err) {
+						console.error(
+							"LOS-logg: klarte ikke å markere losBookings-dokument som lukket etter sending til Excel",
+							err,
 						);
 					}
-				} catch (err) {
-					console.error(
-						"LOS-logg: klarte ikke å markere losBookings-dokument som lukket etter sending til Excel",
-						err,
-					);
 				}
-			}
 		
 			return NextResponse.json({ ok: true });
 	} catch (error) {
