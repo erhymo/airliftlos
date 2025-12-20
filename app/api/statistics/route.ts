@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getDb } from "../../../lib/firebaseAdmin";
-import { requireAccess } from "../../../lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +37,9 @@ function parseGt(value: unknown): number | null {
   return null;
 }
 
-function getYearMonthFromDoc(data: LosBookingDoc): { year: number; month: number } | null {
+function getYearMonthFromDoc(
+  data: LosBookingDoc,
+): { year: number; month: number } | null {
   const excelDate = data.adminExcelDate ?? data.adminRowData?.date ?? null;
   if (excelDate && typeof excelDate === "string") {
     const parts = excelDate.split(".");
@@ -78,9 +79,6 @@ function getYearMonthFromDoc(data: LosBookingDoc): { year: number; month: number
 
 export async function GET(req: Request) {
   try {
-    const authError = requireAccess(req);
-    if (authError) return authError;
-
     const db = getDb();
     const snapshot = await db
       .collection("losBookings")
@@ -119,9 +117,7 @@ export async function GET(req: Request) {
       const adminGt = parseGt(data.adminRowData?.gt ?? null);
       const gt = directGt ?? adminGt;
 
-      if (gt == null) {
-        return;
-      }
+      if (gt == null) return;
 
       totalWithGt += 1;
 

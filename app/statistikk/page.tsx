@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAccessTokenFromStorage } from "../../lib/clientAuth";
 
 type TonnageBuckets = {
   under30000: number;
@@ -32,17 +31,12 @@ export default function StatistikkPage() {
 
     async function load() {
       try {
-        const token = getAccessTokenFromStorage();
         const now = new Date();
         const year = now.getFullYear();
-        const month = 12; // Desember
+        const month = 12; // desember
         const url = `/api/statistics?year=${year}&month=${month}`;
 
-        const res = await fetch(url, {
-          cache: "no-store",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-
+        const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) {
           throw new Error("Klarte ikke å hente statistikk.");
         }
@@ -82,27 +76,37 @@ export default function StatistikkPage() {
         <header className="space-y-1">
           <h1 className="text-lg font-semibold">Statistikk for LOS-oppdrag</h1>
           <p className="text-sm text-gray-600">
-            Foreløpig viser vi fordeling av ferdigbehandlede LOS-oppdrag i desember
-            etter bruttotonnasje (GT). Senere kan vi bygge ut per måned og per år.
+            Foreløpig viser vi bare fordeling av ferdigbehandlede LOS-oppdrag i
+            desember etter bruttotonnasje (GT).
           </p>
         </header>
 
-        {loading && <p className="text-sm text-gray-500">Henter statistikk …</p>}
-        {error && !loading && (
+        {loading && (
+          <p className="text-sm text-gray-500">Henter statistikk …</p>
+        )}
+
+        {!loading && error && (
           <p className="text-sm text-red-600">{error}</p>
         )}
 
         {!loading && !error && stats && (
           <section className="space-y-3 text-sm text-gray-800">
             <p>
-              Antall lukkede LOS-oppdrag i desember {stats.year} med registrert GT: {" "}
-              {stats.totalWithGt} (av totalt {stats.totalClosed} lukkede oppdrag i desember).
+              Antall lukkede LOS-oppdrag i desember {stats.year} med
+              registrert GT: {stats.totalWithGt} (av totalt{" "}
+              {stats.totalClosed} lukkede oppdrag i desember).
             </p>
             <ul className="list-disc list-inside space-y-1">
               <li>{"<"} 30 000 tonn: {stats.buckets.under30000}</li>
-              <li>30 000 – 60 000 tonn: {stats.buckets.between30000And60000}</li>
-              <li>60 000 – 90 000 tonn: {stats.buckets.between60000And90000}</li>
-              <li>90 000 – 120 000 tonn: {stats.buckets.between90000And120000}</li>
+              <li>
+                30 000 – 60 000 tonn: {stats.buckets.between30000And60000}
+              </li>
+              <li>
+                60 000 – 90 000 tonn: {stats.buckets.between60000And90000}
+              </li>
+              <li>
+                90 000 – 120 000 tonn: {stats.buckets.between90000And120000}
+              </li>
               <li>{">="} 120 000 tonn: {stats.buckets.over120000}</li>
             </ul>
           </section>
