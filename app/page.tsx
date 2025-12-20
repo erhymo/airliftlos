@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import Image from 'next/image';
+import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -18,9 +18,7 @@ export default function Home() {
               />
             </Link>
           </div>
-          <p className="text-sm text-gray-600">
-            Velg hvilken rapport du vil fylle ut.
-          </p>
+          <p className="text-sm text-gray-600">Velg hvilken rapport du vil fylle ut.</p>
         </header>
 
         <div className="grid grid-cols-1 gap-4">
@@ -39,14 +37,14 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Skjult inngang til LOS-logg */}
-        <Link
-          href="/loslogg"
-          aria-label="LOS-logg"
-          className="absolute bottom-2 right-3 text-[10px] leading-none text-gray-300 hover:text-gray-400 select-none"
-        >
-          .
-        </Link>
+        <div className="mt-6 border-t border-gray-200 pt-3">
+          <Link
+            href="/loslogg"
+            className="block w-full text-center text-xs font-medium text-gray-500 hover:text-gray-700"
+          >
+            LOS-logg
+          </Link>
+        </div>
       </main>
     </div>
   );
