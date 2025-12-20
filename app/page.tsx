@@ -37,14 +37,14 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="mt-6 border-t border-gray-200 pt-3">
-          <Link
-            href="/loslogg"
-            className="block w-full text-center text-xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            LOS-logg
-          </Link>
-        </div>
+	        <div className="mt-6 border-t border-gray-200 pt-4">
+	          <Link
+	            href="/loslogg"
+	            className="block w-full rounded-lg bg-gray-100 text-gray-900 text-center py-4 px-4 text-base font-medium border border-gray-300 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+	          >
+	            LOS-logg
+	          </Link>
+	        </div>
       </main>
     </div>
   );
