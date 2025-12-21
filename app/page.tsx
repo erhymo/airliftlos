@@ -1,7 +1,30 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getDb } from "../lib/firebaseAdmin";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  let openLosCount = 0;
+
+  try {
+    const db = getDb();
+    const snapshot = await db
+      .collection("losBookings")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    openLosCount = snapshot.docs.reduce((acc, doc) => {
+      const data = doc.data() as { status?: string | null };
+      if (data.status === "closed") {
+        return acc;
+      }
+      return acc + 1;
+    }, 0);
+  } catch (error) {
+    console.error("Klarte ikke å hente åpne LOS-bookinger for forsiden", error);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col items-center justify-center p-4 space-y-4">
       <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 relative">
@@ -37,14 +60,21 @@ export default function Home() {
           </Link>
         </div>
 
-	        <div className="mt-6 border-t border-gray-200 pt-4">
-	          <Link
-	            href="/loslogg"
-	            className="block w-full rounded-lg bg-gray-100 text-gray-900 text-center py-4 px-4 text-base font-medium border border-gray-300 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-	          >
-	            LOS-logg
-	          </Link>
-	        </div>
+        <div className="mt-6 border-t border-gray-200 pt-4">
+          <Link
+            href="/loslogg"
+            className="block w-full rounded-lg bg-gray-100 text-gray-900 text-center py-4 px-4 text-base font-medium border border-gray-300 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          >
+            <div className="flex items-center justify-center gap-2">
+              {openLosCount > 0 && (
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+                  {openLosCount}
+                </span>
+              )}
+              <span>LOS-logg</span>
+            </div>
+          </Link>
+        </div>
       </main>
     </div>
   );
