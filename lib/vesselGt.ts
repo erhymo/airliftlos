@@ -181,6 +181,7 @@ const SEEDED_VESSEL_GT_RAW: Record<string, number> = {
   "SCARABEO 8": 35304,
   "ALPES": 62172,
   "EAGLE BALDER": 85745,
+  "LYSIAS": 29993,
 };
 
 export const SEEDED_VESSEL_GT: Record<string, number> = Object.fromEntries(

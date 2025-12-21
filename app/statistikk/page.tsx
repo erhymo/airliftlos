@@ -147,13 +147,13 @@ export default function StatistikkPage() {
 	                          {row.label}
 	                        </td>
 	                        <td className="border px-1 py-0.5 text-right">
-	                          {stats.bucketsByBase.bergen[row.key] ?? 0}
+                          {stats.bucketsByBase!.bergen[row.key] ?? 0}
 	                        </td>
 	                        <td className="border px-1 py-0.5 text-right">
-	                          {stats.bucketsByBase.hammerfest[row.key] ?? 0}
+                          {stats.bucketsByBase!.hammerfest[row.key] ?? 0}
 	                        </td>
 	                        <td className="border px-1 py-0.5 text-right font-semibold">
-	                          {stats.bucketsByBase.all[row.key] ?? 0}
+                          {stats.bucketsByBase!.all[row.key] ?? 0}
 	                        </td>
 	                      </tr>
 	                    ))}
