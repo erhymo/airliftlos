@@ -240,4 +240,3 @@ export async function saveGtForVessel(
     { merge: true },
   );
 }
-

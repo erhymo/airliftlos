@@ -18,11 +18,11 @@ type StatsResponse = {
   buckets: TonnageBuckets;
   month: number;
   year: number;
-	  bucketsByBase?: {
-	    all: TonnageBuckets;
-	    bergen: TonnageBuckets;
-	    hammerfest: TonnageBuckets;
-	  };
+  bucketsByBase?: {
+    all: TonnageBuckets;
+    bergen: TonnageBuckets;
+    hammerfest: TonnageBuckets;
+  };
   error?: string;
 };
 
@@ -81,8 +81,8 @@ export default function StatistikkPage() {
         <header className="space-y-1">
           <h1 className="text-lg font-semibold">Statistikk for LOS-oppdrag</h1>
           <p className="text-sm text-gray-600">
-	            Ferdigbehandlede LOS-oppdrag i desember, fordelt på
-	            bruttotonnasje (GT) og fartøy per base.
+            Ferdigbehandlede LOS-oppdrag i desember, fordelt på bruttotonnasje
+            (GT) per base.
           </p>
         </header>
 
@@ -94,75 +94,68 @@ export default function StatistikkPage() {
           <p className="text-sm text-red-600">{error}</p>
         )}
 
-	        {!loading && !error && stats && (
-	          <section className="space-y-4 text-sm text-gray-800">
-	            <p>
-	              Antall lukkede LOS-oppdrag i desember {stats.year} med registrert
-	              GT: {stats.totalWithGt} (av totalt {stats.totalClosed} lukkede
-	              oppdrag i desember).
-	            </p>
+        {!loading && !error && stats && (
+          <section className="space-y-4 text-sm text-gray-800">
+            <p>
+              Antall lukkede LOS-oppdrag i desember {stats.year} med registrert
+              GT: {stats.totalWithGt} (av totalt {stats.totalClosed} lukkede
+              oppdrag i desember).
+            </p>
 
-	            {stats.bucketsByBase && (
-	              <div className="overflow-x-auto">
-	                <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
-	                  <thead className="bg-gray-50">
-	                    <tr>
-	                      <th className="border px-1 py-0.5 text-left">
-	                        St8rrelse (GT)
-	                      </th>
-	                      <th className="border px-1 py-0.5 text-right">Bergen</th>
-	                      <th className="border px-1 py-0.5 text-right">Hammerfest</th>
-	                      <th className="border px-1 py-0.5 text-right">
-	                        Begge baser
-	                      </th>
-	                    </tr>
-	                  </thead>
-	                  <tbody>
-	                    {(
-	                      [
-	                        {
-	                          key: "under30000" as const,
-	                          label: "< 30 000 tonn",
-	                        },
-	                        {
-	                          key: "between30000And60000" as const,
-	                          label: "30 000 – 60 000 tonn",
-	                        },
-	                        {
-	                          key: "between60000And90000" as const,
-	                          label: "60 000 – 90 000 tonn",
-	                        },
-	                        {
-	                          key: "between90000And120000" as const,
-	                          label: "90 000 – 120 000 tonn",
-	                        },
-	                        {
-	                          key: "over120000" as const,
-	                          label: ">= 120 000 tonn",
-	                        },
-	                      ] satisfies { key: keyof TonnageBuckets; label: string }[]
-	                    ).map((row) => (
-	                      <tr key={row.key}>
-	                        <td className="border px-1 py-0.5 whitespace-nowrap">
-	                          {row.label}
-	                        </td>
-	                        <td className="border px-1 py-0.5 text-right">
-                          {stats.bucketsByBase!.bergen[row.key] ?? 0}
-	                        </td>
-	                        <td className="border px-1 py-0.5 text-right">
-                          {stats.bucketsByBase!.hammerfest[row.key] ?? 0}
-	                        </td>
-	                        <td className="border px-1 py-0.5 text-right font-semibold">
-                          {stats.bucketsByBase!.all[row.key] ?? 0}
-	                        </td>
-	                      </tr>
-	                    ))}
-	                  </tbody>
-	                </table>
-	              </div>
-	            )}
-	          </section>
-	        )}
+            {stats.bucketsByBase && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="border px-1 py-0.5 text-left">Størrelse (GT)</th>
+                      <th className="border px-1 py-0.5 text-right">Bergen</th>
+                      <th className="border px-1 py-0.5 text-right">Hammerfest</th>
+                      <th className="border px-1 py-0.5 text-right">Begge baser</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(
+                      [
+                        { key: "under30000" as const, label: "< 30 000 tonn" },
+                        {
+                          key: "between30000And60000" as const,
+                          label: "30 000 – 60 000 tonn",
+                        },
+                        {
+                          key: "between60000And90000" as const,
+                          label: "60 000 – 90 000 tonn",
+                        },
+                        {
+                          key: "between90000And120000" as const,
+                          label: "90 000 – 120 000 tonn",
+                        },
+                        {
+                          key: "over120000" as const,
+                          label: ">= 120 000 tonn",
+                        },
+                      ] satisfies { key: keyof TonnageBuckets; label: string }[]
+                    ).map((row) => (
+                      <tr key={row.key}>
+                        <td className="border px-1 py-0.5 whitespace-nowrap">
+                          {row.label}
+                        </td>
+                        <td className="border px-1 py-0.5 text-right">
+                          {stats.bucketsByBase?.bergen[row.key] ?? 0}
+                        </td>
+                        <td className="border px-1 py-0.5 text-right">
+                          {stats.bucketsByBase?.hammerfest[row.key] ?? 0}
+                        </td>
+                        <td className="border px-1 py-0.5 text-right font-semibold">
+                          {stats.bucketsByBase?.all[row.key] ?? 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
 
         <p className="text-xs text-gray-500">
           <Link href="/" className="underline">
