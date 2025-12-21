@@ -4,19 +4,19 @@
 import { useEffect, useState } from "react";
 
 export const CAPTAINS = [
-  "BFA",
-  "GUN",
-  "FOL",
-  "LEI",
-  "HUS",
-  "BRÆ",
-  "LOO",
-  "TJA",
-  "TUR",
-  "MÆL",
-  "BAC",
-  "OHN",
-].sort((a, b) => a.localeCompare(b, "nb-NO"));
+	  "AMU",
+	  "GUN",
+	  "FOL",
+	  "LEI",
+	  "HUS",
+	  "BRÆ",
+	  "LOO",
+	  "TJA",
+	  "TUR",
+	  "MÆL",
+	  "BAC",
+	  "OHN",
+	].sort((a, b) => a.localeCompare(b, "nb-NO"));
 
 export const FIRST_OFFICERS = [
   "LUN",
