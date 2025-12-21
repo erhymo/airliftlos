@@ -62,6 +62,40 @@ const MANUAL_2025_MONTHLY_STATS: ManualMonthlyStats[] = [
       losOvrigRigs: 2,
     },
   },
+  {
+    year: 2025,
+    month: 2,
+    label: "Februar 2025",
+    totalBoats: 94,
+    totalRigs: 4,
+    boatToBoatOps: 9,
+    locations: {
+      mongstad: 53,
+      melkoya: 12,
+      sture: 26,
+      karsto: 3,
+      nyhamna: 0,
+      losOvrigBoats: 0,
+      losOvrigRigs: 4,
+    },
+  },
+  {
+    year: 2025,
+    month: 3,
+    label: "Mars 2025",
+    totalBoats: 103,
+    totalRigs: 6,
+    boatToBoatOps: 15,
+    locations: {
+      mongstad: 62,
+      melkoya: 19,
+      sture: 17,
+      karsto: 2,
+      nyhamna: 1,
+      losOvrigBoats: 2,
+      losOvrigRigs: 6,
+    },
+  },
 ];
 
 const MANUAL_2025_TOTALS = MANUAL_2025_MONTHLY_STATS.reduce(
