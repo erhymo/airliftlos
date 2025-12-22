@@ -44,6 +44,213 @@ type ManualMonthlyStats = {
   };
 };
 
+const MANUAL_2023_MONTHLY_STATS: ManualMonthlyStats[] = [
+  {
+    year: 2023,
+    month: 1,
+    label: "Januar 2023",
+    totalBoats: 106,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 56,
+      melkoya: 16,
+      sture: 22,
+      karsto: 4,
+      nyhamna: 0,
+      losOvrigBoats: 8,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 2,
+    label: "Februar 2023",
+    totalBoats: 110,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 68,
+      melkoya: 14,
+      sture: 20,
+      karsto: 4,
+      nyhamna: 0,
+      losOvrigBoats: 4,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 3,
+    label: "Mars 2023",
+    totalBoats: 116,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 71,
+      melkoya: 16,
+      sture: 17,
+      karsto: 2,
+      nyhamna: 2,
+      losOvrigBoats: 8,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 4,
+    label: "April 2023",
+    totalBoats: 123,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 79,
+      melkoya: 18,
+      sture: 19,
+      karsto: 3,
+      nyhamna: 0,
+      losOvrigBoats: 4,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 5,
+    label: "Mai 2023",
+    totalBoats: 112,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 67,
+      melkoya: 10,
+      sture: 23,
+      karsto: 4,
+      nyhamna: 1,
+      losOvrigBoats: 7,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 6,
+    label: "Juni 2023",
+    totalBoats: 110,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 77,
+      melkoya: 9,
+      sture: 15,
+      karsto: 1,
+      nyhamna: 0,
+      losOvrigBoats: 8,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 7,
+    label: "Juli 2023",
+    totalBoats: 125,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 75,
+      melkoya: 19,
+      sture: 22,
+      karsto: 2,
+      nyhamna: 0,
+      losOvrigBoats: 7,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 8,
+    label: "August 2023",
+    totalBoats: 120,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 84,
+      melkoya: 13,
+      sture: 18,
+      karsto: 2,
+      nyhamna: 0,
+      losOvrigBoats: 3,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 9,
+    label: "September 2023",
+    totalBoats: 124,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 78,
+      melkoya: 17,
+      sture: 19,
+      karsto: 1,
+      nyhamna: 2,
+      losOvrigBoats: 7,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 10,
+    label: "Oktober 2023",
+    totalBoats: 120,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 75,
+      melkoya: 16,
+      sture: 20,
+      karsto: 3,
+      nyhamna: 0,
+      losOvrigBoats: 6,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 11,
+    label: "November 2023",
+    totalBoats: 112,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 75,
+      melkoya: 14,
+      sture: 18,
+      karsto: 3,
+      nyhamna: 0,
+      losOvrigBoats: 2,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2023,
+    month: 12,
+    label: "Desember 2023",
+    totalBoats: 120,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 79,
+      melkoya: 16,
+      sture: 20,
+      karsto: 5,
+      nyhamna: 0,
+      losOvrigBoats: 0,
+      losOvrigRigs: 0,
+    },
+  },
+];
+
 const MANUAL_2024_MONTHLY_STATS: ManualMonthlyStats[] = [
   {
     year: 2024,
@@ -339,6 +546,36 @@ const MANUAL_2025_MONTHLY_STATS: ManualMonthlyStats[] = [
   },
 ];
 
+const MANUAL_2023_TOTALS = MANUAL_2023_MONTHLY_STATS.reduce(
+  (acc, m) => {
+    acc.totalBoats += m.totalBoats;
+    acc.totalRigs += m.totalRigs;
+    acc.boatToBoatOps += m.boatToBoatOps;
+    acc.locations.mongstad += m.locations.mongstad;
+    acc.locations.melkoya += m.locations.melkoya;
+    acc.locations.sture += m.locations.sture;
+    acc.locations.karsto += m.locations.karsto;
+    acc.locations.nyhamna += m.locations.nyhamna;
+    acc.locations.losOvrigBoats += m.locations.losOvrigBoats;
+    acc.locations.losOvrigRigs += m.locations.losOvrigRigs;
+    return acc;
+  },
+  {
+    totalBoats: 0,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 0,
+      melkoya: 0,
+      sture: 0,
+      karsto: 0,
+      nyhamna: 0,
+      losOvrigBoats: 0,
+      losOvrigRigs: 0,
+    },
+  },
+);
+
 const MANUAL_2024_TOTALS = MANUAL_2024_MONTHLY_STATS.reduce(
   (acc, m) => {
     acc.totalBoats += m.totalBoats;
@@ -455,8 +692,8 @@ export default function StatistikkPage() {
           <h1 className="text-lg font-semibold">Statistikk for LOS-oppdrag</h1>
           <p className="text-sm text-gray-600">
             Øverst vises desember-statistikk (GT per base) hentet fra
-            fagsystemet. Nederst ligger manuelle årsoversikter for LOS-oppdrag
-            per sted (2024 og 2025).
+	            fagsystemet. Nederst ligger manuelle årsoversikter for LOS-oppdrag
+	            per sted (2023, 2024 og 2025).
           </p>
         </header>
 
@@ -530,6 +767,88 @@ export default function StatistikkPage() {
 	            )}
 	          </section>
 	        )}
+
+	        <section className="space-y-3 text-sm text-gray-800 mt-6">
+	          <h2 className="text-sm font-semibold">
+	            Manuell statistikk 2023 (totalt LOS-oppdrag per sted)
+	          </h2>
+	          <p className="text-xs text-gray-600">
+	            Basert på summerte tall fra "Logg_2023_samlet.csv" i prosjektet.
+	          </p>
+
+	          <div className="overflow-x-auto">
+	            <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
+	              <thead className="bg-gray-50">
+	                <tr>
+	                  <th className="border px-1 py-0.5 text-left">Måned</th>
+	                  <th className="border px-1 py-0.5 text-right">Totalt LOS-oppdrag</th>
+	                  <th className="border px-1 py-0.5 text-right">Mongstad</th>
+	                  <th className="border px-1 py-0.5 text-right">Melkøya</th>
+	                  <th className="border px-1 py-0.5 text-right">Sture</th>
+	                  <th className="border px-1 py-0.5 text-right">Kårstø</th>
+	                  <th className="border px-1 py-0.5 text-right">Nyhamna</th>
+	                  <th className="border px-1 py-0.5 text-right">Los øvrig</th>
+	                </tr>
+	              </thead>
+	              <tbody>
+	                {MANUAL_2023_MONTHLY_STATS.map((m) => (
+	                  <tr key={`${m.year}-${m.month}`}>
+	                    <td className="border px-1 py-0.5 whitespace-nowrap">
+	                      {m.label}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.totalBoats}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.mongstad}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.melkoya}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.sture}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.karsto}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.nyhamna}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.losOvrigBoats}
+	                    </td>
+	                  </tr>
+	                ))}
+	              </tbody>
+	              <tfoot>
+	                <tr className="font-semibold bg-gray-50">
+	                  <td className="border px-1 py-0.5 text-left">Sum 2023</td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2023_TOTALS.totalBoats}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2023_TOTALS.locations.mongstad}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2023_TOTALS.locations.melkoya}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2023_TOTALS.locations.sture}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2023_TOTALS.locations.karsto}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2023_TOTALS.locations.nyhamna}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2023_TOTALS.locations.losOvrigBoats}
+	                  </td>
+	                </tr>
+	              </tfoot>
+	            </table>
+	          </div>
+	        </section>
 
 	        <section className="space-y-3 text-sm text-gray-800 mt-6">
 	          <h2 className="text-sm font-semibold">
