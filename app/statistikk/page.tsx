@@ -44,6 +44,21 @@ type ManualMonthlyStats = {
   };
 };
 
+const SHORT_MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Des",
+];
+
 const MANUAL_2023_MONTHLY_STATS: ManualMonthlyStats[] = [
   {
     year: 2023,
@@ -641,6 +656,29 @@ export default function StatistikkPage() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<StatsResponse | null>(null);
 
+  const monthlyTotals2023 = MANUAL_2023_MONTHLY_STATS.map((m) => m.totalBoats);
+  const monthlyTotals2024 = MANUAL_2024_MONTHLY_STATS.map((m) => m.totalBoats);
+  const chartMaxY = Math.max(...monthlyTotals2023, ...monthlyTotals2024, 0);
+  const safeChartMaxY = chartMaxY > 0 ? chartMaxY : 1;
+  const chartWidth = 320;
+  const chartHeight = 140;
+  const xStep =
+    SHORT_MONTH_LABELS.length > 1
+      ? chartWidth / (SHORT_MONTH_LABELS.length - 1)
+      : 0;
+
+  const buildPoints = (values: number[]) =>
+    values
+      .map((value, index) => {
+        const x = index * xStep;
+        const y = chartHeight - (value / safeChartMaxY) * chartHeight;
+        return `${x},${y}`;
+      })
+      .join(" ");
+
+  const points2023 = buildPoints(monthlyTotals2023);
+  const points2024 = buildPoints(monthlyTotals2024);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -767,6 +805,93 @@ export default function StatistikkPage() {
 	            )}
 	          </section>
 	        )}
+
+	        <section className="space-y-3 text-sm text-gray-800 mt-6">
+	          <h2 className="text-sm font-semibold">
+	            Visuell trend 2023–2024 (totalt LOS-oppdrag per måned)
+	          </h2>
+	          <p className="text-xs text-gray-600">
+	            En enkel linjegraf som viser antall båter per måned i 2023 og 2024.
+	          </p>
+
+	          <div className="overflow-x-auto">
+	            <svg
+	              viewBox={`0 0 ${chartWidth} ${chartHeight + 20}`}
+	              className="w-full max-w-full border border-gray-200 bg-white"
+	            >
+	              {/* horisontale hjelpelinjer og y-verdier */}
+	              {Array.from({ length: 5 }).map((_, i) => {
+	                const ratio = i / 4;
+	                const y = chartHeight * ratio;
+	                const value = Math.round(safeChartMaxY * (1 - ratio));
+	                return (
+	                  <g key={i}>
+	                    <line
+	                      x1={0}
+	                      y1={y}
+	                      x2={chartWidth}
+	                      y2={y}
+	                      stroke="#e5e7eb"
+	                      strokeWidth={0.5}
+	                    />
+	                    <text
+	                      x={2}
+	                      y={y + 4}
+	                      fontSize={6}
+	                      fill="#6b7280"
+	                    >
+	                      {value}
+	                    </text>
+	                  </g>
+	                );
+	              })}
+
+	              {/* linje for 2023 */}
+	              <polyline
+	                fill="none"
+	                stroke="#2563eb"
+	                strokeWidth={1.5}
+	                points={points2023}
+	              />
+
+	              {/* linje for 2024 */}
+	              <polyline
+	                fill="none"
+	                stroke="#16a34a"
+	                strokeWidth={1.5}
+	                points={points2024}
+	              />
+
+	              {/* månedsetiketter langs x-aksen */}
+	              {SHORT_MONTH_LABELS.map((label, index) => {
+	                const x = index * xStep;
+	                return (
+	                  <text
+	                    key={label}
+	                    x={x}
+	                    y={chartHeight + 10}
+	                    fontSize={6}
+	                    textAnchor="middle"
+	                    fill="#374151"
+	                  >
+	                    {label}
+	                  </text>
+	                );
+	              })}
+	            </svg>
+	
+	            <div className="mt-2 flex items-center gap-4 text-[10px] text-gray-700">
+	              <div className="flex items-center gap-1">
+	                <span className="inline-block w-3 h-0.5 bg-blue-600" />
+	                <span>2023</span>
+	              </div>
+	              <div className="flex items-center gap-1">
+	                <span className="inline-block w-3 h-0.5 bg-green-600" />
+	                <span>2024</span>
+	              </div>
+	            </div>
+	          </div>
+	        </section>
 
 	        <section className="space-y-3 text-sm text-gray-800 mt-6">
 	          <h2 className="text-sm font-semibold">
