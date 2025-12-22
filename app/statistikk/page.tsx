@@ -29,7 +29,7 @@ type StatsResponse = {
 type ManualMonthlyStats = {
   year: number;
   month: number; // 1 = januar
-  label: string; // "Januar 2025" etc.
+  label: string; // "Januar 2024" / "Januar 2025" etc.
   totalBoats: number;
   totalRigs: number;
   boatToBoatOps: number;
@@ -43,6 +43,213 @@ type ManualMonthlyStats = {
     losOvrigRigs: number;
   };
 };
+
+const MANUAL_2024_MONTHLY_STATS: ManualMonthlyStats[] = [
+  {
+    year: 2024,
+    month: 1,
+    label: "Januar 2024",
+    totalBoats: 118,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 76,
+      melkoya: 14,
+      sture: 21,
+      karsto: 4,
+      nyhamna: 0,
+      losOvrigBoats: 3,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 2,
+    label: "Februar 2024",
+    totalBoats: 116,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 68,
+      melkoya: 16,
+      sture: 20,
+      karsto: 4,
+      nyhamna: 2,
+      losOvrigBoats: 6,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 3,
+    label: "Mars 2024",
+    totalBoats: 115,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 67,
+      melkoya: 17,
+      sture: 20,
+      karsto: 5,
+      nyhamna: 1,
+      losOvrigBoats: 5,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 4,
+    label: "April 2024",
+    totalBoats: 121,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 72,
+      melkoya: 19,
+      sture: 22,
+      karsto: 2,
+      nyhamna: 0,
+      losOvrigBoats: 6,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 5,
+    label: "Mai 2024",
+    totalBoats: 119,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 72,
+      melkoya: 17,
+      sture: 24,
+      karsto: 2,
+      nyhamna: 0,
+      losOvrigBoats: 4,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 6,
+    label: "Juni 2024",
+    totalBoats: 114,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 65,
+      melkoya: 18,
+      sture: 17,
+      karsto: 3,
+      nyhamna: 2,
+      losOvrigBoats: 9,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 7,
+    label: "Juli 2024",
+    totalBoats: 129,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 79,
+      melkoya: 16,
+      sture: 20,
+      karsto: 2,
+      nyhamna: 0,
+      losOvrigBoats: 12,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 8,
+    label: "August 2024",
+    totalBoats: 124,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 82,
+      melkoya: 15,
+      sture: 18,
+      karsto: 3,
+      nyhamna: 0,
+      losOvrigBoats: 6,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 9,
+    label: "September 2024",
+    totalBoats: 121,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 74,
+      melkoya: 18,
+      sture: 20,
+      karsto: 1,
+      nyhamna: 0,
+      losOvrigBoats: 8,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 10,
+    label: "Oktober 2024",
+    totalBoats: 123,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 78,
+      melkoya: 16,
+      sture: 18,
+      karsto: 6,
+      nyhamna: 2,
+      losOvrigBoats: 3,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 11,
+    label: "November 2024",
+    totalBoats: 116,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 72,
+      melkoya: 16,
+      sture: 20,
+      karsto: 3,
+      nyhamna: 0,
+      losOvrigBoats: 5,
+      losOvrigRigs: 0,
+    },
+  },
+  {
+    year: 2024,
+    month: 12,
+    label: "Desember 2024",
+    totalBoats: 129,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 86,
+      melkoya: 17,
+      sture: 22,
+      karsto: 2,
+      nyhamna: 0,
+      losOvrigBoats: 2,
+      losOvrigRigs: 0,
+    },
+  },
+];
 
 const MANUAL_2025_MONTHLY_STATS: ManualMonthlyStats[] = [
   {
@@ -132,6 +339,36 @@ const MANUAL_2025_MONTHLY_STATS: ManualMonthlyStats[] = [
   },
 ];
 
+const MANUAL_2024_TOTALS = MANUAL_2024_MONTHLY_STATS.reduce(
+  (acc, m) => {
+    acc.totalBoats += m.totalBoats;
+    acc.totalRigs += m.totalRigs;
+    acc.boatToBoatOps += m.boatToBoatOps;
+    acc.locations.mongstad += m.locations.mongstad;
+    acc.locations.melkoya += m.locations.melkoya;
+    acc.locations.sture += m.locations.sture;
+    acc.locations.karsto += m.locations.karsto;
+    acc.locations.nyhamna += m.locations.nyhamna;
+    acc.locations.losOvrigBoats += m.locations.losOvrigBoats;
+    acc.locations.losOvrigRigs += m.locations.losOvrigRigs;
+    return acc;
+  },
+  {
+    totalBoats: 0,
+    totalRigs: 0,
+    boatToBoatOps: 0,
+    locations: {
+      mongstad: 0,
+      melkoya: 0,
+      sture: 0,
+      karsto: 0,
+      nyhamna: 0,
+      losOvrigBoats: 0,
+      losOvrigRigs: 0,
+    },
+  },
+);
+
 const MANUAL_2025_TOTALS = MANUAL_2025_MONTHLY_STATS.reduce(
   (acc, m) => {
     acc.totalBoats += m.totalBoats;
@@ -214,13 +451,14 @@ export default function StatistikkPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
 	      <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-	        <header className="space-y-1">
-	          <h1 className="text-lg font-semibold">Statistikk for LOS-oppdrag</h1>
-	          <p className="text-sm text-gray-600">
-	            Ferdigbehandlede LOS-oppdrag i desember, fordelt på bruttotonnasje
-	            (GT) per base.
-	          </p>
-	        </header>
+        <header className="space-y-1">
+          <h1 className="text-lg font-semibold">Statistikk for LOS-oppdrag</h1>
+          <p className="text-sm text-gray-600">
+            Øverst vises desember-statistikk (GT per base) hentet fra
+            fagsystemet. Nederst ligger manuelle årsoversikter for LOS-oppdrag
+            per sted (2024 og 2025).
+          </p>
+        </header>
 
         {loading && (
           <p className="text-sm text-gray-500">Henter statistikk …</p>
@@ -295,11 +533,92 @@ export default function StatistikkPage() {
 
 	        <section className="space-y-3 text-sm text-gray-800 mt-6">
 	          <h2 className="text-sm font-semibold">
+	            Manuell statistikk 2024 (totalt LOS-oppdrag per sted)
+	          </h2>
+	          <p className="text-xs text-gray-600">
+	            Basert på summerte tall fra "Logg_2024_samlet.csv" i prosjektet.
+	          </p>
+
+	          <div className="overflow-x-auto">
+	            <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
+	              <thead className="bg-gray-50">
+	                <tr>
+	                  <th className="border px-1 py-0.5 text-left">Måned</th>
+	                  <th className="border px-1 py-0.5 text-right">Totalt LOS-oppdrag</th>
+	                  <th className="border px-1 py-0.5 text-right">Mongstad</th>
+	                  <th className="border px-1 py-0.5 text-right">Melkøya</th>
+	                  <th className="border px-1 py-0.5 text-right">Sture</th>
+	                  <th className="border px-1 py-0.5 text-right">Kårstø</th>
+	                  <th className="border px-1 py-0.5 text-right">Nyhamna</th>
+	                  <th className="border px-1 py-0.5 text-right">Los øvrig</th>
+	                </tr>
+	              </thead>
+	              <tbody>
+	                {MANUAL_2024_MONTHLY_STATS.map((m) => (
+	                  <tr key={`${m.year}-${m.month}`}>
+	                    <td className="border px-1 py-0.5 whitespace-nowrap">
+	                      {m.label}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.totalBoats}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.mongstad}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.melkoya}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.sture}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.karsto}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.nyhamna}
+	                    </td>
+	                    <td className="border px-1 py-0.5 text-right">
+	                      {m.locations.losOvrigBoats}
+	                    </td>
+	                  </tr>
+	                ))}
+	              </tbody>
+	              <tfoot>
+	                <tr className="font-semibold bg-gray-50">
+	                  <td className="border px-1 py-0.5 text-left">Sum 2024</td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2024_TOTALS.totalBoats}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2024_TOTALS.locations.mongstad}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2024_TOTALS.locations.melkoya}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2024_TOTALS.locations.sture}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2024_TOTALS.locations.karsto}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2024_TOTALS.locations.nyhamna}
+	                  </td>
+	                  <td className="border px-1 py-0.5 text-right">
+	                    {MANUAL_2024_TOTALS.locations.losOvrigBoats}
+	                  </td>
+	                </tr>
+	              </tfoot>
+	            </table>
+	          </div>
+	        </section>
+
+	        <section className="space-y-3 text-sm text-gray-800 mt-6">
+	          <h2 className="text-sm font-semibold">
 	            Manuell statistikk 2025 (båt/rigg per sted)
 	          </h2>
 	          <p className="text-xs text-gray-600">
-	            Basert på eksport fra januar 2025. Klar til å utvides med flere
-	            måneder og en samlet årssummering.
+	            Basert på manuell eksport av LOS-logg 2025 (januar–mai).
 	          </p>
 
 	          <div className="overflow-x-auto">
