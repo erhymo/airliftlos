@@ -2336,8 +2336,8 @@ export default function StatistikkPage() {
 			      nextMetric = "total";
 			    }
 
-			    const yearMatches = text.match(/20[0-9]{2}/g) ?? [];
-			    let years = Array.from(
+				    const yearMatches = text.match(/20[0-9]{2}/g) ?? [];
+				    const years = Array.from(
 			      new Set(
 			        yearMatches
 			          .map((y) => Number(y))
@@ -3120,7 +3120,7 @@ export default function StatistikkPage() {
 		            Manuell statistikk 2017 (totalt LOS-oppdrag per sted)
 		          </h2>
 		          <p className="text-xs text-gray-600">
-		            Basert på summerte tall fra "Logg_2017_samlet.csv" i prosjektet.
+		            Basert på summerte tall fra &quot;Logg_2017_samlet.csv&quot; i prosjektet.
 		          </p>
 
 		          <div className="overflow-x-auto">
@@ -3202,7 +3202,7 @@ export default function StatistikkPage() {
 		            Manuell statistikk 2018 (totalt LOS-oppdrag per sted)
 		          </h2>
 		          <p className="text-xs text-gray-600">
-		            Basert på summerte tall fra "Logg_2018_samlet.csv" i prosjektet.
+		            Basert på summerte tall fra &quot;Logg_2018_samlet.csv&quot; i prosjektet.
 		          </p>
 
 		          <div className="overflow-x-auto">
@@ -3284,7 +3284,7 @@ export default function StatistikkPage() {
 		            Manuell statistikk 2019 (totalt LOS-oppdrag per sted)
 		          </h2>
 		          <p className="text-xs text-gray-600">
-		            Basert på summerte tall fra "Logg_2019_samlet.csv" i prosjektet.
+		            Basert på summerte tall fra &quot;Logg_2019_samlet.csv&quot; i prosjektet.
 		          </p>
 
 		          <div className="overflow-x-auto">
@@ -3366,7 +3366,7 @@ export default function StatistikkPage() {
 		            Manuell statistikk 2020 (totalt LOS-oppdrag per sted)
 		          </h2>
 		          <p className="text-xs text-gray-600">
-		            Basert på summerte tall fra "Logg_2020_samlet.csv" i prosjektet.
+		            Basert på summerte tall fra &quot;Logg_2020_samlet.csv&quot; i prosjektet.
 		          </p>
 
 		          <div className="overflow-x-auto">
@@ -3448,7 +3448,7 @@ export default function StatistikkPage() {
 		            Manuell statistikk 2021 (totalt LOS-oppdrag per sted)
 		          </h2>
 		          <p className="text-xs text-gray-600">
-		            Basert på summerte tall fra "Logg_2021_samlet.csv" i prosjektet.
+		            Basert på summerte tall fra &quot;Logg_2021_samlet.csv&quot; i prosjektet.
 		          </p>
 
 		          <div className="overflow-x-auto">
@@ -3530,7 +3530,7 @@ export default function StatistikkPage() {
 		            Manuell statistikk 2022 (totalt LOS-oppdrag per sted)
 		          </h2>
 		          <p className="text-xs text-gray-600">
-		            Basert på summerte tall fra "Logg_2022_samlet.csv" i prosjektet.
+		            Basert på summerte tall fra &quot;Logg_2022_samlet.csv&quot; i prosjektet.
 		          </p>
 
 		          <div className="overflow-x-auto">
@@ -3612,7 +3612,7 @@ export default function StatistikkPage() {
 		            Manuell statistikk 2023 (totalt LOS-oppdrag per sted)
 		          </h2>
 		          <p className="text-xs text-gray-600">
-		            Basert på summerte tall fra "Logg_2023_samlet.csv" i prosjektet.
+		            Basert på summerte tall fra &quot;Logg_2023_samlet.csv&quot; i prosjektet.
 		          </p>
 
 		          <div className="overflow-x-auto">

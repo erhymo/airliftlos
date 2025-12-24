@@ -11,11 +11,14 @@ export default function AdminPage() {
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(ADMIN_STORAGE_KEY);
-    setUnlocked(stored === "ok");
-  }, []);
+	useEffect(() => {
+	  if (typeof window === "undefined") return;
+	  const stored = window.localStorage.getItem(ADMIN_STORAGE_KEY);
+	  // Oppdater state asynkront for å unngå kaskaderende renders (lint-regel)
+	  Promise.resolve().then(() => {
+	    setUnlocked(stored === "ok");
+	  });
+	}, []);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();

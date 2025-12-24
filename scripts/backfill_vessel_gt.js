@@ -2,15 +2,14 @@
 // 1) Les...FDATER GT for alle båter der vi allerede har GT i losBookings
 // 2) Eksportere en CSV med alle fartøy + nåværende GT, klar for VesselFinder-sjekk
 
-/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const fs = require("fs");
 const path = require("path");
 
 // Last inn .env.* slik Next gjør, slik at FIREBASE_*-variabler blir tilgjengelige
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { loadEnvConfig } = require("@next/env");
+	const { loadEnvConfig } = require("@next/env");
   loadEnvConfig(process.cwd());
 } catch (e) {
   console.warn("Kunne ikke laste @next/env. Forutsetter at FIREBASE_*-variabler allerede er satt i miljøet.");
@@ -18,9 +17,7 @@ try {
 
 // Minimal kopi av lib/firebaseAdmin.ts for bruk i dette Node-scriptet (JS)
 // Vi vil ikke importere TypeScript-filer direkte her.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { cert, getApp, getApps, initializeApp } = require("firebase-admin/app");
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { getFirestore } = require("firebase-admin/firestore");
 
 let cachedDb = null;
