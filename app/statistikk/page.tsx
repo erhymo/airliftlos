@@ -26,6 +26,25 @@ type StatsResponse = {
   error?: string;
 };
 
+type GtRangePoint = {
+  year: number;
+  month: number;
+  label: string;
+  count: number;
+};
+
+type GtRangeResponse = {
+  ok: boolean;
+  fromYear: number;
+  toYear: number;
+  threshold: number;
+  direction: "over" | "under";
+  base: string | null;
+  total: number;
+  byMonth: GtRangePoint[];
+  error?: string;
+};
+
 type ManualMonthlyStats = {
   year: number;
   month: number; // 1 = januar
@@ -33,6 +52,7 @@ type ManualMonthlyStats = {
   totalBoats: number;
   totalRigs: number;
   boatToBoatOps: number;
+  cancelledOps?: number; // Avbrudd / kansellerte oppdrag denne måneden
   locations: {
     mongstad: number;
     melkoya: number;
@@ -680,1040 +700,1100 @@ type ManualMonthlyStats = {
 		},
 	];
 
-	const MANUAL_2020_MONTHLY_STATS: ManualMonthlyStats[] = [
-		{
-			year: 2020,
-			month: 1,
-			label: "Januar 2020",
-			totalBoats: 103,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 55,
-				melkoya: 15,
-				sture: 24,
-				karsto: 8,
-				nyhamna: 1,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+		const MANUAL_2020_MONTHLY_STATS: ManualMonthlyStats[] = [
+			{
+				year: 2020,
+				month: 1,
+				label: "Januar 2020",
+				totalBoats: 103,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 1,
+				locations: {
+					mongstad: 55,
+					melkoya: 15,
+					sture: 24,
+					karsto: 8,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 2,
-			label: "Februar 2020",
-			totalBoats: 95,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 39,
-				melkoya: 16,
-				sture: 33,
-				karsto: 5,
-				nyhamna: 2,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 2,
+				label: "Februar 2020",
+				totalBoats: 95,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 4,
+				locations: {
+					mongstad: 39,
+					melkoya: 16,
+					sture: 33,
+					karsto: 5,
+					nyhamna: 2,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 3,
-			label: "Mars 2020",
-			totalBoats: 107,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 43,
-				melkoya: 24,
-				sture: 33,
-				karsto: 5,
-				nyhamna: 2,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 3,
+				label: "Mars 2020",
+				totalBoats: 107,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 43,
+					melkoya: 24,
+					sture: 33,
+					karsto: 5,
+					nyhamna: 2,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 4,
-			label: "April 2020",
-			totalBoats: 80,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 33,
-				melkoya: 15,
-				sture: 23,
-				karsto: 8,
-				nyhamna: 1,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 4,
+				label: "April 2020",
+				totalBoats: 80,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 33,
+					melkoya: 15,
+					sture: 23,
+					karsto: 8,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 5,
-			label: "Mai 2020",
-			totalBoats: 79,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 36,
-				melkoya: 7,
-				sture: 23,
-				karsto: 13,
-				nyhamna: 0,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 5,
+				label: "Mai 2020",
+				totalBoats: 79,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 36,
+					melkoya: 7,
+					sture: 23,
+					karsto: 13,
+					nyhamna: 0,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 6,
-			label: "Juni 2020",
-			totalBoats: 76,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 41,
-				melkoya: 8,
-				sture: 18,
-				karsto: 9,
-				nyhamna: 0,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 6,
+				label: "Juni 2020",
+				totalBoats: 76,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 41,
+					melkoya: 8,
+					sture: 18,
+					karsto: 9,
+					nyhamna: 0,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 7,
-			label: "Juli 2020",
-			totalBoats: 96,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 47,
-				melkoya: 16,
-				sture: 25,
-				karsto: 6,
-				nyhamna: 2,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 7,
+				label: "Juli 2020",
+				totalBoats: 96,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 47,
+					melkoya: 16,
+					sture: 25,
+					karsto: 6,
+					nyhamna: 2,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 8,
-			label: "August 2020",
-			totalBoats: 101,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 51,
-				melkoya: 20,
-				sture: 24,
-				karsto: 6,
-				nyhamna: 0,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 8,
+				label: "August 2020",
+				totalBoats: 101,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 51,
+					melkoya: 20,
+					sture: 24,
+					karsto: 6,
+					nyhamna: 0,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 9,
-			label: "September 2020",
-			totalBoats: 80,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 40,
-				melkoya: 7,
-				sture: 29,
-				karsto: 2,
-				nyhamna: 2,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 9,
+				label: "September 2020",
+				totalBoats: 80,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 1,
+				locations: {
+					mongstad: 40,
+					melkoya: 7,
+					sture: 29,
+					karsto: 2,
+					nyhamna: 2,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 10,
-			label: "Oktober 2020",
-			totalBoats: 82,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 43,
-				melkoya: 3,
-				sture: 33,
-				karsto: 3,
-				nyhamna: 0,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 10,
+				label: "Oktober 2020",
+				totalBoats: 82,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 43,
+					melkoya: 3,
+					sture: 33,
+					karsto: 3,
+					nyhamna: 0,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 11,
-			label: "November 2020",
-			totalBoats: 80,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 45,
-				melkoya: 1,
-				sture: 29,
-				karsto: 4,
-				nyhamna: 1,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 11,
+				label: "November 2020",
+				totalBoats: 80,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 45,
+					melkoya: 1,
+					sture: 29,
+					karsto: 4,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-		{
-			year: 2020,
-			month: 12,
-			label: "Desember 2020",
-			totalBoats: 70,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 32,
-				melkoya: 2,
-				sture: 28,
-				karsto: 4,
-				nyhamna: 4,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
+			{
+				year: 2020,
+				month: 12,
+				label: "Desember 2020",
+				totalBoats: 70,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 32,
+					melkoya: 2,
+					sture: 28,
+					karsto: 4,
+					nyhamna: 4,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
 			},
-		},
-	];
+		];
 
-	const MANUAL_2021_MONTHLY_STATS: ManualMonthlyStats[] = [
+		const MANUAL_2021_MONTHLY_STATS: ManualMonthlyStats[] = [
+			{
+				year: 2021,
+				month: 1,
+				label: "Januar 2021",
+				totalBoats: 86,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 2,
+				locations: {
+					mongstad: 56,
+					melkoya: 0,
+					sture: 26,
+					karsto: 3,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 2,
+				label: "Februar 2021",
+				totalBoats: 74,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 36,
+					melkoya: 0,
+					sture: 29,
+					karsto: 7,
+					nyhamna: 2,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 3,
+				label: "Mars 2021",
+				totalBoats: 99,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 62,
+					melkoya: 2,
+					sture: 32,
+					karsto: 3,
+					nyhamna: 0,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 4,
+				label: "April 2021",
+				totalBoats: 81,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 37,
+					melkoya: 2,
+					sture: 30,
+					karsto: 8,
+					nyhamna: 4,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 5,
+				label: "Mai 2021",
+				totalBoats: 84,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 50,
+					melkoya: 0,
+					sture: 29,
+					karsto: 3,
+					nyhamna: 2,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 6,
+				label: "Juni 2021",
+				totalBoats: 86,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 52,
+					melkoya: 0,
+					sture: 30,
+					karsto: 3,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 7,
+				label: "Juli 2021",
+				totalBoats: 90,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 52,
+					melkoya: 0,
+					sture: 31,
+					karsto: 6,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 8,
+				label: "August 2021",
+				totalBoats: 94,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 62,
+					melkoya: 2,
+					sture: 27,
+					karsto: 3,
+					nyhamna: 0,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 9,
+				label: "September 2021",
+				totalBoats: 90,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 2,
+				locations: {
+					mongstad: 60,
+					melkoya: 0,
+					sture: 25,
+					karsto: 3,
+					nyhamna: 2,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 10,
+				label: "Oktober 2021",
+				totalBoats: 88,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 1,
+				locations: {
+					mongstad: 58,
+					melkoya: 0,
+					sture: 26,
+					karsto: 3,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 11,
+				label: "November 2021",
+				totalBoats: 76,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 46,
+					melkoya: 0,
+					sture: 28,
+					karsto: 1,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+			{
+				year: 2021,
+				month: 12,
+				label: "Desember 2021",
+				totalBoats: 82,
+				totalRigs: 0,
+				boatToBoatOps: 0,
+				cancelledOps: 0,
+				locations: {
+					mongstad: 45,
+					melkoya: 0,
+					sture: 32,
+					karsto: 4,
+					nyhamna: 1,
+					losOvrigBoats: 0,
+					losOvrigRigs: 0,
+				},
+			},
+		];
+
+		const MANUAL_2022_MONTHLY_STATS: ManualMonthlyStats[] = [
 		{
-			year: 2021,
+			year: 2022,
 			month: 1,
-			label: "Januar 2021",
-			totalBoats: 86,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 56,
-				melkoya: 0,
-				sture: 26,
-				karsto: 3,
-				nyhamna: 1,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 2,
-			label: "Februar 2021",
-			totalBoats: 74,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 36,
-				melkoya: 0,
-				sture: 29,
-				karsto: 7,
-				nyhamna: 2,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 3,
-			label: "Mars 2021",
-			totalBoats: 99,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 62,
-				melkoya: 2,
-				sture: 32,
-				karsto: 3,
-				nyhamna: 0,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 4,
-			label: "April 2021",
-			totalBoats: 81,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 37,
-				melkoya: 2,
-				sture: 30,
-				karsto: 8,
-				nyhamna: 4,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 5,
-			label: "Mai 2021",
-			totalBoats: 84,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 50,
-				melkoya: 0,
-				sture: 29,
-				karsto: 3,
-				nyhamna: 2,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 6,
-			label: "Juni 2021",
-			totalBoats: 86,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 52,
-				melkoya: 0,
-				sture: 30,
-				karsto: 3,
-				nyhamna: 1,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 7,
-			label: "Juli 2021",
-			totalBoats: 90,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 52,
-				melkoya: 0,
-				sture: 31,
-				karsto: 6,
-				nyhamna: 1,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 8,
-			label: "August 2021",
+			label: "Januar 2022",
 			totalBoats: 94,
 			totalRigs: 0,
 			boatToBoatOps: 0,
+			cancelledOps: 0,
 			locations: {
-				mongstad: 62,
-				melkoya: 2,
-				sture: 27,
-				karsto: 3,
+				mongstad: 54,
+				melkoya: 0,
+				sture: 28,
+				karsto: 8,
 				nyhamna: 0,
-				losOvrigBoats: 0,
+				losOvrigBoats: 4,
 				losOvrigRigs: 0,
 			},
 		},
 		{
-			year: 2021,
-			month: 9,
-			label: "September 2021",
-			totalBoats: 90,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 60,
-				melkoya: 0,
-				sture: 25,
-				karsto: 3,
-				nyhamna: 2,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 10,
-			label: "Oktober 2021",
-			totalBoats: 88,
-			totalRigs: 0,
-			boatToBoatOps: 0,
-			locations: {
-				mongstad: 58,
-				melkoya: 0,
-				sture: 26,
-				karsto: 3,
-				nyhamna: 1,
-				losOvrigBoats: 0,
-				losOvrigRigs: 0,
-			},
-		},
-		{
-			year: 2021,
-			month: 11,
-			label: "November 2021",
+			year: 2022,
+			month: 2,
+			label: "Februar 2022",
 			totalBoats: 76,
 			totalRigs: 0,
 			boatToBoatOps: 0,
+			cancelledOps: 0,
 			locations: {
-				mongstad: 46,
+				mongstad: 41,
 				melkoya: 0,
-				sture: 28,
-				karsto: 1,
-				nyhamna: 1,
-				losOvrigBoats: 0,
+				sture: 19,
+				karsto: 5,
+				nyhamna: 0,
+				losOvrigBoats: 11,
 				losOvrigRigs: 0,
 			},
 		},
 		{
-			year: 2021,
-			month: 12,
-			label: "Desember 2021",
-			totalBoats: 82,
+			year: 2022,
+			month: 3,
+			label: "Mars 2022",
+			totalBoats: 112,
 			totalRigs: 0,
 			boatToBoatOps: 0,
+			cancelledOps: 0,
 			locations: {
-				mongstad: 45,
+				mongstad: 65,
 				melkoya: 0,
-				sture: 32,
-				karsto: 4,
+				sture: 28,
+				karsto: 3,
 				nyhamna: 1,
-				losOvrigBoats: 0,
+				losOvrigBoats: 15,
 				losOvrigRigs: 0,
 			},
 		},
-	];
+		{
+			year: 2022,
+			month: 4,
+			label: "April 2022",
+			totalBoats: 74,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 0,
+			locations: {
+				mongstad: 50,
+				melkoya: 0,
+				sture: 13,
+				karsto: 5,
+				nyhamna: 1,
+				losOvrigBoats: 5,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 5,
+			label: "Mai 2022",
+			totalBoats: 94,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 1,
+			locations: {
+				mongstad: 56,
+				melkoya: 3,
+				sture: 21,
+				karsto: 2,
+				nyhamna: 2,
+				losOvrigBoats: 10,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 6,
+			label: "Juni 2022",
+			totalBoats: 95,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 0,
+			locations: {
+				mongstad: 43,
+				melkoya: 15,
+				sture: 23,
+				karsto: 3,
+				nyhamna: 0,
+				losOvrigBoats: 11,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 7,
+			label: "Juli 2022",
+			totalBoats: 105,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 0,
+			locations: {
+				mongstad: 46,
+				melkoya: 20,
+				sture: 28,
+				karsto: 3,
+				nyhamna: 1,
+				losOvrigBoats: 7,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 8,
+			label: "August 2022",
+			totalBoats: 101,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 0,
+			locations: {
+				mongstad: 52,
+				melkoya: 17,
+				sture: 24,
+				karsto: 4,
+				nyhamna: 1,
+				losOvrigBoats: 3,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 9,
+			label: "September 2022",
+			totalBoats: 104,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 0,
+			locations: {
+				mongstad: 56,
+				melkoya: 15,
+				sture: 22,
+				karsto: 4,
+				nyhamna: 3,
+				losOvrigBoats: 4,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 10,
+			label: "Oktober 2022",
+			totalBoats: 104,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 2,
+			locations: {
+				mongstad: 59,
+				melkoya: 18,
+				sture: 21,
+				karsto: 3,
+				nyhamna: 0,
+				losOvrigBoats: 3,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 11,
+			label: "November 2022",
+			totalBoats: 113,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 1,
+			locations: {
+				mongstad: 62,
+				melkoya: 16,
+				sture: 23,
+				karsto: 6,
+				nyhamna: 0,
+				losOvrigBoats: 6,
+				losOvrigRigs: 0,
+			},
+		},
+		{
+			year: 2022,
+			month: 12,
+			label: "Desember 2022",
+			totalBoats: 110,
+			totalRigs: 0,
+			boatToBoatOps: 0,
+			cancelledOps: 0,
+			locations: {
+				mongstad: 59,
+				melkoya: 16,
+				sture: 25,
+				karsto: 4,
+				nyhamna: 1,
+				losOvrigBoats: 5,
+				losOvrigRigs: 0,
+			},
+		},
+		];
 
-	const MANUAL_2022_MONTHLY_STATS: ManualMonthlyStats[] = [
-	{
-		year: 2022,
-		month: 1,
-		label: "Januar 2022",
-		totalBoats: 94,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 54,
-			melkoya: 0,
-			sture: 28,
-			karsto: 8,
-			nyhamna: 0,
-			losOvrigBoats: 4,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 2,
-		label: "Februar 2022",
-		totalBoats: 76,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 41,
-			melkoya: 0,
-			sture: 19,
-			karsto: 5,
-			nyhamna: 0,
-			losOvrigBoats: 11,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 3,
-		label: "Mars 2022",
-		totalBoats: 112,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 65,
-			melkoya: 0,
-			sture: 28,
-			karsto: 3,
-			nyhamna: 1,
-			losOvrigBoats: 15,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 4,
-		label: "April 2022",
-		totalBoats: 74,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 50,
-			melkoya: 0,
-			sture: 13,
-			karsto: 5,
-			nyhamna: 1,
-			losOvrigBoats: 5,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 5,
-		label: "Mai 2022",
-		totalBoats: 94,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 56,
-			melkoya: 3,
-			sture: 21,
-			karsto: 2,
-			nyhamna: 2,
-			losOvrigBoats: 10,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 6,
-		label: "Juni 2022",
-		totalBoats: 95,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 43,
-			melkoya: 15,
-			sture: 23,
-			karsto: 3,
-			nyhamna: 0,
-			losOvrigBoats: 11,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 7,
-		label: "Juli 2022",
-		totalBoats: 105,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 46,
-			melkoya: 20,
-			sture: 28,
-			karsto: 3,
-			nyhamna: 1,
-			losOvrigBoats: 7,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 8,
-		label: "August 2022",
-		totalBoats: 101,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 52,
-			melkoya: 17,
-			sture: 24,
-			karsto: 4,
-			nyhamna: 1,
-			losOvrigBoats: 3,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 9,
-		label: "September 2022",
-		totalBoats: 104,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 56,
-			melkoya: 15,
-			sture: 22,
-			karsto: 4,
-			nyhamna: 3,
-			losOvrigBoats: 4,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 10,
-		label: "Oktober 2022",
-		totalBoats: 104,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 59,
-			melkoya: 18,
-			sture: 21,
-			karsto: 3,
-			nyhamna: 0,
-			losOvrigBoats: 3,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 11,
-		label: "November 2022",
-		totalBoats: 113,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 62,
-			melkoya: 16,
-			sture: 23,
-			karsto: 6,
-			nyhamna: 0,
-			losOvrigBoats: 6,
-			losOvrigRigs: 0,
-		},
-	},
-	{
-		year: 2022,
-		month: 12,
-		label: "Desember 2022",
-		totalBoats: 110,
-		totalRigs: 0,
-		boatToBoatOps: 0,
-		locations: {
-			mongstad: 59,
-			melkoya: 16,
-			sture: 25,
-			karsto: 4,
-			nyhamna: 1,
-			losOvrigBoats: 5,
-			losOvrigRigs: 0,
-		},
-	},
-];
-
-	const MANUAL_2023_MONTHLY_STATS: ManualMonthlyStats[] = [
-  {
-    year: 2023,
-    month: 1,
-    label: "Januar 2023",
-    totalBoats: 106,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 56,
-      melkoya: 16,
-      sture: 22,
-      karsto: 4,
-      nyhamna: 0,
-      losOvrigBoats: 8,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 2,
-    label: "Februar 2023",
-    totalBoats: 110,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 68,
-      melkoya: 14,
-      sture: 20,
-      karsto: 4,
-      nyhamna: 0,
-      losOvrigBoats: 4,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 3,
-    label: "Mars 2023",
-    totalBoats: 116,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 71,
-      melkoya: 16,
-      sture: 17,
-      karsto: 2,
-      nyhamna: 2,
-      losOvrigBoats: 8,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 4,
-    label: "April 2023",
-    totalBoats: 123,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 79,
-      melkoya: 18,
-      sture: 19,
-      karsto: 3,
-      nyhamna: 0,
-      losOvrigBoats: 4,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 5,
-    label: "Mai 2023",
-    totalBoats: 112,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 67,
-      melkoya: 10,
-      sture: 23,
-      karsto: 4,
-      nyhamna: 1,
-      losOvrigBoats: 7,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 6,
-    label: "Juni 2023",
-    totalBoats: 110,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 77,
-      melkoya: 9,
-      sture: 15,
-      karsto: 1,
-      nyhamna: 0,
-      losOvrigBoats: 8,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 7,
-    label: "Juli 2023",
-    totalBoats: 125,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 75,
-      melkoya: 19,
-      sture: 22,
-      karsto: 2,
-      nyhamna: 0,
-      losOvrigBoats: 7,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 8,
-    label: "August 2023",
-    totalBoats: 120,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 84,
-      melkoya: 13,
-      sture: 18,
-      karsto: 2,
-      nyhamna: 0,
-      losOvrigBoats: 3,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 9,
-    label: "September 2023",
-    totalBoats: 124,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 78,
-      melkoya: 17,
-      sture: 19,
-      karsto: 1,
-      nyhamna: 2,
-      losOvrigBoats: 7,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 10,
-    label: "Oktober 2023",
-    totalBoats: 120,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 75,
-      melkoya: 16,
-      sture: 20,
-      karsto: 3,
-      nyhamna: 0,
-      losOvrigBoats: 6,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 11,
-    label: "November 2023",
-    totalBoats: 112,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 75,
-      melkoya: 14,
-      sture: 18,
-      karsto: 3,
-      nyhamna: 0,
-      losOvrigBoats: 2,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2023,
-    month: 12,
-    label: "Desember 2023",
-    totalBoats: 120,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 79,
-      melkoya: 16,
-      sture: 20,
-      karsto: 5,
-      nyhamna: 0,
-      losOvrigBoats: 0,
-      losOvrigRigs: 0,
-    },
-  },
-];
+		const MANUAL_2023_MONTHLY_STATS: ManualMonthlyStats[] = [
+		  {
+		    year: 2023,
+		    month: 1,
+		    label: "Januar 2023",
+		    totalBoats: 106,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 1,
+		    locations: {
+		      mongstad: 56,
+		      melkoya: 16,
+		      sture: 22,
+		      karsto: 4,
+		      nyhamna: 0,
+		      losOvrigBoats: 8,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 2,
+		    label: "Februar 2023",
+		    totalBoats: 110,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 68,
+		      melkoya: 14,
+		      sture: 20,
+		      karsto: 4,
+		      nyhamna: 0,
+		      losOvrigBoats: 4,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 3,
+		    label: "Mars 2023",
+		    totalBoats: 116,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 71,
+		      melkoya: 16,
+		      sture: 17,
+		      karsto: 2,
+		      nyhamna: 2,
+		      losOvrigBoats: 8,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 4,
+		    label: "April 2023",
+		    totalBoats: 123,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 79,
+		      melkoya: 18,
+		      sture: 19,
+		      karsto: 3,
+		      nyhamna: 0,
+		      losOvrigBoats: 4,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 5,
+		    label: "Mai 2023",
+		    totalBoats: 112,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 1,
+		    locations: {
+		      mongstad: 67,
+		      melkoya: 10,
+		      sture: 23,
+		      karsto: 4,
+		      nyhamna: 1,
+		      losOvrigBoats: 7,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 6,
+		    label: "Juni 2023",
+		    totalBoats: 110,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 77,
+		      melkoya: 9,
+		      sture: 15,
+		      karsto: 1,
+		      nyhamna: 0,
+		      losOvrigBoats: 8,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 7,
+		    label: "Juli 2023",
+		    totalBoats: 125,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 75,
+		      melkoya: 19,
+		      sture: 22,
+		      karsto: 2,
+		      nyhamna: 0,
+		      losOvrigBoats: 7,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 8,
+		    label: "August 2023",
+		    totalBoats: 120,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 84,
+		      melkoya: 13,
+		      sture: 18,
+		      karsto: 2,
+		      nyhamna: 0,
+		      losOvrigBoats: 3,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 9,
+		    label: "September 2023",
+		    totalBoats: 124,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 78,
+		      melkoya: 17,
+		      sture: 19,
+		      karsto: 1,
+		      nyhamna: 2,
+		      losOvrigBoats: 7,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 10,
+		    label: "Oktober 2023",
+		    totalBoats: 120,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 75,
+		      melkoya: 16,
+		      sture: 20,
+		      karsto: 3,
+		      nyhamna: 0,
+		      losOvrigBoats: 6,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 11,
+		    label: "November 2023",
+		    totalBoats: 112,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 0,
+		    locations: {
+		      mongstad: 75,
+		      melkoya: 14,
+		      sture: 18,
+		      karsto: 3,
+		      nyhamna: 0,
+		      losOvrigBoats: 2,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		  {
+		    year: 2023,
+		    month: 12,
+		    label: "Desember 2023",
+		    totalBoats: 120,
+		    totalRigs: 0,
+		    boatToBoatOps: 0,
+		    cancelledOps: 1,
+		    locations: {
+		      mongstad: 79,
+		      melkoya: 16,
+		      sture: 20,
+		      karsto: 5,
+		      nyhamna: 0,
+		      losOvrigBoats: 0,
+		      losOvrigRigs: 0,
+		    },
+		  },
+		];
 
 const MANUAL_2024_MONTHLY_STATS: ManualMonthlyStats[] = [
-  {
-    year: 2024,
-    month: 1,
-    label: "Januar 2024",
-    totalBoats: 118,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 76,
-      melkoya: 14,
-      sture: 21,
-      karsto: 4,
-      nyhamna: 0,
-      losOvrigBoats: 3,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 2,
-    label: "Februar 2024",
-    totalBoats: 116,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 68,
-      melkoya: 16,
-      sture: 20,
-      karsto: 4,
-      nyhamna: 2,
-      losOvrigBoats: 6,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 3,
-    label: "Mars 2024",
-    totalBoats: 115,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 67,
-      melkoya: 17,
-      sture: 20,
-      karsto: 5,
-      nyhamna: 1,
-      losOvrigBoats: 5,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 4,
-    label: "April 2024",
-    totalBoats: 121,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 72,
-      melkoya: 19,
-      sture: 22,
-      karsto: 2,
-      nyhamna: 0,
-      losOvrigBoats: 6,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 5,
-    label: "Mai 2024",
-    totalBoats: 119,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 72,
-      melkoya: 17,
-      sture: 24,
-      karsto: 2,
-      nyhamna: 0,
-      losOvrigBoats: 4,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 6,
-    label: "Juni 2024",
-    totalBoats: 114,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 65,
-      melkoya: 18,
-      sture: 17,
-      karsto: 3,
-      nyhamna: 2,
-      losOvrigBoats: 9,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 7,
-    label: "Juli 2024",
-    totalBoats: 129,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 79,
-      melkoya: 16,
-      sture: 20,
-      karsto: 2,
-      nyhamna: 0,
-      losOvrigBoats: 12,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 8,
-    label: "August 2024",
-    totalBoats: 124,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 82,
-      melkoya: 15,
-      sture: 18,
-      karsto: 3,
-      nyhamna: 0,
-      losOvrigBoats: 6,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 9,
-    label: "September 2024",
-    totalBoats: 121,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 74,
-      melkoya: 18,
-      sture: 20,
-      karsto: 1,
-      nyhamna: 0,
-      losOvrigBoats: 8,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 10,
-    label: "Oktober 2024",
-    totalBoats: 123,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 78,
-      melkoya: 16,
-      sture: 18,
-      karsto: 6,
-      nyhamna: 2,
-      losOvrigBoats: 3,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 11,
-    label: "November 2024",
-    totalBoats: 116,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 72,
-      melkoya: 16,
-      sture: 20,
-      karsto: 3,
-      nyhamna: 0,
-      losOvrigBoats: 5,
-      losOvrigRigs: 0,
-    },
-  },
-  {
-    year: 2024,
-    month: 12,
-    label: "Desember 2024",
-    totalBoats: 129,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 86,
-      melkoya: 17,
-      sture: 22,
-      karsto: 2,
-      nyhamna: 0,
-      losOvrigBoats: 2,
-      losOvrigRigs: 0,
-    },
-  },
-];
+	  {
+	    year: 2024,
+	    month: 1,
+	    label: "Januar 2024",
+	    totalBoats: 118,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 76,
+	      melkoya: 14,
+	      sture: 21,
+	      karsto: 4,
+	      nyhamna: 0,
+	      losOvrigBoats: 3,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 2,
+	    label: "Februar 2024",
+	    totalBoats: 116,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 2,
+	    locations: {
+	      mongstad: 68,
+	      melkoya: 16,
+	      sture: 20,
+	      karsto: 4,
+	      nyhamna: 2,
+	      losOvrigBoats: 6,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 3,
+	    label: "Mars 2024",
+	    totalBoats: 115,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 67,
+	      melkoya: 17,
+	      sture: 20,
+	      karsto: 5,
+	      nyhamna: 1,
+	      losOvrigBoats: 5,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 4,
+	    label: "April 2024",
+	    totalBoats: 121,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 72,
+	      melkoya: 19,
+	      sture: 22,
+	      karsto: 2,
+	      nyhamna: 0,
+	      losOvrigBoats: 6,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 5,
+	    label: "Mai 2024",
+	    totalBoats: 119,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 72,
+	      melkoya: 17,
+	      sture: 24,
+	      karsto: 2,
+	      nyhamna: 0,
+	      losOvrigBoats: 4,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 6,
+	    label: "Juni 2024",
+	    totalBoats: 114,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 65,
+	      melkoya: 18,
+	      sture: 17,
+	      karsto: 3,
+	      nyhamna: 2,
+	      losOvrigBoats: 9,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 7,
+	    label: "Juli 2024",
+	    totalBoats: 129,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 79,
+	      melkoya: 16,
+	      sture: 20,
+	      karsto: 2,
+	      nyhamna: 0,
+	      losOvrigBoats: 12,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 8,
+	    label: "August 2024",
+	    totalBoats: 124,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 82,
+	      melkoya: 15,
+	      sture: 18,
+	      karsto: 3,
+	      nyhamna: 0,
+	      losOvrigBoats: 6,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 9,
+	    label: "September 2024",
+	    totalBoats: 121,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 1,
+	    locations: {
+	      mongstad: 74,
+	      melkoya: 18,
+	      sture: 20,
+	      karsto: 1,
+	      nyhamna: 0,
+	      losOvrigBoats: 8,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 10,
+	    label: "Oktober 2024",
+	    totalBoats: 123,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 78,
+	      melkoya: 16,
+	      sture: 18,
+	      karsto: 6,
+	      nyhamna: 2,
+	      losOvrigBoats: 3,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 11,
+	    label: "November 2024",
+	    totalBoats: 116,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 72,
+	      melkoya: 16,
+	      sture: 20,
+	      karsto: 3,
+	      nyhamna: 0,
+	      losOvrigBoats: 5,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	  {
+	    year: 2024,
+	    month: 12,
+	    label: "Desember 2024",
+	    totalBoats: 129,
+	    totalRigs: 0,
+	    boatToBoatOps: 0,
+	    cancelledOps: 0,
+	    locations: {
+	      mongstad: 86,
+	      melkoya: 17,
+	      sture: 22,
+	      karsto: 2,
+	      nyhamna: 0,
+	      losOvrigBoats: 2,
+	      losOvrigRigs: 0,
+	    },
+	  },
+	];
 
 	const MANUAL_2025_MONTHLY_STATS: ManualMonthlyStats[] = [
   {
@@ -2096,6 +2176,10 @@ export default function StatistikkPage() {
 
 	  const [showGenerator, setShowGenerator] = useState(false);
 	  const [viewType, setViewType] = useState<"table" | "chart">("table");
+		  const [metric, setMetric] =
+		    useState<"total" | "cancelled">("total");
+		  const [isGeneratorFullscreen, setIsGeneratorFullscreen] =
+		    useState(false);
 	  const [fromYear, setFromYear] = useState(
 	    AVAILABLE_MANUAL_YEARS[0] ?? new Date().getFullYear(),
 	  );
@@ -2105,9 +2189,12 @@ export default function StatistikkPage() {
 	      new Date().getFullYear(),
 	  );
 	  const [toMonth, setToMonth] = useState(12);
-		  const [nlQuery, setNlQuery] = useState("");
-		  const [nlInfo, setNlInfo] = useState<string | null>(null);
-		  const [nlError, setNlError] = useState<string | null>(null);
+			  const [nlQuery, setNlQuery] = useState("");
+			  const [nlInfo, setNlInfo] = useState<string | null>(null);
+			  const [nlError, setNlError] = useState<string | null>(null);
+			  const [gtLoading, setGtLoading] = useState(false);
+			  const [gtError, setGtError] = useState<string | null>(null);
+			  const [gtResult, setGtResult] = useState<GtRangeResponse | null>(null);
 
 	  // statisk trendgraf 20222024
 	  const monthlyTotals2022 = MANUAL_2022_MONTHLY_STATS.map((m) => m.totalBoats);
@@ -2140,7 +2227,7 @@ export default function StatistikkPage() {
 	  const points2023 = buildPoints(monthlyTotals2023);
 	  const points2024 = buildPoints(monthlyTotals2024);
 
-	  // fleksibel generator (periode)
+		  // fleksibel generator (periode)
 	  const normalizeKey = (year: number, month: number) => year * 12 + (month - 1);
 	  const fromKey = normalizeKey(fromYear, fromMonth);
 	  const toKey = normalizeKey(toYear, toMonth);
@@ -2154,90 +2241,244 @@ export default function StatistikkPage() {
 	    a.year === b.year ? a.month - b.month : a.year - b.year,
 	  );
 
-	  const generatorValues = generatorStats.map((m) => m.totalBoats);
+		  const generatorValues = generatorStats.map((m) =>
+		    metric === "total" ? m.totalBoats : m.cancelledOps ?? 0,
+		  );
 	  const generatorMaxY = Math.max(...generatorValues, 0);
 	  const generatorSafeMaxY = generatorMaxY > 0 ? generatorMaxY : 1;
 	  const generatorChartWidth = 320;
-	  const generatorChartHeight = 140;
-	  const generatorXStep =
+		  const generatorChartHeight = 140;
+		  const generatorXStep =
 	    generatorStats.length > 1
 	      ? generatorChartWidth / (generatorStats.length - 1)
 	      : 0;
 
-	  const generatorPoints = generatorStats
-	    .map((m, index) => {
-	      const x = index * generatorXStep;
-	      const y =
-	        generatorChartHeight -
-	        (m.totalBoats / generatorSafeMaxY) * generatorChartHeight;
-	      return `${x},${y}`;
-	    })
-	    .join(" ");
+			  const generatorPoints = generatorStats
+		    .map((m, index) => {
+		      const x = index * generatorXStep;
+		      const value =
+		        metric === "total" ? m.totalBoats : m.cancelledOps ?? 0;
+		      const y =
+		        generatorChartHeight -
+		        (value / generatorSafeMaxY) * generatorChartHeight;
+		      return `${x},${y}`;
+		    })
+			    .join(" ");
 
-		  const handleNaturalLanguageApply = () => {
-		    const text = nlQuery.trim().toLowerCase();
-		    if (!text) {
-		      setNlError("Skriv et sp\u00f8rsm\u00e5l f\u00f8rst.");
-		      setNlInfo(null);
-		      return;
-		    }
+			  const runGtQuery = async (options: {
+			    fromYear: number;
+			    toYear: number;
+			    threshold: number;
+			    direction: "over" | "under";
+			    base: string | null;
+			  }) => {
+			    const { fromYear, toYear, threshold, direction, base } = options;
+			    try {
+			      setGtLoading(true);
+			      setGtError(null);
+			      const params = new URLSearchParams({
+			        fromYear: String(fromYear),
+			        toYear: String(toYear),
+			        threshold: String(threshold),
+			        direction,
+			      });
+			      if (base) {
+			        params.set("base", base);
+			      }
+			      const res = await fetch(`/api/statistics/gt-range?${params.toString()}`, {
+			        cache: "no-store",
+			      });
+			      if (!res.ok) {
+			        throw new Error("Klarte ikke \\u00e5 hente GT-basert statistikk.");
+			      }
+			      const data = (await res.json()) as GtRangeResponse;
+			      if (!data.ok) {
+			        throw new Error(data.error || "Klarte ikke \\u00e5 hente GT-basert statistikk.");
+			      }
+			      setGtResult(data);
+			    } catch (err) {
+			      console.error(err);
+			      setGtError("Klarte ikke \\u00e5 hente GT-basert statistikk.");
+			      setGtResult(null);
+			    } finally {
+			      setGtLoading(false);
+			    }
+			  };
 
-		    let nextViewType: "table" | "chart" = viewType;
-		    if (text.includes("graf") || text.includes("kurve") || text.includes("diagram")) {
-		      nextViewType = "chart";
-		    } else if (text.includes("tabell") || text.includes("liste")) {
-		      nextViewType = "table";
-		    }
+			  const handleNaturalLanguageApply = () => {
+			    const text = nlQuery.trim().toLowerCase();
+			    if (!text) {
+			      setNlError("Skriv et sp\u00f8rsm\u00e5l f\u00f8rst.");
+			      setNlInfo(null);
+			      return;
+			    }
 
-		    const yearMatches = text.match(/20[0-9]{2}/g) ?? [];
-		    let years = Array.from(
-		      new Set(
-		        yearMatches
-		          .map((y) => Number(y))
-		          .filter((y) => AVAILABLE_MANUAL_YEARS.includes(y)),
-		      ),
-		    ).sort((a, b) => a - b);
+			    let nextViewType: "table" | "chart" = viewType;
+			    let nextMetric: "total" | "cancelled" = metric;
+			    if (
+			      text.includes("graf") ||
+			      text.includes("kurve") ||
+			      text.includes("diagram")
+			    ) {
+			      nextViewType = "chart";
+			    } else if (text.includes("tabell") || text.includes("liste")) {
+			      nextViewType = "table";
+			    }
 
-		    let nextFromYear = fromYear;
-		    let nextToYear = toYear;
-		    let nextFromMonth = fromMonth;
-		    let nextToMonth = toMonth;
+			    if (
+			      text.includes("kansellert") ||
+			      text.includes("kansellerte") ||
+			      text.includes("avbrutt") ||
+			      text.includes("avbrudd")
+			    ) {
+			      nextMetric = "cancelled";
+			    } else {
+			      nextMetric = "total";
+			    }
 
-		    if (years.length === 1) {
-		      nextFromYear = years[0];
-		      nextToYear = years[0];
-		      nextFromMonth = 1;
-		      nextToMonth = 12;
-		    } else if (years.length >= 2) {
-		      nextFromYear = years[0];
-		      nextToYear = years[years.length - 1];
-		      nextFromMonth = 1;
-		      nextToMonth = 12;
-		    } else {
-		      nextFromYear = AVAILABLE_MANUAL_YEARS[0];
-		      nextToYear = AVAILABLE_MANUAL_YEARS[AVAILABLE_MANUAL_YEARS.length - 1];
-		      nextFromMonth = 1;
-		      nextToMonth = 12;
-		    }
+			    const yearMatches = text.match(/20[0-9]{2}/g) ?? [];
+			    let years = Array.from(
+			      new Set(
+			        yearMatches
+			          .map((y) => Number(y))
+			          .filter((y) => AVAILABLE_MANUAL_YEARS.includes(y)),
+			      ),
+			    ).sort((a, b) => a - b);
 
-		    setViewType(nextViewType);
-		    setFromYear(nextFromYear);
-		    setToYear(nextToYear);
-		    setFromMonth(nextFromMonth);
-		    setToMonth(nextToMonth);
-		    setShowGenerator(true);
+			    let nextFromYear = fromYear;
+			    let nextToYear = toYear;
+			    let nextFromMonth = fromMonth;
+			    let nextToMonth = toMonth;
 
-		    const rangeText =
-		      nextFromYear === nextToYear
-		        ? `${nextFromYear}`
-		        : `${nextFromYear}\u2013${nextToYear}`;
-		    const viewText = nextViewType === "table" ? "tabell" : "graf";
+			    if (years.length === 1) {
+			      nextFromYear = years[0];
+			      nextToYear = years[0];
+			      nextFromMonth = 1;
+			      nextToMonth = 12;
+			    } else if (years.length >= 2) {
+			      nextFromYear = years[0];
+			      nextToYear = years[years.length - 1];
+			      nextFromMonth = 1;
+			      nextToMonth = 12;
+			    } else {
+			      nextFromYear = AVAILABLE_MANUAL_YEARS[0];
+			      nextToYear =
+			        AVAILABLE_MANUAL_YEARS[AVAILABLE_MANUAL_YEARS.length - 1];
+			      nextFromMonth = 1;
+			      nextToMonth = 12;
+			    }
 
-		    setNlInfo(
-		      `Tolket som: ${viewText} med totalt antall b\u00e5ter for perioden ${rangeText}. Du kan finjustere valgene i feltene over.`,
-		    );
-		    setNlError(null);
-		  };
+			    const isGtQuery =
+			      text.includes(" tonn") || text.includes("tonn ") || text.includes("gt");
+
+			    let threshold: number | null = null;
+			    let direction: "over" | "under" = "over";
+			    const complexMatch = text.match(
+			      /(over|st\u00f8rre enn|minst|>=|under|lavere enn|maks|<=)\s*([0-9][0-9 .]{2,})\s*(?:tonn|gt)?/,
+			    );
+			    if (complexMatch) {
+			      const keyword = complexMatch[1];
+			      const numRaw = complexMatch[2].replace(/\s+/g, "");
+			      const parsed = Number.parseFloat(numRaw);
+			      if (Number.isFinite(parsed)) {
+			        threshold = parsed;
+			        if (
+			          keyword.startsWith("under") ||
+			          keyword.startsWith("lavere") ||
+			          keyword.startsWith("maks") ||
+			          keyword.includes("<")
+			        ) {
+			          direction = "under";
+			        } else {
+			          direction = "over";
+			        }
+			      }
+			    } else {
+			      const simpleMatch = text.match(
+			        /([0-9][0-9 .]{3,})\s*(?:tonn|gt)/,
+			      );
+			      if (simpleMatch) {
+			        const numRaw = simpleMatch[1].replace(/\s+/g, "");
+			        const parsed = Number.parseFloat(numRaw);
+			        if (Number.isFinite(parsed)) {
+			          threshold = parsed;
+			          if (text.includes("under") || text.includes("lavere")) {
+			            direction = "under";
+			          } else {
+			            direction = "over";
+			          }
+			        }
+			      }
+			    }
+
+			    let base: "Bergen" | "Hammerfest" | null = null;
+			    if (text.includes("bergen")) {
+			      base = "Bergen";
+			    } else if (text.includes("hammerfest")) {
+			      base = "Hammerfest";
+			    }
+
+			    if (isGtQuery) {
+			      if (threshold == null) {
+			        setNlError(
+			          "Jeg fant ordet 'tonn'/'GT', men ingen tydelig verdi (f.eks. 60000 tonn).",
+			        );
+			        setNlInfo(null);
+			        return;
+			      }
+
+			      setViewType("table");
+			      setMetric("total");
+			      setFromYear(nextFromYear);
+			      setToYear(nextToYear);
+			      setFromMonth(nextFromMonth);
+			      setToMonth(nextToMonth);
+			      setShowGenerator(true);
+			      void runGtQuery({
+			        fromYear: nextFromYear,
+			        toYear: nextToYear,
+			        threshold,
+			        direction,
+			        base,
+			      });
+
+			      const rangeText =
+			        nextFromYear === nextToYear
+			          ? `${nextFromYear}`
+			          : `${nextFromYear}\u2013${nextToYear}`;
+			      const dirText = direction === "over" ? "over" : "under";
+			      const baseText = base ? ` i ${base}` : " (alle baser)";
+			      const thresholdText = threshold.toLocaleString("nb-NO");
+			      setNlInfo(
+			        `Tolket som: tabell med antall LOS-oppdrag med fartøy ${dirText} ${thresholdText} tonn${baseText} for perioden ${rangeText}.`,
+			      );
+			      setNlError(null);
+			      return;
+			    }
+
+			    setViewType(nextViewType);
+			    setMetric(nextMetric);
+			    setFromYear(nextFromYear);
+			    setToYear(nextToYear);
+			    setFromMonth(nextFromMonth);
+			    setToMonth(nextToMonth);
+			    setShowGenerator(true);
+
+			    const rangeText =
+			      nextFromYear === nextToYear
+			        ? `${nextFromYear}`
+			        : `${nextFromYear}\u2013${nextToYear}`;
+			    const viewText = nextViewType === "table" ? "tabell" : "graf";
+			    const metricText =
+			      nextMetric === "cancelled"
+			        ? "avbrudd / kansellerte oppdrag"
+			        : "totalt antall b\u00e5ter";
+
+			    setNlInfo(
+			      `Tolket som: ${viewText} med ${metricText} for perioden ${rangeText}. Du kan finjustere valgene i feltene over.`,
+			    );
+			    setNlError(null);
+			  };
 
 	  useEffect(() => {
     let cancelled = false;
@@ -2443,7 +2684,7 @@ export default function StatistikkPage() {
 		                </div>
 
 		                <div className="flex flex-col gap-1">
-		                  <span className="font-medium">Periode (m aned og  e5r):</span>
+		                  <span className="font-medium">Periode (måned og år):</span>
 		                  <div className="flex flex-wrap items-center gap-2">
 		                    <span className="text-[11px]">Fra:</span>
 		                    <select
@@ -2498,28 +2739,32 @@ export default function StatistikkPage() {
 		              <div className="pt-2 border-t border-gray-200 space-y-2">
 		                {generatorStats.length === 0 ? (
 		                  <p className="text-xs text-gray-500">
-		                    Ingen data i valgt periode enn e5. Pr f8v en annen
-		                    kombinasjon av m aned og  e5r.
+		                    Ingen data i valgt periode ennå. Prøv en annen
+		                    kombinasjon av måned og år.
 		                  </p>
-		                ) : viewType === "table" ? (
+			                ) : viewType === "table" ? (
 		                  <div className="overflow-x-auto">
-		                    <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs bg-white">
-		                      <thead className="bg-gray-50">
-		                        <tr>
-		                          <th className="border px-1 py-0.5 text-left">M aned</th>
-		                          <th className="border px-1 py-0.5 text-right">
-		                            Totalt LOS-oppdrag (b ater)
-		                          </th>
-		                        </tr>
-		                      </thead>
-		                      <tbody>
-		                        {generatorStats.map((m) => (
+			                    <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs bg-white">
+			                      <thead className="bg-gray-50">
+			                        <tr>
+			                          <th className="border px-1 py-0.5 text-left">Måned</th>
+			                          <th className="border px-1 py-0.5 text-right">
+				                            {metric === "cancelled"
+				                              ? "Avbrudd / kansellerte oppdrag"
+				                              : "Totalt LOS-oppdrag (båter)"}
+			                          </th>
+			                        </tr>
+			                      </thead>
+			                      <tbody>
+			                        {generatorStats.map((m) => (
 		                          <tr key={`${m.year}-${m.month}`}>
 		                            <td className="border px-1 py-0.5 whitespace-nowrap">
 		                              {m.label}
 		                            </td>
 		                            <td className="border px-1 py-0.5 text-right">
-		                              {m.totalBoats}
+			                              {metric === "cancelled"
+			                                ? m.cancelledOps ?? 0
+			                                : m.totalBoats}
 		                            </td>
 		                          </tr>
 		                        ))}
@@ -2529,23 +2774,27 @@ export default function StatistikkPage() {
 		                          <td className="border px-1 py-0.5 text-left">
 		                            Sum valgt periode
 		                          </td>
-		                          <td className="border px-1 py-0.5 text-right">
-		                            {generatorStats.reduce(
-		                              (sum, m) => sum + m.totalBoats,
-		                              0,
-		                            )}
-		                          </td>
+			                          <td className="border px-1 py-0.5 text-right">
+			                            {generatorStats.reduce((sum, m) => {
+			                              const value =
+			                                metric === "cancelled"
+			                                  ? m.cancelledOps ?? 0
+			                                  : m.totalBoats;
+			                              return sum + value;
+			                            }, 0)}
+			                          </td>
 		                        </tr>
 		                      </tfoot>
 		                    </table>
 		                  </div>
-		                ) : (
-		                  <div className="overflow-x-auto">
-		                    <svg
+			                ) : (
+			                  <div className="overflow-x-auto">
+			                    <svg
 		                      viewBox={`0 0 ${generatorChartWidth} ${
 		                        generatorChartHeight + 20
 		                      }`}
-		                      className="w-full max-w-full border border-gray-200 bg-white"
+			                      className="w-full max-w-full border border-gray-200 bg-white cursor-pointer"
+			                      onClick={() => setIsGeneratorFullscreen(true)}
 		                    >
 		                      {Array.from({ length: 5 }).map((_, i) => {
 		                        const ratio = i / 4;
@@ -2582,26 +2831,32 @@ export default function StatistikkPage() {
 		                        points={generatorPoints}
 		                      />
 
-		                      {generatorStats.map((m, index) => {
-		                        const x =
-		                          index *
-		                          (generatorStats.length > 1
-		                            ? generatorChartWidth /
-		                              (generatorStats.length - 1)
-		                            : 0);
-		                        return (
-		                          <text
-		                            key={`${m.year}-${m.month}`}
-		                            x={x}
-		                            y={generatorChartHeight + 10}
-		                            fontSize={6}
-		                            textAnchor="middle"
-		                            fill="#374151"
-		                          >
-		                            {m.label}
-		                          </text>
-		                        );
-		                      })}
+			                      {generatorStats.map((m, index) => {
+			                        const x =
+			                          index *
+			                          (generatorStats.length > 1
+			                            ? generatorChartWidth /
+			                              (generatorStats.length - 1)
+			                            : 0);
+			                        const showLabel =
+			                          generatorStats.length <= 24 || index % 2 === 0;
+			                        if (!showLabel) return null;
+			                        const yearShort = String(m.year).slice(-2);
+			                        const monthLabel = SHORT_MONTH_LABELS[m.month - 1] ?? "";
+			                        const label = `${monthLabel} ${yearShort}`;
+			                        return (
+			                          <text
+			                            key={`${m.year}-${m.month}`}
+			                            x={x}
+			                            y={generatorChartHeight + 10}
+			                            fontSize={6}
+			                            textAnchor="middle"
+			                            fill="#374151"
+			                          >
+			                            {label}
+			                          </text>
+			                        );
+			                      })}
 		                    </svg>
 		                  </div>
 		                )}
@@ -2610,6 +2865,157 @@ export default function StatistikkPage() {
 		          )}
 		        </section>
 
+		        {(gtLoading || gtResult || gtError) && (
+		          <section className="space-y-2 text-sm text-gray-800 mt-4">
+		            <h3 className="text-xs font-semibold">GT-filtrert statistikk</h3>
+		            {gtLoading && (
+		              <p className="text-[11px] text-gray-500">
+		                Henter GT-basert statistikk …
+		              </p>
+		            )}
+		            {!gtLoading && gtError && (
+		              <p className="text-[11px] text-red-600">{gtError}</p>
+		            )}
+		            {!gtLoading && gtResult && (
+		              <div className="overflow-x-auto">
+		                <p className="text-[11px] text-gray-600 mb-1">
+		                  Viser antall LOS-oppdrag med fartøy {gtResult.direction === "over" ? "over" : "under"}{" "}
+		                  {gtResult.threshold.toLocaleString("nb-NO")} tonn
+		                  {gtResult.base ? ` i ${gtResult.base}` : " (alle baser)"} per måned.
+		                </p>
+		                <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs bg-white">
+		                  <thead className="bg-gray-50">
+		                    <tr>
+		                      <th className="border px-1 py-0.5 text-left">Måned</th>
+		                      <th className="border px-1 py-0.5 text-right">Antall oppdrag</th>
+		                    </tr>
+		                  </thead>
+		                  <tbody>
+		                    {gtResult.byMonth.map((row) => (
+			                      <tr key={`${row.year}-${row.month}`}>
+			                        <td className="border px-1 py-0.5 whitespace-nowrap">
+			                          {row.label}
+			                        </td>
+			                        <td className="border px-1 py-0.5 text-right">
+			                          {row.count}
+			                        </td>
+			                      </tr>
+			                    ))}
+		                  </tbody>
+		                  <tfoot>
+		                    <tr className="bg-gray-50 font-semibold">
+		                      <td className="border px-1 py-0.5 text-left">Sum valgt periode</td>
+		                      <td className="border px-1 py-0.5 text-right">
+		                        {gtResult.total}
+		                      </td>
+		                    </tr>
+		                  </tfoot>
+		                </table>
+		              </div>
+		            )}
+		          </section>
+		        )}
+
+		        {isGeneratorFullscreen && (
+			          <div
+			            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center"
+			            onClick={() => setIsGeneratorFullscreen(false)}
+			          >
+			            <div
+			              className="bg-white rounded-md shadow-lg p-4 max-w-5xl w-[90%] max-h-[90%] flex flex-col"
+			              onClick={(e) => e.stopPropagation()}
+			            >
+			              <div className="flex items-center justify-between mb-2 text-xs sm:text-sm">
+			                <span className="font-semibold">
+			                  Statistikk-graf ({
+			                    metric === "cancelled"
+			                      ? "avbrudd / kansellerte oppdrag"
+			                      : "totalt antall LOS-oppdrag"
+			                  })
+			                </span>
+			                <button
+			                  type="button"
+			                  onClick={() => setIsGeneratorFullscreen(false)}
+			                  className="text-xs px-2 py-1 rounded border border-gray-300 bg-gray-50 hover:bg-gray-100"
+			                >
+			                  Lukk
+			                </button>
+			              </div>
+			              <div className="flex-1 overflow-auto">
+			                <svg
+			                  viewBox={`0 0 ${generatorChartWidth} ${
+			                    generatorChartHeight + 20
+			                  }`}
+			                  className="w-full max-w-full border border-gray-200 bg-white"
+			                >
+			                  {Array.from({ length: 5 }).map((_, i) => {
+			                    const ratio = i / 4;
+			                    const y = generatorChartHeight * ratio;
+			                    const value = Math.round(
+			                      generatorSafeMaxY * (1 - ratio),
+			                    );
+			                    return (
+			                      <g key={i}>
+			                        <line
+			                          x1={0}
+			                          y1={y}
+			                          x2={generatorChartWidth}
+			                          y2={y}
+			                          stroke="#e5e7eb"
+			                          strokeWidth={0.5}
+			                        />
+			                        <text
+			                          x={2}
+			                          y={y + 4}
+			                          fontSize={6}
+			                          fill="#6b7280"
+			                        >
+			                          {value}
+			                        </text>
+			                      </g>
+			                    );
+			                  })}
+			
+			                  <polyline
+			                    fill="none"
+			                    stroke="#2563eb"
+			                    strokeWidth={1.5}
+			                    points={generatorPoints}
+			                  />
+			
+			                  {generatorStats.map((m, index) => {
+			                    const x =
+			                      index *
+			                      (generatorStats.length > 1
+			                        ? generatorChartWidth /
+			                          (generatorStats.length - 1)
+			                        : 0);
+			                    const showLabel =
+			                      generatorStats.length <= 24 || index % 2 === 0;
+			                    if (!showLabel) return null;
+			                    const yearShort = String(m.year).slice(-2);
+			                    const monthLabel =
+			                      SHORT_MONTH_LABELS[m.month - 1] ?? "";
+			                    const label = `${monthLabel} ${yearShort}`;
+			                    return (
+			                      <text
+			                        key={`${m.year}-${m.month}`}
+			                        x={x}
+			                        y={generatorChartHeight + 10}
+			                        fontSize={6}
+			                        textAnchor="middle"
+			                        fill="#374151"
+			                      >
+			                        {label}
+			                      </text>
+			                    );
+			                  })}
+			                </svg>
+			              </div>
+			            </div>
+			          </div>
+			        )}
+			
 	        <section className="space-y-3 text-sm text-gray-800 mt-6">
 	          <h2 className="text-sm font-semibold">
 	            Visuell trend 2022–2024 (totalt LOS-oppdrag per måned)
