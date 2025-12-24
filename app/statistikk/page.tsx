@@ -2105,6 +2105,9 @@ export default function StatistikkPage() {
 	      new Date().getFullYear(),
 	  );
 	  const [toMonth, setToMonth] = useState(12);
+		  const [nlQuery, setNlQuery] = useState("");
+		  const [nlInfo, setNlInfo] = useState<string | null>(null);
+		  const [nlError, setNlError] = useState<string | null>(null);
 
 	  // statisk trendgraf 20222024
 	  const monthlyTotals2022 = MANUAL_2022_MONTHLY_STATS.map((m) => m.totalBoats);
@@ -2170,6 +2173,71 @@ export default function StatistikkPage() {
 	      return `${x},${y}`;
 	    })
 	    .join(" ");
+
+		  const handleNaturalLanguageApply = () => {
+		    const text = nlQuery.trim().toLowerCase();
+		    if (!text) {
+		      setNlError("Skriv et sp\u00f8rsm\u00e5l f\u00f8rst.");
+		      setNlInfo(null);
+		      return;
+		    }
+
+		    let nextViewType: "table" | "chart" = viewType;
+		    if (text.includes("graf") || text.includes("kurve") || text.includes("diagram")) {
+		      nextViewType = "chart";
+		    } else if (text.includes("tabell") || text.includes("liste")) {
+		      nextViewType = "table";
+		    }
+
+		    const yearMatches = text.match(/20[0-9]{2}/g) ?? [];
+		    let years = Array.from(
+		      new Set(
+		        yearMatches
+		          .map((y) => Number(y))
+		          .filter((y) => AVAILABLE_MANUAL_YEARS.includes(y)),
+		      ),
+		    ).sort((a, b) => a - b);
+
+		    let nextFromYear = fromYear;
+		    let nextToYear = toYear;
+		    let nextFromMonth = fromMonth;
+		    let nextToMonth = toMonth;
+
+		    if (years.length === 1) {
+		      nextFromYear = years[0];
+		      nextToYear = years[0];
+		      nextFromMonth = 1;
+		      nextToMonth = 12;
+		    } else if (years.length >= 2) {
+		      nextFromYear = years[0];
+		      nextToYear = years[years.length - 1];
+		      nextFromMonth = 1;
+		      nextToMonth = 12;
+		    } else {
+		      nextFromYear = AVAILABLE_MANUAL_YEARS[0];
+		      nextToYear = AVAILABLE_MANUAL_YEARS[AVAILABLE_MANUAL_YEARS.length - 1];
+		      nextFromMonth = 1;
+		      nextToMonth = 12;
+		    }
+
+		    setViewType(nextViewType);
+		    setFromYear(nextFromYear);
+		    setToYear(nextToYear);
+		    setFromMonth(nextFromMonth);
+		    setToMonth(nextToMonth);
+		    setShowGenerator(true);
+
+		    const rangeText =
+		      nextFromYear === nextToYear
+		        ? `${nextFromYear}`
+		        : `${nextFromYear}\u2013${nextToYear}`;
+		    const viewText = nextViewType === "table" ? "tabell" : "graf";
+
+		    setNlInfo(
+		      `Tolket som: ${viewText} med totalt antall b\u00e5ter for perioden ${rangeText}. Du kan finjustere valgene i feltene over.`,
+		    );
+		    setNlError(null);
+		  };
 
 	  useEffect(() => {
     let cancelled = false;
@@ -2318,6 +2386,34 @@ export default function StatistikkPage() {
 		          {showGenerator && (
 		            <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50">
 		              <div className="flex flex-col gap-2 text-xs">
+		                <div className="flex flex-col gap-1">
+		                  <span className="font-medium">
+		                    Sp\u00f8r med tekst (eksperimentell):
+		                  </span>
+		                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
+		                    <input
+		                      type="text"
+		                      value={nlQuery}
+		                      onChange={(e) => setNlQuery(e.target.value)}
+		                      placeholder="F.eks: Vis antall LOS-oppdrag 2019-2022 som graf"
+		                      className="flex-1 border border-gray-300 rounded px-2 py-1 text-[11px] bg-white"
+		                    />
+		                    <button
+		                      type="button"
+		                      onClick={handleNaturalLanguageApply}
+		                      className="mt-1 sm:mt-0 text-xs px-2 py-1 rounded border border-blue-400 bg-blue-50 hover:bg-blue-100 text-blue-700 whitespace-nowrap"
+		                    >
+		                      Tolk og sett valg
+		                    </button>
+		                  </div>
+		                  {nlInfo && (
+		                    <p className="text-[11px] text-gray-600">{nlInfo}</p>
+		                  )}
+		                  {nlError && (
+		                    <p className="text-[11px] text-red-600">{nlError}</p>
+		                  )}
+		                </div>
+
 		                <div className="flex flex-wrap gap-2 items-center">
 		                  <span className="font-medium">Visning:</span>
 		                  <div className="flex gap-2">
