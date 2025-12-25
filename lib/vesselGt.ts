@@ -329,9 +329,9 @@ export async function getGtFromLocalDatabase(
 }
 
 export async function saveGtForVessel(
-  vesselName: string,
-  gt: number,
-  source: "manual" | "seed" | "api" = "manual",
+	vesselName: string,
+	gt: number,
+	source: "manual" | "seed" | "api" | "booking" | "vesselfinder" = "manual",
 ): Promise<void> {
   if (!vesselName || !Number.isFinite(gt)) return;
 
