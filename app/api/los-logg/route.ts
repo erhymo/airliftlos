@@ -102,11 +102,37 @@ async function getGraphAccessToken(): Promise<string | null> {
 	return data.access_token;
 }
 
-async function appendRowToExcel(row: (string | number | null)[], sheetName: string) {
+async function appendRowToExcel(
+	row: (string | number | null)[],
+	sheetName: string,
+	excelYear: number,
+) {
 	const siteId = process.env.SHAREPOINT_SITE_ID;
-	const excelPath = process.env.LOS_LOGG_EXCEL_PATH;
+	const path2025 = process.env.LOS_LOGG_EXCEL_PATH_2025;
+	const path2026 = process.env.LOS_LOGG_EXCEL_PATH_2026;
+	const fallbackPath = process.env.LOS_LOGG_EXCEL_PATH;
+
+	let excelPath: string | undefined;
+
+	// Hvis egne stier for 2025 og 2026+ er satt, velg basert på året i selve logg-datoen.
+	if (path2025 || path2026) {
+		if (excelYear >= 2026 && path2026) {
+			excelPath = path2026;
+		} else if (excelYear <= 2025 && path2025) {
+			excelPath = path2025;
+		} else {
+			// Hvis vi mangler en av årsstiene, fall tilbake til generisk sti hvis den finnes.
+			excelPath = fallbackPath;
+		}
+	} else {
+		// Bakoverkompatibelt: bruk gamle LOS_LOGG_EXCEL_PATH hvis egne årsstier ikke er satt.
+		excelPath = fallbackPath;
+	}
+
 	if (!siteId || !excelPath) {
-		console.error("LOS-logg: SHAREPOINT_SITE_ID eller LOS_LOGG_EXCEL_PATH mangler.");
+		console.error(
+			"LOS-logg: SHAREPOINT_SITE_ID eller LOS_LOGG_EXCEL_PATH(/_2025/_2026) mangler.",
+		);
 		throw new Error(
 			"LOS-logg mot Excel er ikke konfigurert (mangler SHAREPOINT_SITE_ID eller LOS_LOGG_EXCEL_PATH).",
 		);
@@ -239,6 +265,15 @@ export async function POST(req: Request) {
 		}
 
 			const { excelDate, sheetName } = getExcelDateAndSheet(body.date);
+			// Finn aret vi skal bruke for valg av Excel-fil (2025 vs 2026+), basert p e5
+			// selve logg-datoen, ikke serverklokken.
+			let excelYear: number;
+			if (body.date) {
+				const d = new Date(body.date);
+				excelYear = Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+			} else {
+				excelYear = new Date().getFullYear();
+			}
 			const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
 			const vesselForExcel = getExcelVesselName(body.vesselName ?? "");
 
@@ -263,8 +298,8 @@ export async function POST(req: Request) {
 				body.hoistCount ?? "", // R Hoists
 				body.comment ?? "", // S Kommentar
 			];
-		
-			await appendRowToExcel(row, sheetName);
+			
+			await appendRowToExcel(row, sheetName, excelYear);
 
 			// Lagre GT mot fartøynavnet slik at neste bestilling for samme båt
 			// kan få GT forhåndsutfylt automatisk.
