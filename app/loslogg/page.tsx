@@ -73,14 +73,14 @@ export default async function LosLoggHome() {
 
 				<LosLoggClient initialBookings={bookings} />
 
-				<div className="pt-2">
-					<Link
-						href="/"
-						className="text-sm text-blue-600 hover:text-blue-700 underline"
-					>
-						Tilbake til forsiden
-					</Link>
-				</div>
+					<div className="pt-2">
+						<Link
+							href="/"
+							className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+						>
+							Tilbake til forsiden
+						</Link>
+					</div>
 			</main>
 		</div>
 	);
