@@ -117,6 +117,29 @@ type LosType = "Båt" | "Rigg";
 			}
 		}, []);
 
+			// Forhåndsvelg sted hvis vi har tolket terminal fra bestillingsmailen
+			// (f.eks. Holmengraa/Fedje vest → Mongstad/Sture) og piloten ikke har
+			// valgt noe selv ennå.
+			useEffect(() => {
+				if (location !== null) return;
+
+				const terminal = booking.terminal;
+				if (!terminal) return;
+
+				const KNOWN_LOCATIONS: Location[] = [
+					"Mongstad",
+					"Sture",
+					"Melkøya",
+					"Kårstø",
+					"Los øvrig",
+					"Nyhamna",
+				];
+
+				if (KNOWN_LOCATIONS.includes(terminal as Location)) {
+					setLocation(terminal as Location);
+				}
+			}, [booking.terminal, location]);
+
 		const signers = useMemo(
 		() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")),
 		[],
