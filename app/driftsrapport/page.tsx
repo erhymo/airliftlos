@@ -37,6 +37,8 @@ interface DriftsReport {
 	gjenopptattKommentar?: string;
 	/** Når e-posten om gjenopptatt drift ble sendt (ms since epoch) */
 	gjenopptattSendtAt?: number;
+	/** Markert ferdig lokalt (uten at «drift gjenopptatt»-melding er sendt) */
+	locallyClosed?: boolean;
 }
 
 type DraftDriftsReport = Omit<DriftsReport, "createdAt">;
@@ -239,10 +241,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    ]
 	  );
 
-		useEffect(() => {
+			useEffect(() => {
 			let cancelled = false;
 
-			async function loadFromServer() {
+				async function loadFromServer() {
 				try {
 					const res = await fetch("/api/driftsrapporter");
 					if (!res.ok) {
@@ -251,22 +253,31 @@ function Section(props: { title: string; children: React.ReactNode }) {
 					const data = await res.json();
 					if (cancelled) return;
 
-					const serverReports: DriftsReport[] = Array.isArray(data.reports)
-						? data.reports
-						: [];
+						const serverReports: DriftsReport[] = Array.isArray(data.reports)
+							? data.reports
+							: [];
 
-					setReports((local) => {
-						const byId = new Map<string, DriftsReport>();
-						for (const r of local) {
-							byId.set(r.id, r);
-						}
-						for (const r of serverReports) {
-							byId.set(r.id, r as DriftsReport);
-						}
-						return Array.from(byId.values()).sort(
-							(a, b) => b.createdAt - a.createdAt
-						);
-					});
+						setReports((local) => {
+							const byId = new Map<string, DriftsReport>();
+							for (const r of local) {
+								byId.set(r.id, r);
+							}
+							for (const r of serverReports) {
+								const existing = byId.get(r.id);
+								const merged: DriftsReport = {
+									...(r as DriftsReport),
+									// Behold lokalt «markert ferdig»-flagg selv om vi laster inn fra server
+									locallyClosed:
+										existing && typeof existing.locallyClosed === "boolean"
+											? existing.locallyClosed
+											: (r as DriftsReport).locallyClosed,
+								};
+								byId.set(r.id, merged);
+							}
+							return Array.from(byId.values()).sort(
+								(a, b) => b.createdAt - a.createdAt
+							);
+						});
 				} catch {
 					// Hvis Firestore ikke er satt opp riktig, faller vi tilbake til lokale rapporter
 				}
@@ -356,45 +367,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    setShowArchive(false);
 		  }
 
-			  async function deleteReport(id: string) {
-			    if (!window.confirm("Vil du slette denne driftsforstyrrelsen?")) {
-			      return;
-			    }
-
-		    try {
-		      const res = await fetch("/api/driftsrapporter", {
-		        method: "DELETE",
-		        headers: {
-		          "Content-Type": "application/json",
-		        },
-		        body: JSON.stringify({ id }),
-		      });
-
-			      if (!res.ok) {
-		        let data: { ok?: boolean; error?: string; details?: string } | null = null;
-		        try {
-		          data = (await res.json()) as {
-		            ok?: boolean;
-		            error?: string;
-		            details?: string;
-		          };
-		        } catch {
-		          // Ignorer JSON-feil
-		        }
-			        const msg =
-			          (data && (data.error || data.details)) ||
-			          "Klarte ikke å slette driftsforstyrrelsen fra databasen. Prøv igjen senere.";
-		        alert(msg);
-		        return;
-		      }
-			    } catch {
-			      alert(
-			        "Klarte ikke å slette driftsforstyrrelsen. Sjekk nettverket og prøv igjen."
-			      );
-		      return;
-		    }
-
-		    const next = reports.filter((r) => r.id !== id);
+		  function markReportDone(target: DriftsReport) {
+		    const next = reports.map((r) =>
+		      r.id === target.id ? { ...r, locallyClosed: true } : r
+		    );
 		    setReports(next);
 		    saveReports(next);
 		  }
@@ -1593,16 +1569,17 @@ function Section(props: { title: string; children: React.ReactNode }) {
               </div>
             )}
 
-            {reports.map((r) => {
+	          {reports.map((r) => {
 	              const alreadyResumedFromServer = Boolean(r.gjenopptattSendtAt);
 	              const hasCreatorDevice = Boolean(r.createdOnDeviceId);
+	              const isLocallyClosed = r.locallyClosed === true;
 	              // Historiske rapporter uten createdOnDeviceId skal ikke kunne gjenopptas
 	              // med den nye funksjonen. Vi behandler dem som "allerede gjenopptatt"
 	              // i UI slik at knappen blir grået ut og ikke kan trykkes.
 	              const treatedAsResumed = alreadyResumedFromServer || !hasCreatorDevice;
 	              const canResumeOnThisDevice =
-	                !treatedAsResumed && r.createdOnDeviceId === deviceId;
-	              const isResumeDisabled = treatedAsResumed || !canResumeOnThisDevice;
+	                !treatedAsResumed && !isLocallyClosed && r.createdOnDeviceId === deviceId;
+	              const isResumeDisabled = treatedAsResumed || isLocallyClosed || !canResumeOnThisDevice;
 	              const resumedLabelTime =
 	                typeof r.gjenopptattKl === "number"
 	                  ? String(r.gjenopptattKl).padStart(2, "0") + ":00"
@@ -1618,7 +1595,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		                        {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
 		                        {new Date(r.createdAt).toLocaleString()}
 		                      </div>
-                      {treatedAsResumed && (
+	                      {treatedAsResumed && (
 		                        <div className="mt-1 text-xs text-gray-700">
 		                          Drift gjenopptatt
 		                          {resumedLabelTime ? ` kl ${resumedLabelTime}` : ""}
@@ -1645,24 +1622,28 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		                        >
 		                          Send på nytt
 		                        </button>
-		                        <button
-		                          className="text-red-600 underline"
-		                          onClick={() => deleteReport(r.id)}
-		                        >
-		                          Slett
-		                        </button>
+	                        <button
+	                          className="text-gray-900 underline"
+	                          onClick={() => markReportDone(r)}
+	                        >
+	                          Marker ferdig
+	                        </button>
 		                      </div>
 		                      <button
 		                        type="button"
 		                        onClick={() => startResumeFlow(r)}
 		                        disabled={isResumeDisabled}
-		                        className={`mt-1 w-full sm:w-auto px-3 py-2 rounded-xl text-sm font-semibold border transition ${
-		                          isResumeDisabled
-		                            ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
-		                            : "bg-blue-600 text-white border-blue-700"
-		                        }`}
+	                        className={`mt-1 w-full sm:w-auto px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+	                          isResumeDisabled
+	                            ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
+	                            : "bg-blue-600 text-white border-blue-700"
+	                        }`}
 	                        >
-	                        {treatedAsResumed ? "Drift er gjenopptatt" : "Gjenoppta drift"}
+	                        {treatedAsResumed
+	                          ? "Drift er gjenopptatt"
+	                          : isLocallyClosed
+	                          ? "Markert ferdig"
+	                          : "Gjenoppta drift"}
 		                      </button>
 		                    </div>
 		                  </div>
