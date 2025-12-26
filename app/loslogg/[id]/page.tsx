@@ -49,11 +49,11 @@ type LosType = "Båt" | "Rigg";
 		const [losToAirportCount, setLosToAirportCount] = useState<number | null>(null);
 		const [enfjLandings, setEnfjLandings] = useState<number | null>(null);
 	const [hoistCount, setHoistCount] = useState<number | null>(null);
-	const [comment, setComment] = useState("");
-	const [sign, setSign] = useState("");
-		const [hasSent, setHasSent] = useState(false);
-		const [sending, setSending] = useState(false);
-		const [sendError, setSendError] = useState<string | null>(null);
+		const [comment, setComment] = useState("");
+		const [sign, setSign] = useState("");
+			const [hasSent, setHasSent] = useState(false);
+			const [sending, setSending] = useState(false);
+			const [sendError, setSendError] = useState<string | null>(null);
 
 		useEffect(() => {
 			async function loadBooking() {
@@ -239,7 +239,7 @@ type LosType = "Båt" | "Rigg";
 				console.error("Klarte ikke å sende LOS-logg", error);
 				setSendError("Klarte ikke å sende LOS-logg.");
 			} finally {
-				setSending(false);
+					setSending(false);
 			}
 		};
 
@@ -649,12 +649,9 @@ type LosType = "Båt" | "Rigg";
 								<dd className="font-medium">{sign || "–"}</dd>
 							</div>
 						</dl>
-							{sendError && (
-								<p className="text-xs text-red-700">{sendError}</p>
-							)}
-							{hasSent && !sendError && (
-								<p className="text-xs text-green-700">LOS-logg er sendt til Excel-loggen.</p>
-							)}
+								{sendError && (
+									<p className="text-xs text-red-700">{sendError}</p>
+								)}
 						<button
 							type="button"
 							onClick={handleSend}
@@ -694,7 +691,21 @@ type LosType = "Båt" | "Rigg";
 						Forsiden
 					</Link>
 				</div>
-			</main>
-		</div>
+				</main>
+
+				{hasSent && !sendError && (
+					<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+						<div className="mx-4 max-w-sm rounded-2xl bg-white p-5 shadow-lg space-y-3">
+							<p className="text-sm text-gray-900">LOS-logg er sendt til SharePoint.</p>
+							<Link
+									href="/"
+									className="block w-full rounded-xl bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+								>
+									OK
+								</Link>
+						</div>
+					</div>
+				)}
+			</div>
 	);
 }
