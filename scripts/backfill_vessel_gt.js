@@ -9,11 +9,11 @@ const path = require("path");
 
 // Last inn .env.* slik Next gjør, slik at FIREBASE_*-variabler blir tilgjengelige
 try {
-	const { loadEnvConfig } = require("@next/env");
-  loadEnvConfig(process.cwd());
-} catch (e) {
-  console.warn("Kunne ikke laste @next/env. Forutsetter at FIREBASE_*-variabler allerede er satt i miljøet.");
-}
+		const { loadEnvConfig } = require("@next/env");
+	  loadEnvConfig(process.cwd());
+	} catch {
+	  console.warn("Kunne ikke laste @next/env. Forutsetter at FIREBASE_*-variabler allerede er satt i miljøet.");
+	}
 
 // Minimal kopi av lib/firebaseAdmin.ts for bruk i dette Node-scriptet (JS)
 // Vi vil ikke importere TypeScript-filer direkte her.

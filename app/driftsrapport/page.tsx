@@ -375,18 +375,6 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		    saveReports(next);
 		  }
 
-		  function clearAllReports() {
-		    if (
-		      !window.confirm(
-		        "Vil du slette alle lagrede driftsforstyrrelser (arkiv og statistikk) fra denne enheten?"
-		      )
-		    ) {
-		      return;
-		    }
-	    setReports([]);
-	    saveReports([]);
-	  }
-
 	  function startResumeFlow(r: DriftsReport) {
 	    if (r.gjenopptattSendtAt) {
 	      return;

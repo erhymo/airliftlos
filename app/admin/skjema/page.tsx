@@ -2,27 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-const MONTH_NAMES: Record<string, string> = {
-  "01": "Januar",
-  "02": "Februar",
-  "03": "Mars",
-  "04": "April",
-  "05": "Mai",
-  "06": "Juni",
-  "07": "Juli",
-  "08": "August",
-  "09": "September",
-  10: "Oktober",
-  11: "November",
-  12: "Desember",
-};
-
-function formatMonthLabel(key: string): string {
-  const [year, month] = key.split("-");
-  const m = MONTH_NAMES[month] ?? month;
-  return `${m} ${year}`;
-}
-
 type AdminRow = {
   id: string;
   dateIso: string;

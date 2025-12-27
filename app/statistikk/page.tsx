@@ -2093,36 +2093,6 @@ const MANUAL_2024_MONTHLY_STATS: ManualMonthlyStats[] = [
   },
 );
 
-const MANUAL_2024_TOTALS = MANUAL_2024_MONTHLY_STATS.reduce(
-  (acc, m) => {
-    acc.totalBoats += m.totalBoats;
-    acc.totalRigs += m.totalRigs;
-    acc.boatToBoatOps += m.boatToBoatOps;
-    acc.locations.mongstad += m.locations.mongstad;
-    acc.locations.melkoya += m.locations.melkoya;
-    acc.locations.sture += m.locations.sture;
-    acc.locations.karsto += m.locations.karsto;
-    acc.locations.nyhamna += m.locations.nyhamna;
-    acc.locations.losOvrigBoats += m.locations.losOvrigBoats;
-    acc.locations.losOvrigRigs += m.locations.losOvrigRigs;
-    return acc;
-  },
-  {
-    totalBoats: 0,
-    totalRigs: 0,
-    boatToBoatOps: 0,
-    locations: {
-      mongstad: 0,
-      melkoya: 0,
-      sture: 0,
-      karsto: 0,
-      nyhamna: 0,
-      losOvrigBoats: 0,
-      losOvrigRigs: 0,
-    },
-  },
-);
-
 const MANUAL_2025_TOTALS = MANUAL_2025_MONTHLY_STATS.reduce(
   (acc, m) => {
     acc.totalBoats += m.totalBoats;

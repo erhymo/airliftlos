@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getDb } from "../lib/firebaseAdmin";
+import DriftsforstyrrelseForsideClient from "./DriftsforstyrrelseForsideClient";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export default async function Home() {
           </div>
           <p className="text-sm text-gray-600">Velg hvilken rapport du vil fylle ut.</p>
         </header>
+
+	        <DriftsforstyrrelseForsideClient />
 
         <div className="grid grid-cols-1 gap-4">
           <Link
