@@ -873,29 +873,47 @@ function Section(props: { title: string; children: React.ReactNode }) {
       return { perCause, totalHours: 0 };
     });
 
-		    for (const r of reports) {
-		      // Historiske rapporter fra Tromsø skal ikke inngå i statistikken
-		      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-		      if ((r as any).base === "Tromsø") continue;
+			for (const r of reports) {
+				// Historiske rapporter fra Tromsø skal ikke inngå i statistikken
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				if ((r as any).base === "Tromsø") continue;
 
-	      const [yearStr, monthStr] = r.dato.split("-");
-	      const y = Number(yearStr);
-	      const m = Number(monthStr) - 1;
-	      if (y !== year || m < 0 || m >= MONTH_LABELS.length) continue;
-	      if (baseFilter !== "Alle" && r.base !== baseFilter) continue;
-
-      const duration = r.varighetTimer || 0;
-
-      perMonthCounts[m].totalReports += 1;
-      perMonthHours[m].totalHours += duration;
-
-      for (const cause of CAUSES) {
-        if (r.arsaker.includes(cause)) {
-          perMonthCounts[m].perCause[cause] += 1;
-          perMonthHours[m].perCause[cause] += duration;
-        }
-      }
-    }
+		      const [yearStr, monthStr] = r.dato.split("-");
+		      const y = Number(yearStr);
+		      const m = Number(monthStr) - 1;
+		      if (y !== year || m < 0 || m >= MONTH_LABELS.length) continue;
+		      if (baseFilter !== "Alle" && r.base !== baseFilter) continue;
+		
+		      // Bruk faktisk stopp-tid hvis drift er gjenopptatt, ellers antatt varighet.
+		      // Faktisk varighet regnes som tid fra start (dato + klokkeslett) til
+		      // tidspunktet «gjenopptatt drift»-eposten ble sendt, avrundet til
+		      // nærmeste halve time.
+		      let duration = r.varighetTimer || 0;
+		      if (r.gjenopptattSendtAt) {
+		        try {
+		          const start = new Date(`${r.dato}T${r.tid}`);
+		          const startMs = start.getTime();
+		          const diffMs = r.gjenopptattSendtAt - startMs;
+		          if (Number.isFinite(diffMs) && diffMs > 0) {
+		            const diffMinutes = diffMs / 60000;
+		            const halfHours = Math.round(diffMinutes / 30);
+		            duration = halfHours * 0.5;
+		          }
+		        } catch {
+		          // Ved parse-feil faller vi tilbake til antatt varighetTimer
+		        }
+		      }
+		
+		      perMonthCounts[m].totalReports += 1;
+		      perMonthHours[m].totalHours += duration;
+		
+		      for (const cause of CAUSES) {
+		        if (r.arsaker.includes(cause)) {
+		          perMonthCounts[m].perCause[cause] += 1;
+		          perMonthHours[m].perCause[cause] += duration;
+		        }
+		      }
+		    }
 
     const totalHoursByCause: Record<string, number> = {};
     let totalHoursYear = 0;
