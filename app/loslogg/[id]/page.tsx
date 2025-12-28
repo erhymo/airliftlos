@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { CAPTAINS, FIRST_OFFICERS } from "../../vaktapp/components/CrewPicker";
 
 const LAST_TECHLOG_STORAGE_KEY = "loslogg_last_techlog_number";
@@ -15,7 +15,8 @@ type Booking = {
 	base: string | null;
 	pilots: string[];
 	gt: number | null;
-  terminal?: string | null;
+	  terminal?: string | null;
+	  createdAt?: number | null;
 };
 
 const EMPTY_BOOKING: Booking = {
@@ -25,8 +26,9 @@ const EMPTY_BOOKING: Booking = {
 	orderNumber: "",
 	base: "",
 	pilots: [],
-		gt: null,
-		terminal: null,
+			gt: null,
+			terminal: null,
+			createdAt: null,
 };
 
 const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb-NO");
@@ -34,8 +36,9 @@ const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb
 type Location = "Mongstad" | "Sture" | "Melkøya" | "Kårstø" | "Los øvrig" | "Nyhamna";
 type LosType = "Båt" | "Rigg";
 
-	export default function LosLoggBookingPage() {
+		export default function LosLoggBookingPage() {
 				const params = useParams<{ id: string }>();
+				const router = useRouter();
 				const [booking, setBooking] = useState<Booking>(EMPTY_BOOKING);
 			const [loadingBooking, setLoadingBooking] = useState(true);
 			const [bookingError, setBookingError] = useState<string | null>(null);
@@ -50,12 +53,16 @@ type LosType = "Båt" | "Rigg";
 		const [enfjLandings, setEnfjLandings] = useState<number | null>(null);
 	const [hoistCount, setHoistCount] = useState<number | null>(null);
 		const [comment, setComment] = useState("");
-		const [sign, setSign] = useState("");
-			const [hasSent, setHasSent] = useState(false);
-			const [sending, setSending] = useState(false);
-			const [sendError, setSendError] = useState<string | null>(null);
+			const [sign, setSign] = useState("");
+					const [hasSent, setHasSent] = useState(false);
+					const [sending, setSending] = useState(false);
+					const [sendError, setSendError] = useState<string | null>(null);
+					const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+					const [showRemovedInfo, setShowRemovedInfo] = useState(false);
+					const [removing, setRemoving] = useState(false);
+					const [removeError, setRemoveError] = useState<string | null>(null);
 
-		useEffect(() => {
+			useEffect(() => {
 			async function loadBooking() {
 				try {
 					const id = (params as { id?: string }).id;
@@ -74,25 +81,32 @@ type LosType = "Båt" | "Rigg";
 						return;
 					}
 
-					const data = (await res.json()) as { booking?: Partial<Booking> & { id: string } };
-					if (data.booking) {
-						setBooking({
-							id: data.booking.id,
-							vesselName: data.booking.vesselName ?? "Ukjent fartøy",
-							date: data.booking.date ?? new Date().toISOString().slice(0, 10),
-							orderNumber: data.booking.orderNumber ?? "",
-							base: data.booking.base ?? "",
-							pilots:
-								Array.isArray(data.booking.pilots) && data.booking.pilots.length > 0
-									? (data.booking.pilots as string[])
-									: [],
-							gt: typeof data.booking.gt === "number" ? data.booking.gt : null,
-							terminal:
-								typeof (data.booking as { terminal?: unknown }).terminal === "string"
-									? ((data.booking as { terminal?: string | null }).terminal ?? null)
-									: null,
-						});
-					}
+						const data = (await res.json()) as { booking?: Partial<Booking> & { id: string } };
+						if (data.booking) {
+							const createdAtRaw = (data.booking as { createdAt?: unknown }).createdAt;
+							const createdAt =
+								typeof createdAtRaw === "number" && Number.isFinite(createdAtRaw) && createdAtRaw > 0
+									? createdAtRaw
+									: null;
+
+							setBooking({
+								id: data.booking.id,
+								vesselName: data.booking.vesselName ?? "Ukjent fartøy",
+								date: data.booking.date ?? new Date().toISOString().slice(0, 10),
+								orderNumber: data.booking.orderNumber ?? "",
+								base: data.booking.base ?? "",
+								pilots:
+									Array.isArray(data.booking.pilots) && data.booking.pilots.length > 0
+										? (data.booking.pilots as string[])
+										: [],
+								gt: typeof data.booking.gt === "number" ? data.booking.gt : null,
+								terminal:
+									typeof (data.booking as { terminal?: unknown }).terminal === "string"
+										? ((data.booking as { terminal?: string | null }).terminal ?? null)
+										: null,
+								createdAt,
+							});
+						}
 				} catch (error) {
 					console.error("Klarte ikke ae hente los-booking", error);
 					setBookingError("Klarte ikke ae hente bestilling. Viser demo-data.");
@@ -145,7 +159,7 @@ type LosType = "Båt" | "Rigg";
 		[],
 	);
 
-		const canGoNext = () => {
+			const canGoNext = () => {
 			switch (step) {
 				case 0:
 					return true; // bare gjennomse auto-info
@@ -172,7 +186,7 @@ type LosType = "Båt" | "Rigg";
 			}
 		};
 
-			const handleNext = () => {
+				const handleNext = () => {
 			if (!canGoNext()) return;
 				setStep((s) => Math.min(s + 1, 9));
 		};
@@ -181,7 +195,7 @@ type LosType = "Båt" | "Rigg";
 		setStep((s) => Math.max(s - 1, 0));
 	};
 
-		const handleSend = async () => {
+			const handleSend = async () => {
 				if (hasSent || sending) return;
 				if (!booking.id) {
 					setSendError("Kan ikke sende LOS-logg uten gyldig bestilling.");
@@ -242,6 +256,49 @@ type LosType = "Båt" | "Rigg";
 					setSending(false);
 			}
 		};
+
+			const canShowRemoveButton = (() => {
+				if (!booking.id || !booking.createdAt) return false;
+				const twoHoursMs = 2 * 60 * 60 * 1000;
+				const diff = Date.now() - booking.createdAt;
+				return diff >= twoHoursMs;
+			})();
+
+				const handleConfirmRemove = async () => {
+					if (!booking.id) {
+						setShowRemoveConfirm(false);
+						return;
+					}
+					setRemoveError(null);
+					setRemoving(true);
+					try {
+						const res = await fetch("/api/los-bookings/cancel", {
+							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({ id: booking.id }),
+						});
+						if (!res.ok) {
+							let message = "Klarte ikke å fjerne båten. Prøv igjen.";
+							try {
+								const data = (await res.json()) as { error?: string };
+								if (data.error) message = data.error;
+							} catch {
+								// ignorér JSON-feil
+							}
+							setRemoveError(message);
+							return;
+						}
+						setShowRemoveConfirm(false);
+						setShowRemovedInfo(true);
+					} catch (error) {
+						console.error("Klarte ikke å fjerne LOS-bestilling", error);
+						setRemoveError("Klarte ikke å fjerne båten. Sjekk nettverk og prøv igjen.");
+					} finally {
+						setRemoving(false);
+					}
+				};
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
@@ -663,25 +720,36 @@ type LosType = "Båt" | "Rigg";
 					</section>
 				)}
 
-				{/* Navigasjonsknapper */}
-				<div className="pt-2 flex justify-between text-sm">
-					<button
-						type="button"
-						onClick={handlePrev}
-						className="px-3 py-1.5 rounded-full border border-gray-300 bg-white text-gray-900 disabled:opacity-40"
-						disabled={step === 0}
-					>
-						Forrige
-					</button>
-					<button
-						type="button"
-						onClick={handleNext}
-						className="px-4 py-1.5 rounded-full bg-black text-white disabled:bg-gray-300 disabled:text-gray-600"
-								disabled={!canGoNext() || step === 9}
-					>
-						Neste
-					</button>
-				</div>
+					{/* Navigasjonsknapper + ev. "Fjern bt/kansellert" */}
+					<div className="pt-2 space-y-2">
+						<div className="flex justify-between text-sm">
+							<button
+								type="button"
+								onClick={handlePrev}
+								className="px-3 py-1.5 rounded-full border border-gray-300 bg-white text-gray-900 disabled:opacity-40"
+								disabled={step === 0}
+							>
+								Forrige
+							</button>
+							<button
+								type="button"
+								onClick={handleNext}
+								className="px-4 py-1.5 rounded-full bg-black text-white disabled:bg-gray-300 disabled:text-gray-600"
+										disabled={!canGoNext() || step === 9}
+							>
+								Neste
+							</button>
+						</div>
+						{step === 0 && canShowRemoveButton && !hasSent && (
+							<button
+								type="button"
+								onClick={() => setShowRemoveConfirm(true)}
+								className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-900"
+							>
+								Fjern båt/kansellert
+							</button>
+						)}
+					</div>
 
 				<div className="pt-2 flex justify-between text-xs text-gray-500">
 					<Link href="/loslogg" className="hover:underline">
@@ -691,21 +759,72 @@ type LosType = "Båt" | "Rigg";
 						Forsiden
 					</Link>
 				</div>
-				</main>
+					</main>
 
-				{hasSent && !sendError && (
+				{showRemoveConfirm && (
 					<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
 						<div className="mx-4 max-w-sm rounded-2xl bg-white p-5 shadow-lg space-y-3">
-							<p className="text-sm text-gray-900">LOS-logg er sendt til SharePoint.</p>
-							<Link
-									href="/"
-									className="block w-full rounded-xl bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+							<p className="text-sm text-gray-900">
+								Dette vil fjerne båten fra LOS-logg-oversikten i denne appen. For å få den
+									inn igjen må det komme en ny bestilling.
+							</p>
+							{removeError && (
+								<p className="text-xs text-red-600">{removeError}</p>
+							)}
+							<div className="flex justify-end gap-2 pt-2">
+								<button
+									type="button"
+									onClick={() => setShowRemoveConfirm(false)}
+									className="px-3 py-1.5 rounded-full border border-gray-300 bg-white text-xs font-medium text-gray-700"
 								>
-									OK
-								</Link>
+									Avbryt
+								</button>
+								<button
+									type="button"
+									onClick={handleConfirmRemove}
+									disabled={removing}
+									className="px-3 py-1.5 rounded-full bg-red-600 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+								>
+									{removing ? "Fjerner…" : "Fjern"}
+								</button>
+							</div>
 						</div>
 					</div>
 				)}
+
+					{showRemovedInfo && (
+						<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+							<div className="mx-4 max-w-sm rounded-2xl bg-white p-5 shadow-lg space-y-3">
+								<p className="text-sm text-gray-900">
+									Båten er fjernet fra LOS-logg i denne appen.
+								</p>
+								<button
+									type="button"
+									onClick={() => {
+										setShowRemovedInfo(false);
+										router.push("/loslogg");
+									}}
+									className="block w-full rounded-xl bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+								>
+									OK
+								</button>
+							</div>
+						</div>
+					)}
+
+					{hasSent && !sendError && (
+						<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+							<div className="mx-4 max-w-sm rounded-2xl bg-white p-5 shadow-lg space-y-3">
+								<p className="text-sm text-gray-900">LOS-logg er sendt til SharePoint.</p>
+								<Link
+										href="/"
+										className="block w-full rounded-xl bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+									>
+										OK
+									</Link>
+							</div>
+						</div>
+					)}
 			</div>
 	);
 }

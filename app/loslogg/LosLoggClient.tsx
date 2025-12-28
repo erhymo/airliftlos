@@ -18,9 +18,9 @@ type Props = {
 const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb-NO");
 
 export default function LosLoggClient({ initialBookings }: Props) {
-	const [bookings, setBookings] = useState<DisplayBooking[]>(initialBookings);
+		const [bookings, setBookings] = useState<DisplayBooking[]>(initialBookings);
 
-	useEffect(() => {
+		useEffect(() => {
 		let cancelled = false;
 
 		async function poll() {
@@ -43,11 +43,11 @@ export default function LosLoggClient({ initialBookings }: Props) {
 					return { id, vesselName, date, fromLocation, toLocation };
 				});
 
-				if (!cancelled) {
-					// Oppdater alltid listen – også når den er tom – slik at
-					// ferdigbehandlede bestillinger forsvinner fra UI-et.
-					setBookings(mapped);
-				}
+					if (!cancelled) {
+						// Oppdater alltid listen – også når den er tom – slik at
+						// ferdigbehandlede bestillinger forsvinner fra UI-et.
+						setBookings(mapped);
+					}
 			} catch {
 				// Ignorer nettverksfeil
 			} finally {
@@ -57,14 +57,14 @@ export default function LosLoggClient({ initialBookings }: Props) {
 			}
 		}
 
-		poll();
+			poll();
 
-		return () => {
-			cancelled = true;
-		};
+			return () => {
+				cancelled = true;
+			};
 	}, [initialBookings]);
 
-	const displayBookings = bookings;
+		const displayBookings = bookings;
 
 	return (
 		<section className="space-y-3">

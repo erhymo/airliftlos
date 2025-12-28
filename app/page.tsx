@@ -17,7 +17,7 @@ export default async function Home() {
 
     openLosCount = snapshot.docs.reduce((acc, doc) => {
       const data = doc.data() as { status?: string | null };
-      if (data.status === "closed") {
+	      if (data.status === "closed" || data.status === "cancelled") {
         return acc;
       }
       return acc + 1;

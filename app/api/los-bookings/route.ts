@@ -21,29 +21,29 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, booking: { id: doc.id, ...data } });
     }
 
-    const snapshot = await db
-      .collection("losBookings")
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const bookings: FirestoreLosBooking[] = snapshot.docs.reduce<FirestoreLosBooking[]>(
-      (acc, doc) => {
-        const data = doc.data() as Record<string, unknown> & { status?: string | null };
-
-        // Skjul bestillinger som er markert som ferdige (status "closed").
-        if (data.status === "closed") {
-          return acc;
-        }
-
-        acc.push({
-          id: doc.id,
-          ...data,
-        });
-
-        return acc;
-      },
-      [],
-    );
+	    const snapshot = await db
+	      .collection("losBookings")
+	      .orderBy("createdAt", "desc")
+	      .get();
+	
+	    const bookings: FirestoreLosBooking[] = snapshot.docs.reduce<FirestoreLosBooking[]>(
+	      (acc, doc) => {
+	        const data = doc.data() as Record<string, unknown> & { status?: string | null };
+	
+	        // Skjul bestillinger som er markert som ferdige (status "closed") eller kansellert.
+	        if (data.status === "closed" || data.status === "cancelled") {
+	          return acc;
+	        }
+	
+	        acc.push({
+	          id: doc.id,
+	          ...data,
+	        });
+	
+	        return acc;
+	      },
+	      [],
+	    );
 
     return NextResponse.json({ ok: true, bookings });
   } catch (error) {

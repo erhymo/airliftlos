@@ -24,7 +24,7 @@ export default async function LosLoggHome() {
 				.orderBy("createdAt", "desc")
 				.get();
 
-			bookings = snapshot.docs.reduce<DisplayBooking[]>((acc, doc) => {
+				bookings = snapshot.docs.reduce<DisplayBooking[]>((acc, doc) => {
 				const data = doc.data() as {
 					vesselName?: string;
 					date?: string;
@@ -33,9 +33,10 @@ export default async function LosLoggHome() {
 					status?: string | null;
 				};
 
-				// Vis bare åpne bestillinger. De som har fått LOS-logg sendt til Excel blir
-				// merket med status "closed" i Firestore og skjules her.
-				if (data.status === "closed") {
+					// Vis bare åpne bestillinger. De som har fått LOS-logg sendt til Excel blir
+					// merket med status "closed" i Firestore, og kansellerte bestillinger får
+					// status "cancelled". Begge skjules her.
+					if (data.status === "closed" || data.status === "cancelled") {
 					return acc;
 				}
 
