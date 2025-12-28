@@ -744,7 +744,7 @@ type LosType = "Båt" | "Rigg";
 							<button
 								type="button"
 								onClick={() => setShowRemoveConfirm(true)}
-								className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-900"
+								className="mx-auto inline-flex items-center rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-900"
 							>
 								Fjern båt/kansellert
 							</button>
