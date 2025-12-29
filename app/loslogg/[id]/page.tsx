@@ -395,8 +395,7 @@ type LosType = "Båt" | "Rigg";
 								</div>
 							</label>
 							<p className="text-xs text-gray-500">
-								Foreløpig er techlognummeret hardkodet til 90377 som startverdi for testing. Senere
-									skal dette fylles automatisk med siste brukte nummer.
+								Forrige brukte techlognummer vises her. Juster opp eller ned ved behov.
 							</p>
 						</div>
 					</section>
@@ -426,7 +425,7 @@ type LosType = "Båt" | "Rigg";
 						</div>
 						<div className="mt-4 space-y-1">
 							<label className="text-sm font-medium text-gray-700" htmlFor="gt-input">
-								GT (bruttotonnasje) – valgfritt nå, påkrevd fra 2026
+									GT (bruttotonnasje)
 							</label>
 							<input
 								id="gt-input"
@@ -445,10 +444,10 @@ type LosType = "Båt" | "Rigg";
 									setBooking((prev) => ({ ...prev, gt: parsed }));
 								}}
 							/>
-							<p className="text-[11px] text-gray-500">
-								Hvis vi finner GT automatisk fra ShipRep vil feltet fylles inn her, ellers kan du skrive det inn
-								manuelt.
-							</p>
+								<p className="text-[11px] text-gray-500">
+									Feltet fylles vanligvis ut automatisk når vi finner GT i våre systemer. Sjekk at tallet stemmer,
+									eller skriv inn riktig GT manuelt.
+								</p>
 						</div>
 					</section>
 				)}
