@@ -57,10 +57,12 @@ type LosType = "Båt" | "Rigg";
 					const [hasSent, setHasSent] = useState(false);
 					const [sending, setSending] = useState(false);
 					const [sendError, setSendError] = useState<string | null>(null);
-					const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
-					const [showRemovedInfo, setShowRemovedInfo] = useState(false);
-					const [removing, setRemoving] = useState(false);
-					const [removeError, setRemoveError] = useState<string | null>(null);
+						const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+						const [showRemovedInfo, setShowRemovedInfo] = useState(false);
+						const [removing, setRemoving] = useState(false);
+						const [removeError, setRemoveError] = useState<string | null>(null);
+						const [removeReason, setRemoveReason] = useState<string | null>(null);
+						const [removeComment, setRemoveComment] = useState("");
 
 			useEffect(() => {
 			async function loadBooking() {
@@ -264,41 +266,119 @@ type LosType = "Båt" | "Rigg";
 				return diff >= twoHoursMs;
 			})();
 
-				const handleConfirmRemove = async () => {
-					if (!booking.id) {
-						setShowRemoveConfirm(false);
-						return;
-					}
-					setRemoveError(null);
-					setRemoving(true);
-					try {
-						const res = await fetch("/api/los-bookings/cancel", {
-							method: "POST",
-							headers: {
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify({ id: booking.id }),
-						});
-						if (!res.ok) {
-							let message = "Klarte ikke å fjerne båten. Prøv igjen.";
-							try {
-								const data = (await res.json()) as { error?: string };
-								if (data.error) message = data.error;
-							} catch {
-								// ignorér JSON-feil
-							}
-							setRemoveError(message);
+					const handleConfirmRemove = async () => {
+						if (!booking.id) {
+							setShowRemoveConfirm(false);
 							return;
 						}
-						setShowRemoveConfirm(false);
-						setShowRemovedInfo(true);
-					} catch (error) {
-						console.error("Klarte ikke å fjerne LOS-bestilling", error);
-						setRemoveError("Klarte ikke å fjerne båten. Sjekk nettverk og prøv igjen.");
-					} finally {
-						setRemoving(false);
-					}
-				};
+						setRemoveError(null);
+						setRemoving(true);
+						try {
+							const res = await fetch("/api/los-bookings/cancel", {
+								method: "POST",
+								headers: {
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify({ id: booking.id }),
+							});
+							if (!res.ok) {
+								let message = "Klarte ikke å fjerne båten. Prøv igjen.";
+								try {
+									const data = (await res.json()) as { error?: string };
+									if (data.error) message = data.error;
+								} catch {
+									// ignorér JSON-feil
+								}
+								setRemoveError(message);
+								return;
+							}
+							setShowRemoveConfirm(false);
+							setRemoveReason(null);
+							setRemoveComment("");
+							setShowRemovedInfo(true);
+						} catch (error) {
+							console.error("Klarte ikke å fjerne LOS-bestilling", error);
+							setRemoveError("Klarte ikke å fjerne båten. Sjekk nettverk og prøv igjen.");
+						} finally {
+							setRemoving(false);
+						}
+					};
+
+					const handleConfirmRemoveWithReason = async () => {
+						if (!booking.id) {
+							setShowRemoveConfirm(false);
+							return;
+						}
+						if (!removeReason) {
+							setRemoveError("Velg årsak før du går videre.");
+							return;
+						}
+						setRemoveError(null);
+						setRemoving(true);
+						// Hvis brukeren kun vil rydde i listen, bruk eksisterende kanselleringsflyt uten logging.
+						if (removeReason === "Bare fjern fra listen") {
+							await handleConfirmRemove();
+							setRemoving(false);
+							return;
+						}
+
+						// For andre årsaker skal vi logge til LOS-logg (SharePoint) og samtidig fjerne båten.
+						// Kommentaren starter alltid med valgt årsak.
+						const trimmedComment = removeComment.trim();
+						const finalComment =
+							trimmedComment.length > 0
+								? `${removeReason} - ${trimmedComment}`
+								: removeReason;
+
+						try {
+							const res = await fetch("/api/los-logg", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									bookingId: booking.id,
+									date: booking.date,
+									orderNumber: booking.orderNumber,
+									vesselName: booking.vesselName,
+									gt: booking.gt,
+									base: booking.base,
+									pilots: booking.pilots,
+									techlogNumber,
+									location,
+									losType,
+									shipLanding,
+									tokeBomtur,
+									losToAirportCount,
+									enfjLandings,
+									hoistCount,
+									comment: finalComment,
+									sign,
+								}),
+							});
+							if (!res.ok) {
+								let message = "Klarte ikke å sende kansellering til LOS-logg.";
+								try {
+									const data = (await res.json()) as { error?: string };
+									if (data.error) message = data.error;
+								} catch {
+									// ignorér JSON-feil
+								}
+								setRemoveError(message);
+								setRemoving(false);
+								return;
+							}
+
+							// Hvis vi kommer hit, er raden skrevet til Excel og booking markert som lukket i Firestore.
+							// Vi gjenbruker "sendt"-overlayen som allerede finnes for vanlig LOS-logg.
+							setShowRemoveConfirm(false);
+							setRemoveReason(null);
+							setRemoveComment("");
+							setHasSent(true);
+						} catch (error) {
+							console.error("Klarte ikke å sende kansellering til LOS-logg", error);
+							setRemoveError("Klarte ikke å sende kansellering til LOS-logg. Sjekk nettverk og prøv igjen.");
+							setRemoving(false);
+						}
+					};
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
@@ -760,36 +840,71 @@ type LosType = "Båt" | "Rigg";
 				</div>
 					</main>
 
-				{showRemoveConfirm && (
-					<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-						<div className="mx-4 max-w-sm rounded-2xl bg-white p-5 shadow-lg space-y-3">
-							<p className="text-sm text-gray-900">
-								Dette vil fjerne båten fra LOS-logg-oversikten i denne appen. For å få den
-									inn igjen må det komme en ny bestilling.
-							</p>
-							{removeError && (
-								<p className="text-xs text-red-600">{removeError}</p>
-							)}
-							<div className="flex justify-end gap-2 pt-2">
-								<button
-									type="button"
-									onClick={() => setShowRemoveConfirm(false)}
-									className="px-3 py-1.5 rounded-full border border-gray-300 bg-white text-xs font-medium text-gray-700"
-								>
-									Avbryt
-								</button>
-								<button
-									type="button"
-									onClick={handleConfirmRemove}
-									disabled={removing}
-									className="px-3 py-1.5 rounded-full bg-red-600 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
-								>
-									{removing ? "Fjerner…" : "Fjern"}
-								</button>
+					{showRemoveConfirm && (
+						<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+							<div className="mx-4 max-w-md w-full rounded-2xl bg-white p-5 shadow-lg space-y-4">
+								<h2 className="text-base font-semibold text-gray-900">Fjern båt / kansellert</h2>
+								<p className="text-sm text-gray-700">
+									Velg årsak til at båten ikke skal gjennomføres. Hvis du bare vil rydde i listen uten å
+									registrere noe, velger du «Bare fjern fra listen».
+								</p>
+								<div className="space-y-2">
+									{["Tåke", "Lyn", "Sikt/Skydekke", "Vind/Bølgehøyde", "Teknisk", "Annet", "Bare fjern fra listen"].map((reason) => (
+										<label
+											key={reason}
+											className="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900"
+										>
+											<input
+												type="radio"
+												name="remove-reason"
+												value={reason}
+												checked={removeReason === reason}
+												onChange={() => setRemoveReason(reason)}
+											/>
+											<span>{reason}</span>
+										</label>
+									))}
+								</div>
+								{removeReason && removeReason !== "Bare fjern fra listen" && (
+									<div className="space-y-1 pt-2">
+										<label className="text-sm font-medium text-gray-700" htmlFor="remove-comment">
+											Kommentar
+										</label>
+										<textarea
+											id="remove-comment"
+											rows={3}
+											className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900"
+											value={removeComment}
+											onChange={(e) => setRemoveComment(e.target.value)}
+											placeholder={`${removeReason} – skriv kort forklaring her (valgfritt)`}
+											/>
+										</div>
+									)}
+									{removeError && <p className="text-xs text-red-600">{removeError}</p>}
+									<div className="flex justify-between items-center pt-2">
+										<button
+											type="button"
+											onClick={() => {
+												setShowRemoveConfirm(false);
+												setRemoveReason(null);
+												setRemoveComment("");
+											}}
+											className="px-3 py-1.5 rounded-full border border-gray-300 bg-white text-xs font-medium text-gray-700"
+										>
+											Avbryt
+										</button>
+										<button
+											type="button"
+											onClick={() => handleConfirmRemoveWithReason()}
+											disabled={!removeReason || removing}
+											className="px-4 py-1.5 rounded-full bg-red-600 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+										>
+											{removing ? "Jobber…" : removeReason === "Bare fjern fra listen" ? "Fjern fra listen" : "Send og fjern"}
+										</button>
+									</div>
+								</div>
 							</div>
-						</div>
-					</div>
-				)}
+						)}
 
 					{showRemovedInfo && (
 						<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">

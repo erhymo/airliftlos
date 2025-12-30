@@ -58,6 +58,10 @@ export default function DriftsforstyrrelseForsideClient() {
   const [reports, setReports] = useState<DriftsReportLite[]>([]);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+	  const [resumeReport, setResumeReport] = useState<DriftsReportLite | null>(null);
+	  const [resumeDate, setResumeDate] = useState("");
+	  const [resumeTime, setResumeTime] = useState("");
+	  const [resumeError, setResumeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -93,82 +97,119 @@ export default function DriftsforstyrrelseForsideClient() {
     );
   }, [deviceId, reports]);
 
-  async function handleResume(report: DriftsReportLite) {
-    if (sendingId) return;
+	  function startResume(report: DriftsReportLite) {
+	    if (sendingId) return;
+	    const now = new Date();
+	    const year = now.getFullYear();
+	    const month = String(now.getMonth() + 1).padStart(2, "0");
+	    const day = String(now.getDate()).padStart(2, "0");
+	    const dateStr = `${year}-${month}-${day}`;
+	    const hour = now.getHours();
+	    const minute = now.getMinutes();
+	    const hourLabel = String(hour).padStart(2, "0");
+	    const minuteLabel = String(minute).padStart(2, "0");
 
-    setSendingId(report.id);
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const day = String(now.getDate()).padStart(2, "0");
-      const datoTekst = `${day}-${month}-${year}`;
-      const hour = now.getHours();
-      const hourLabel = String(hour).padStart(2, "0");
+	    setResumeReport(report);
+	    setResumeDate(dateStr);
+	    setResumeTime(`${hourLabel}:${minuteLabel}`);
+	    setResumeError(null);
+	  }
 
-      const linjer = [
-        `Base: ${report.base}`,
-        `Gjelder driftsforstyrrelse sendt ${report.dato} kl ${report.tid}.`,
-        "",
-        `Driften er gjenopptatt kl ${hourLabel}:00.`,
-        "",
-        "Kommentar:",
-        "(ingen kommentar)",
-      ];
+	  async function handleResumeConfirm() {
+	    if (!resumeReport) return;
+	    if (!resumeDate || !resumeTime) {
+	      setResumeError("Velg dato og tidspunkt for gjenopptatt drift.");
+	      return;
+	    }
 
-      const plainText = linjer.join("\n");
-      const subject = `LOS-helikopter ${report.base} – drift gjenopptatt ${datoTekst}`;
-      const fromName = `LOS Helikopter ${report.base}`;
+	    const [yearStr, monthStr, dayStr] = resumeDate.split("-");
+	    if (!yearStr || !monthStr || !dayStr) {
+	      setResumeError("Ugyldig dato. Prøv igjen.");
+	      return;
+	    }
 
-      const response = await fetch("/api/resume-drift", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          base: report.base,
-          subject,
-          body: plainText,
-          fromName,
-        }),
-      });
+	    const [hourStr, minuteStrRaw] = resumeTime.split(":");
+	    const hour = Number(hourStr);
+	    const minute = Number(minuteStrRaw ?? "0");
+	    if (Number.isNaN(hour) || hour < 0 || hour > 23) {
+	      setResumeError("Ugyldig klokkeslett. Bruk 00–23.");
+	      return;
+	    }
+	    const safeMinute = Number.isNaN(minute) || minute < 0 || minute > 59 ? 0 : minute;
 
-      let data: { ok?: boolean; error?: string; details?: string } | null = null;
-      try {
-        data = await response.json();
-      } catch {
-        // Ignorer JSON-feil
-      }
+	    const datoTekst = `${dayStr}-${monthStr}-${yearStr}`;
+	    const hourLabel = String(hour).padStart(2, "0");
+	    const minuteLabel = String(safeMinute).padStart(2, "0");
 
-      if (!response.ok || (data && data.ok === false)) {
-        const msg =
-          (data && (data.error || data.details)) ||
-          "Klarte ikke å sende melding om gjenopptatt drift. Prøv igjen senere.";
-        alert(msg);
-        return;
-      }
+	    setSendingId(resumeReport.id);
+	    try {
+	      const linjer = [
+	        `Base: ${resumeReport.base}`,
+	        `Gjelder driftsforstyrrelse sendt ${resumeReport.dato} kl ${resumeReport.tid}.`,
+	        "",
+	        `Driften er gjenopptatt ${datoTekst} kl ${hourLabel}:${minuteLabel}.`,
+	        "",
+	        "Kommentar:",
+	        "(ingen kommentar)",
+	      ];
 
-      const sentAt = Date.now();
-      setReports((prev) => {
-        const next = prev.map((r) =>
-          r.id === report.id
-            ? {
-                ...r,
-                gjenopptattKl: hour,
-                gjenopptattKommentar: "",
-                gjenopptattSendtAt: sentAt,
-              }
-            : r
-        );
-        saveLocalReports(next);
-        return next;
-      });
+	      const plainText = linjer.join("\n");
+	      const subject = `LOS-helikopter ${resumeReport.base} – drift gjenopptatt ${datoTekst}`;
+	      const fromName = `LOS Helikopter ${resumeReport.base}`;
 
-      setShowSuccess(true);
-    } finally {
-      setSendingId(null);
-    }
-  }
+	      const response = await fetch("/api/resume-drift", {
+	        method: "POST",
+	        headers: {
+	          "Content-Type": "application/json",
+	        },
+	        body: JSON.stringify({
+	          base: resumeReport.base,
+	          subject,
+	          body: plainText,
+	          fromName,
+	        }),
+	      });
+
+	      let data: { ok?: boolean; error?: string; details?: string } | null = null;
+	      try {
+	        data = await response.json();
+	      } catch {
+	        // Ignorer JSON-feil
+	      }
+
+	      if (!response.ok || (data && data.ok === false)) {
+	        const msg =
+	          (data && (data.error || data.details)) ||
+	          "Klarte ikke å sende melding om gjenopptatt drift. Prøv igjen senere.";
+	        alert(msg);
+	        return;
+	      }
+
+	      const sentAt = Date.now();
+	      setReports((prev) => {
+	        const next = prev.map((r) =>
+	          r.id === resumeReport.id
+	            ? {
+	                ...r,
+	                gjenopptattKl: hour,
+	                gjenopptattKommentar: "",
+	                gjenopptattSendtAt: sentAt,
+	              }
+	            : r
+	        );
+	        saveLocalReports(next);
+	        return next;
+	      });
+
+	      setShowSuccess(true);
+	      setResumeReport(null);
+	      setResumeDate("");
+	      setResumeTime("");
+	      setResumeError(null);
+	    } finally {
+	      setSendingId(null);
+	    }
+	  }
 
 	  if (!deviceId || activeReports.length === 0) {
 	    return null;
@@ -192,7 +233,7 @@ export default function DriftsforstyrrelseForsideClient() {
 	              </div>
 	              <button
 	                type="button"
-	                onClick={() => handleResume(report)}
+	                onClick={() => startResume(report)}
 	                disabled={Boolean(sendingId)}
 	                className="mt-1 w-full rounded-xl border border-blue-700 bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-200 disabled:text-gray-500"
 	              >
@@ -202,6 +243,72 @@ export default function DriftsforstyrrelseForsideClient() {
 	          ))}
 	        </div>
 	      </div>
+
+	      {resumeReport && (
+	        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+	          <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-5 shadow-lg space-y-4">
+	            <h2 className="text-base font-semibold text-gray-900">Gjenoppta drift</h2>
+	            <p className="text-sm text-gray-700">
+	              Dette gjelder driftsforstyrrelsen for {resumeReport.base} {" "}
+	              {resumeReport.dato} kl {resumeReport.tid}.
+	            </p>
+	            <div className="space-y-3">
+	              <div>
+	                <label className="block text-sm font-medium text-gray-900" htmlFor="resume-date">
+	                  Dato for gjenopptatt drift
+	                </label>
+	                <input
+	                  id="resume-date"
+	                  type="date"
+	                  value={resumeDate}
+	                  onChange={(e) => setResumeDate(e.target.value)}
+	                  className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900"
+	                />
+	              </div>
+	              <div>
+	                <label className="block text-sm font-medium text-gray-900" htmlFor="resume-time">
+	                  Tidspunkt for gjenopptatt drift
+	                </label>
+	                <input
+	                  id="resume-time"
+	                  type="time"
+	                  value={resumeTime}
+	                  onChange={(e) => setResumeTime(e.target.value)}
+	                  className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900"
+	                />
+	              </div>
+	              <p className="text-xs text-gray-600">
+	                Dato og klokkeslett er forhåndsutfylt med når du trykket på «Gjenoppta drift»,
+	                men kan endres før du sender.
+	              </p>
+	              {resumeError && <p className="text-xs text-red-600">{resumeError}</p>}
+	            </div>
+	            <div className="mt-4 flex justify-end gap-2">
+	              <button
+	                type="button"
+	                onClick={() => {
+	                  if (sendingId) return;
+	                  setResumeReport(null);
+	                  setResumeDate("");
+	                  setResumeTime("");
+	                  setResumeError(null);
+	                }}
+	                className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white"
+	              >
+	                Avbryt
+	              </button>
+	              <button
+	                type="button"
+	                onClick={handleResumeConfirm}
+	                disabled={Boolean(sendingId)}
+	                className="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white border border-blue-700 disabled:opacity-60"
+	              >
+	                {sendingId && resumeReport ? "Sender..." : "Send"}
+	              </button>
+	            </div>
+	          </div>
+	        </div>
+	      )}
 
 	      {showSuccess && (
 	        <div className="fixed inset-x-0 top-20 z-40 flex justify-center px-4">
