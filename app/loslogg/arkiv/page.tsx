@@ -150,53 +150,62 @@ export default async function LosLoggArchivePage({
 			console.error("LOS-logg arkiv: Klarte ikke å hente lukkede LOS-bookinger", error);
 		}
 
-	// Bygg opp månedsliste basert på alle rader
-	const monthMap = new Map<
-		string,
-		{
-			key: string;
-			year: number;
-			monthIndex: number;
-			label: string;
-			rows: ArchiveRow[];
+		// Bygg opp månedsliste basert på alle rader
+		const monthMap = new Map<
+			string,
+			{
+				key: string;
+				year: number;
+				monthIndex: number;
+				label: string;
+				rows: ArchiveRow[];
+			}
+		>();
+		
+		for (const row of rows) {
+			const iso = row.date;
+			// Godta alle datoformater som starter med "YYYY-MM" (med eller uten klokkeslett)
+			if (!iso || iso.length < 7) continue;
+			const year = Number.parseInt(iso.slice(0, 4), 10);
+			const monthIndex = Number.parseInt(iso.slice(5, 7), 10) - 1;
+			if (Number.isNaN(year) || Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11)
+				continue;
+		
+			const key = iso.slice(0, 7); // YYYY-MM
+			if (!monthMap.has(key)) {
+				monthMap.set(key, {
+					key,
+					year,
+					monthIndex,
+					label: `${MONTH_NAMES[monthIndex]} ${year}`,
+					rows: [],
+				});
+			}
+			monthMap.get(key)!.rows.push(row);
 		}
-	>();
-
-	for (const row of rows) {
-		const iso = row.date;
-		if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) continue;
-		const year = Number.parseInt(iso.slice(0, 4), 10);
-		const monthIndex = Number.parseInt(iso.slice(5, 7), 10) - 1;
-		if (Number.isNaN(year) || monthIndex < 0 || monthIndex > 11) continue;
-
-		const key = `${iso.slice(0, 7)}`; // YYYY-MM
-		if (!monthMap.has(key)) {
-			monthMap.set(key, {
-				key,
-				year,
-				monthIndex,
-				label: `${MONTH_NAMES[monthIndex]} ${year}`,
-				rows: [],
-			});
-		}
-		monthMap.get(key)!.rows.push(row);
-	}
 
 	const monthGroups = Array.from(monthMap.values()).sort((a, b) => {
 		if (a.year === b.year) return b.monthIndex - a.monthIndex; // nyeste først
 		return b.year - a.year;
 	});
 
-	const now = new Date();
-	const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-	let selectedKey: string | undefined;
-	if (monthParam && monthMap.has(monthParam)) {
-		selectedKey = monthParam;
-	} else if (monthMap.has(currentKey)) {
-		selectedKey = currentKey;
-	} else if (monthGroups.length > 0) {
-		selectedKey = monthGroups[0].key;
-	}
+		const now = new Date();
+		const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+		let selectedKey: string | undefined;
+		// Normaliser måned-parameteren slik at både "YYYY-MM" og "YYYY-MM-DD" fungerer
+		if (monthParam) {
+			const normalized = monthParam.slice(0, 7);
+			if (monthMap.has(normalized)) {
+				selectedKey = normalized;
+			}
+		}
+		if (!selectedKey) {
+			if (monthMap.has(currentKey)) {
+				selectedKey = currentKey;
+			} else if (monthGroups.length > 0) {
+				selectedKey = monthGroups[0].key;
+			}
+		}
 
 	const selectedGroup = selectedKey ? monthMap.get(selectedKey) ?? null : null;
 	const selectedRows = selectedGroup ? [...selectedGroup.rows].sort((a, b) => b.date.localeCompare(a.date)) : [];
