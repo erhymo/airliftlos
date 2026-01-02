@@ -162,36 +162,31 @@ type LosType = "Båt" | "Rigg";
 	);
 
 			const canGoNext = () => {
-			switch (step) {
-				case 0:
-					return true; // bare gjennomse auto-info
-				case 1:
-					return techlogNumber > 0;
-				case 2:
-					return location !== null;
-				case 3:
-					return losType !== null;
+				switch (step) {
+					case 0:
+						return true; // bare gjennomse auto-info
+					case 1:
+						return techlogNumber > 0;
+					case 2:
+						return location !== null;
+					case 3:
+						// Fartøystype er påkrevd, resten er valgfrie
+						return losType !== null;
 					case 4:
-						return true; // ship landing / tåke / LOS til flyplass er valgfrie
+						return true; // kommentar kan være tom
 					case 5:
-						return true; // antall landinger ENFJ kan være tomt
+						return sign.length === 3; // signering krever 3 bokstaver
 					case 6:
-						return true; // antall hoist kan være tomt
-				case 7:
-					return true; // kommentar kan være tom
-				case 8:
-					return sign.length === 3;
-				case 9:
-					return true; // oppsummering, her bruker vi egen «Send»
-				default:
-					return false;
-			}
-		};
+						return true; // oppsummering, her bruker vi egen «Send»
+					default:
+						return false;
+				}
+			};
 
-				const handleNext = () => {
-			if (!canGoNext()) return;
-				setStep((s) => Math.min(s + 1, 9));
-		};
+					const handleNext = () => {
+				if (!canGoNext()) return;
+					setStep((s) => Math.min(s + 1, 6));
+			};
 
 	const handlePrev = () => {
 		setStep((s) => Math.max(s - 1, 0));
@@ -383,9 +378,9 @@ type LosType = "Båt" | "Rigg";
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-					<header className="space-y-1">
-						<h1 className="text-lg font-semibold">LOS-logg – {booking.vesselName}</h1>
-								<p className="text-xs text-gray-500">Steg {step + 1} av 10</p>
+						<header className="space-y-1">
+							<h1 className="text-lg font-semibold">LOS-logg – {booking.vesselName}</h1>
+									<p className="text-xs text-gray-500">Steg {step + 1} av 7</p>
 								{loadingBooking && (
 									<p className="text-[11px] text-gray-500">Henter bestilling…</p>
 								)}
@@ -532,69 +527,89 @@ type LosType = "Båt" | "Rigg";
 					</section>
 				)}
 
-				{/* Steg 3: type */}
-				{step === 3 && (
-					<section className="space-y-3">
-						<h2 className="text-sm font-medium text-gray-700">Type</h2>
-						<div className="space-y-2">
-							{["Båt", "Rigg"].map((t) => (
-								<button
-									key={t}
-									type="button"
-									onClick={() => setLosType(t as LosType)}
-									className={`w-full text-left px-4 py-3 rounded-xl border text-sm ${
-										losType === t
-											? "bg-blue-50 border-blue-500 text-blue-900"
-											: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-									}`}
-								>
-									{t}
-								</button>
-							))}
-						</div>
-					</section>
-				)}
-
-				{/* Steg 4: Ship landing / tåke / LOS til flyplass (valgfrie) */}
-				{step === 4 && (
-					<section className="space-y-4">
-						<h2 className="text-sm font-medium text-gray-700">Ship landing / tåke / LOS til flyplass</h2>
-						<div className="space-y-3">
-							<div className="space-y-1">
-								<button
-									type="button"
-									onClick={() => setShipLanding((v) => !v)}
-									className={`w-full text-left px-4 py-3 rounded-xl border text-sm ${
-										shipLanding
-											? "bg-blue-50 border-blue-500 text-blue-900"
-											: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-									}`}
-								>
-									Ship landing
-								</button>
-								<p className="text-xs text-gray-500">
-									Hvis du ikke trykker på noe her og går videre, registreres det som «ikke ship
-									landing».
-								</p>
-							</div>
-							<div className="space-y-1">
-								<button
-									type="button"
-									onClick={() => setTokeBomtur((v) => !v)}
-									className={`w-full text-left px-4 py-3 rounded-xl border text-sm ${
-										tokeBomtur
-											? "bg-blue-50 border-blue-500 text-blue-900"
-											: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-									}`}
-								>
-									Tåke/bomtur ship
-								</button>
-								<p className="text-xs text-gray-500">
-									Hvis du ikke trykker på noe her og går videre, registreres det som «nei».
-								</p>
-							</div>
+					{/* Steg 3: fartøystype + levering (Ship landing/hoist/ENFJ/LOS til flyplass/tåke) */}
+					{step === 3 && (
+						<section className="space-y-5">
 							<div className="space-y-2">
-								<p className="text-sm font-medium text-gray-700">Antall LOS til flyplass (valgfritt)</p>
+								<h2 className="text-sm font-medium text-gray-700">Fartøystype</h2>
+								<div className="grid grid-cols-2 gap-2">
+									{["Båt", "Rigg"].map((t) => (
+										<button
+											key={t}
+											type="button"
+											onClick={() => setLosType(t as LosType)}
+											className={`w-full px-4 py-3 rounded-xl border text-sm ${
+												losType === t
+													? "bg-blue-50 border-blue-500 text-blue-900"
+													: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+											}`}
+										>
+											{t}
+										</button>
+									))}
+								</div>
+							<p className="text-[11px] text-gray-500">
+								Velg om dette er båt eller rigg. Dette brukes i rapporteringen til LOS-loggen.
+							</p>
+							</div>
+
+							<div className="space-y-4">
+								<div className="space-y-2">
+									<h2 className="text-sm font-medium text-gray-700">Levering</h2>
+									<div className="grid grid-cols-2 gap-2">
+										<button
+											type="button"
+											onClick={() => setHoistCount((v) => (v === 1 ? null : 1))}
+											className={`w-full px-4 py-3 rounded-xl border text-sm ${
+												hoistCount === 1
+													? "bg-blue-50 border-blue-500 text-blue-900"
+													: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+											}`}
+										>
+											Hoist
+										</button>
+										<button
+											type="button"
+											onClick={() => setShipLanding((v) => !v)}
+											className={`w-full px-4 py-3 rounded-xl border text-sm ${
+												shipLanding
+													? "bg-blue-50 border-blue-500 text-blue-900"
+													: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+											}`}
+									>
+										Ship landing
+									</button>
+								</div>
+								<p className="text-[11px] text-gray-500">
+									Velg bare det som faktisk ble gjennomført. Hoist og ship landing er valgfrie.
+								</p>
+							</div>
+
+								<div className="space-y-2">
+									<h2 className="text-sm font-medium text-gray-700">Antall landinger Fedje</h2>
+									<div className="grid grid-cols-4 gap-2">
+										{[1, 2, 3, 4].map((n) => (
+											<button
+												key={n}
+												type="button"
+												onClick={() => setEnfjLandings(n)}
+												className={`py-2 rounded-xl border text-sm ${
+														enfjLandings === n
+															? "bg-blue-50 border-blue-500 text-blue-900"
+															: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+												}`}
+											>
+											{n}
+										</button>
+									))}
+								</div>
+								<p className="text-[11px] text-gray-500">
+									Velg antall landinger på Fedje, eller la stå tomt hvis det ikke var landinger.
+								</p>
+							</div>
+
+								<div className="space-y-2">
+									<h2 className="text-sm font-medium text-gray-700">Antall los til flyplass</h2>
 								<div className="grid grid-cols-4 gap-2">
 									{[1, 2, 3, 4].map((n) => (
 										<button
@@ -602,71 +617,44 @@ type LosType = "Båt" | "Rigg";
 											type="button"
 											onClick={() => setLosToAirportCount(n)}
 											className={`py-2 rounded-xl border text-sm ${
-												losToAirportCount === n
-													? "bg-blue-50 border-blue-500 text-blue-900"
-													: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+													losToAirportCount === n
+														? "bg-blue-50 border-blue-500 text-blue-900"
+														: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
 											}`}
 										>
 											{n}
 										</button>
 									))}
 								</div>
-								<p className="text-xs text-gray-500">
-									Hvis du ikke velger noe her, blir feltet tomt i Excel.
+								<p className="text-[11px] text-gray-500">
+									Velg hvor mange loser som faktisk ble fløyet til eller fra flyplass (antall personer),
+									eller la stå tomt hvis ingen.
 								</p>
 							</div>
-						</div>
-					</section>
-				)}
 
-				{/* Steg 5: antall landinger ENFJ */}
-				{step === 5 && (
-					<section className="space-y-3">
-						<h2 className="text-sm font-medium text-gray-700">Antall landinger ENFJ</h2>
-						<div className="grid grid-cols-4 gap-2">
-							{[1, 2, 3, 4].map((n) => (
+							<div className="space-y-2">
+								<h2 className="text-sm font-medium text-gray-700">Ikke utført</h2>
 								<button
-									key={n}
 									type="button"
-									onClick={() => setEnfjLandings(n)}
-									className={`py-2 rounded-xl border text-sm ${
-										enfjLandings === n
-											? "bg-blue-50 border-blue-500 text-blue-900"
-											: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-									}`}
+									onClick={() => setTokeBomtur((v) => !v)}
+									className={`w-full px-4 py-3 rounded-xl border text-sm ${
+											tokeBomtur
+												? "bg-blue-50 border-blue-500 text-blue-900"
+												: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+										}`}
 								>
-									{n}
+									Tåke/bomtur
 								</button>
-							))}
-						</div>
-					</section>
-				)}
-
-				{/* Steg 6: antall hoist */}
-				{step === 6 && (
-					<section className="space-y-3">
-						<h2 className="text-sm font-medium text-gray-700">Antall hoist</h2>
-						<div className="grid grid-cols-4 gap-2">
-							{[1, 2, 3, 4].map((n) => (
-								<button
-									key={n}
-									type="button"
-									onClick={() => setHoistCount(n)}
-									className={`py-2 rounded-xl border text-sm ${
-										hoistCount === n
-										? "bg-blue-50 border-blue-500 text-blue-900"
-										: "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
-									}`}
-								>
-									{n}
-								</button>
-							))}
-						</div>
-					</section>
-				)}
-
-				{/* Steg 7: kommentar */}
-				{step === 7 && (
+								<p className="text-[11px] text-gray-500">
+									Brukes når turen ikke ble gjennomført, for eksempel på grunn av vær eller andre forhold.
+								</p>
+							</div>
+							</div>
+						</section>
+					)}
+					
+					{/* Steg 4: kommentar */}
+					{step === 4 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Kommentar</h2>
 						<textarea
@@ -686,11 +674,11 @@ type LosType = "Båt" | "Rigg";
 						<p className="text-xs text-gray-500">
 							Trykk på «BÅT TIL BÅT» for å fylle inn standardtekst i kommentarfeltet.
 						</p>
-					</section>
-				)}
-
-				{/* Steg 8: signering (kapteiner + styrmenn) */}
-				{step === 8 && (
+						</section>
+					)}
+					
+					{/* Steg 5: signering (kapteiner + styrmenn) */}
+					{step === 5 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Signering</h2>
 						<p className="text-xs text-gray-600">
@@ -716,11 +704,11 @@ type LosType = "Båt" | "Rigg";
 						{sign && (
 							<p className="text-xs text-gray-700">Valgt sign: {sign}</p>
 						)}
-					</section>
-				)}
-
-				{/* Steg 9: oppsummering */}
-				{step === 9 && (
+						</section>
+					)}
+					
+					{/* Steg 6: oppsummering */}
+					{step === 6 && (
 					<section className="space-y-3">
 						<h2 className="text-sm font-medium text-gray-700">Oppsummering</h2>
 						<dl className="space-y-1 text-sm">
@@ -751,23 +739,23 @@ type LosType = "Båt" | "Rigg";
 								<dd className="font-medium">{location ?? "–"}</dd>
 							</div>
 							<div className="flex justify-between">
-								<dt className="text-gray-600">Type</dt>
+									<dt className="text-gray-600">Fartøystype</dt>
 								<dd className="font-medium">{losType ?? "–"}</dd>
 							</div>
 							<div className="flex justify-between">
 								<dt className="text-gray-600">Ship landing</dt>
 								<dd className="font-medium">{shipLanding ? "Ja" : "Nei"}</dd>
 							</div>
-							<div className="flex justify-between">
-								<dt className="text-gray-600">Tåke/bomtur ship</dt>
-								<dd className="font-medium">{tokeBomtur ? "Ja" : "Nei"}</dd>
-							</div>
+								<div className="flex justify-between">
+									<dt className="text-gray-600">Tåke/bomtur</dt>
+									<dd className="font-medium">{tokeBomtur ? "Ja" : "Nei"}</dd>
+								</div>
 							<div className="flex justify-between">
 									<dt className="text-gray-600">LOS til flyplass</dt>
 									<dd className="font-medium">{losToAirportCount ?? "–"}</dd>
 								</div>
 								<div className="flex justify-between">
-								<dt className="text-gray-600">Landinger ENFJ</dt>
+									<dt className="text-gray-600">Landinger Fedje</dt>
 								<dd className="font-medium">{enfjLandings ?? "–"}</dd>
 							</div>
 							<div className="flex justify-between">
@@ -814,7 +802,7 @@ type LosType = "Båt" | "Rigg";
 								type="button"
 								onClick={handleNext}
 								className="px-4 py-1.5 rounded-full bg-black text-white disabled:bg-gray-300 disabled:text-gray-600"
-										disabled={!canGoNext() || step === 9}
+											disabled={!canGoNext() || step === 6}
 							>
 								Neste
 							</button>
