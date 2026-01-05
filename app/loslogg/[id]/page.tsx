@@ -581,9 +581,17 @@ type LosType = "Båt" | "Rigg";
 								</div>
 						<div className="flex justify-between">
 							<dt className="text-gray-600">Los(er)</dt>
-							<dd className="font-medium w-full">
+							<dd className={manualPilotSelection ? "font-medium w-full" : "font-medium"}>
 								{!manualPilotSelection ? (
-									booking.pilots.length > 0 ? booking.pilots.join(", ") : "–"
+									booking.pilots.length > 0 ? (
+										<span className="flex flex-col items-end text-right">
+											{booking.pilots.map((name) => (
+												<span key={name}>{name}</span>
+											))}
+										</span>
+									) : (
+										"–"
+									)
 								) : (
 									<div className="flex flex-col gap-2 w-full">
 										<select
