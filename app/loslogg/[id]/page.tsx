@@ -7,6 +7,160 @@ import { CAPTAINS, FIRST_OFFICERS } from "../../vaktapp/components/CrewPicker";
 
 const LAST_TECHLOG_STORAGE_KEY = "loslogg_last_techlog_number";
 
+const LOS_NAMES: string[] = [
+  "Anders Andrè Andersen",
+  "Anders Melingen",
+  "Anders Norstrand",
+  "Anders Sangolt",
+  "Are Aksnes",
+  "Arild Lofthus",
+  "Arne Gunnleiv Sæthre",
+  "Arne Halvorsen",
+  "Arnfinn Olav Remøy",
+  "Arnt Egil Bjellvåg",
+  "Arve Bjørnulf Bøe",
+  "Arve Gangåssæter",
+  "Asbjørn Austevoll",
+  "Asbjørn Birkeli",
+  "Audun Olsen",
+  "Bent Elias Berntsen",
+  "Bjarte Hindenes",
+  "Bjarte Røksund",
+  "Bjørn Helge Hjelmeland",
+  "Bjørn Richard Abrahamsen",
+  "Bjørnar Sæther",
+  "Bård Magne Lunde",
+  "Carl Ellingsen",
+  "Christian Wilhelmsen",
+  "Dag-Erik Kvalheim",
+  "Dagfinn Fjeldstad",
+  "Dagfinn Olsen",
+  "Eirik Eriksen",
+  "Eivind Sangolt",
+  "Erlend Vik",
+  "Espen Alsaker",
+  "Espen Johnsen",
+  "Frank-Roy Moltu",
+  "Frode Arnesen",
+  "Frode Møllerhaug",
+  "Gaute Dyregro Haukeland",
+  "Geir Bøe",
+  "Geir Heggeset",
+  "Geir Ognøy",
+  "Geir Pettersen",
+  "Geir Sigve Thorsen",
+  "Geir-Arne Jensen",
+  "Geirmund Stormark",
+  "Gisle Aasebø",
+  "Hallvard Nygård",
+  "Halvard Grøneng",
+  "Halvard Høydalsvik",
+  "Hans-Arne Fylkesnes",
+  "Hans Christian Ådlandsvik",
+  "Harald Magne Bakken",
+  "Helge Didriksen",
+  "Holger Kåre Pettersen",
+  "Håvar Sandvik",
+  "Idar Moldøen",
+  "Inge Johan Fagerheim",
+  "Inge Olaissen",
+  "Inge Ottar Sætrevik",
+  "Jan Erik Fjeldsbø",
+  "Jan Erik Lerum",
+  "Jan I Nilsen",
+  "Jan Kenneth Flygansvær",
+  "Jan Magne Fosse",
+  "Jan Ola Flåhammer",
+  "Jan Ståle Sørensen",
+  "Jan Terje Skåtevik",
+  "Jan Vevatne",
+  "John Petter Strand",
+  "John Sigurd Torvik",
+  "Jon Inge Nilsen",
+  "Jon Aasberg",
+  "Jon Sigurd Trovik",
+  "Jostein Galtung",
+  "Jostein Larsen",
+  "Karl Andreas Njåstad",
+  "Karl Helge Haagensen",
+  "Karstein Helge Økland",
+  "Ken Tommy Pettersen",
+  "Kenneth Eilif Karlsen",
+  "Kenneth Sandmo",
+  "Kjell Arne Nes",
+  "Kjell Evensen",
+  "Kjell-Inge Telle",
+  "Kjetil Magnussen",
+  "Knut Arne Mikalsen",
+  "Knut Egil Dyngeland",
+  "Knut Inge Melingen",
+  "Knut Steffensen",
+  "Kristian Bratthammer",
+  "Kristian Valberg",
+  "Lars Engvik",
+  "Laurits Sund",
+  "Leif Morten Slotvik",
+  "Martin Jensen",
+  "Martin Strømdahl",
+  "Modstein Hansen",
+  "Morten G. Urheim",
+  "Morten Gunnar Telle",
+  "Oddbjørn Snorre Hårsvær",
+  "Odd Marvin Holberg",
+  "Odd Roger Grinde",
+  "Ola Moen",
+  "Ole Andreas Vatle-Dahl",
+  "Ole J. Henjesand",
+  "Ole Magnus Benestvedt",
+  "Ole Wille",
+  "Onar Jøsang",
+  "Ottar Eide",
+  "Ove Arild Alfheim",
+  "Ove Henning Smelvær",
+  "Ove Valderhaug",
+  "Per Herman Syre",
+  "Per Morten Brennvik",
+  "Remi Endre Hagenes",
+  "Roger Notøy",
+  "Roger Vik",
+  "Rolf Magne Hausken",
+  "Ronald Rydningen",
+  "Ronny Stokkan",
+  "Roy Pedersen",
+  "Sigbjørn Tjoflot",
+  "Sindre Myhre",
+  "Solgunn Breivik Homme",
+  "Staale Lemvig",
+  "Stian Fonnes",
+  "Stig Petter Midtbø",
+  "Ståle Fagerstad",
+  "Svein Austrheim",
+  "Svein Boge",
+  "Svein Egil Monsen",
+  "Svein Henning Waagene",
+  "Terje Mjølsvik",
+  "Terje Sudmann",
+  "Torbjørn Vinnes",
+  "Tore Anton Årvik",
+  "Tore Espeland",
+  "Tore Hella",
+  "Tore Lund",
+  "Tore Nystøyl",
+  "Tormod Sivertsen",
+  "Torry Sakkariassen",
+  "Trond Myklevoll",
+  "Trond Nybakk",
+  "Tronn Stadsøy",
+  "Vegard Hatland",
+  "Vermund Halhjem",
+  "Vidar Undertun",
+  "Willy Olsen",
+  "Ørjan Boge",
+  "Ørjan Østrem",
+  "Øystein Handegård",
+  "Øystein Hesthamar",
+].sort((a, b) => a.localeCompare(b, "nb-NO"));
+
 type Booking = {
 	id: string;
 	vesselName: string;
@@ -52,6 +206,8 @@ type LosType = "Båt" | "Rigg";
 		const [losToAirportCount, setLosToAirportCount] = useState<number | null>(null);
 		const [enfjLandings, setEnfjLandings] = useState<number | null>(null);
 	const [hoistCount, setHoistCount] = useState<number | null>(null);
+		const [manualPilotSelection, setManualPilotSelection] = useState(false);
+		const [showSecondPilotSelect, setShowSecondPilotSelect] = useState(false);
 		const [comment, setComment] = useState("");
 			const [sign, setSign] = useState("");
 					const [hasSent, setHasSent] = useState(false);
@@ -90,6 +246,8 @@ type LosType = "Båt" | "Rigg";
 								typeof createdAtRaw === "number" && Number.isFinite(createdAtRaw) && createdAtRaw > 0
 									? createdAtRaw
 									: null;
+							const hasPilots =
+								Array.isArray(data.booking.pilots) && data.booking.pilots.length > 0;
 
 							setBooking({
 								id: data.booking.id,
@@ -97,10 +255,7 @@ type LosType = "Båt" | "Rigg";
 								date: data.booking.date ?? new Date().toISOString().slice(0, 10),
 								orderNumber: data.booking.orderNumber ?? "",
 								base: data.booking.base ?? "",
-								pilots:
-									Array.isArray(data.booking.pilots) && data.booking.pilots.length > 0
-										? (data.booking.pilots as string[])
-										: [],
+								pilots: hasPilots ? (data.booking.pilots as string[]) : [],
 								gt: typeof data.booking.gt === "number" ? data.booking.gt : null,
 								terminal:
 									typeof (data.booking as { terminal?: unknown }).terminal === "string"
@@ -108,6 +263,8 @@ type LosType = "Båt" | "Rigg";
 										: null,
 								createdAt,
 							});
+							setManualPilotSelection(!hasPilots);
+							setShowSecondPilotSelect(false);
 						}
 				} catch (error) {
 					console.error("Klarte ikke ae hente los-booking", error);
@@ -422,10 +579,83 @@ type LosType = "Båt" | "Rigg";
 									<dt className="text-gray-600">Terminal (tolket)</dt>
 									<dd className="font-medium">{booking.terminal ?? "–"}</dd>
 								</div>
-							<div className="flex justify-between">
-								<dt className="text-gray-600">Los(er)</dt>
-								<dd className="font-medium">{booking.pilots.join(", ")}</dd>
-							</div>
+						<div className="flex justify-between">
+							<dt className="text-gray-600">Los(er)</dt>
+							<dd className="font-medium w-full">
+								{!manualPilotSelection ? (
+									booking.pilots.length > 0 ? booking.pilots.join(", ") : "–"
+								) : (
+									<div className="flex flex-col gap-2 w-full">
+										<select
+											className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white"
+											value={booking.pilots[0] ?? ""}
+											onChange={(e) => {
+												const value = e.target.value;
+												setBooking((prev) => {
+													const [, second] = prev.pilots;
+													if (!value) {
+														return {
+															...prev,
+															pilots: second ? [second] : [],
+														};
+													}
+													const pilots: string[] = [value];
+													if (second && second !== value) {
+														pilots.push(second);
+													}
+													return { ...prev, pilots };
+												});
+											}}
+										>
+											<option value="">Velg los</option>
+											{LOS_NAMES.map((name) => (
+												<option key={name} value={name}>
+													{name}
+												</option>
+											))}
+										</select>
+										{booking.pilots[0] && !showSecondPilotSelect && (
+											<button
+												type="button"
+												onClick={() => setShowSecondPilotSelect(true)}
+												className="inline-flex items-center rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-700 bg-white hover:bg-gray-50 w-fit"
+											>
+												+
+											</button>
+										)}
+										{(showSecondPilotSelect || booking.pilots.length > 1) && (
+											<select
+												className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white"
+												value={booking.pilots[1] ?? ""}
+												onChange={(e) => {
+													const value = e.target.value;
+													setBooking((prev) => {
+														const first = prev.pilots[0] ?? "";
+														if (!value) {
+															return {
+																...prev,
+																pilots: first ? [first] : [],
+															};
+														}
+														const pilots: string[] = [];
+														if (first) pilots.push(first);
+														if (!first || value !== first) pilots.push(value);
+														return { ...prev, pilots };
+													});
+												}}
+											>
+												<option value="">Velg los 2 (valgfritt)</option>
+												{LOS_NAMES.filter((name) => name !== booking.pilots[0]).map((name) => (
+													<option key={name} value={name}>
+														{name}
+													</option>
+												))}
+											</select>
+										)}
+									</div>
+								)}
+							</dd>
+						</div>
 						</dl>
 						<p className="text-xs text-gray-500">
 							Disse feltene er hentet fra bestillingsmailen fra Kystverket.
