@@ -26,22 +26,20 @@ export default async function Home() {
     console.error("Klarte ikke å hente åpne LOS-bookinger for forsiden", error);
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col items-center justify-center p-4 space-y-4">
-      <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 relative">
-        <header className="space-y-1">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-xl font-semibold">LOS Helikopter</h1>
-            <Link href="/statistikk" aria-label="Statistikk">
-              <Image
-                src="/Airlift-logo.png"
-                alt="Airlift-logo"
-                width={140}
-                height={32}
-                className="h-8 w-auto"
-              />
-            </Link>
-          </div>
+	  return (
+	    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col items-center justify-center p-4 space-y-4">
+	      <main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 relative">
+	        <header className="space-y-1">
+	          <div className="flex items-center justify-between gap-3">
+	            <h1 className="text-xl font-semibold">LOS Helikopter</h1>
+	            <Image
+	              src="/Airlift-logo.png"
+	              alt="Airlift-logo"
+	              width={140}
+	              height={32}
+	              className="h-8 w-auto"
+	            />
+	          </div>
           <p className="text-sm text-gray-600">Velg hvilken rapport du vil fylle ut.</p>
         </header>
 
