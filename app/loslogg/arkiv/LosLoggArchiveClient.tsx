@@ -2,29 +2,24 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import ArchiveRowsTable from "./ArchiveRowsTable";
 
 type ArchiveRow = {
-  id: string;
-  date: string;
-  orderNumber: string;
-  techlogNumber: string;
-  vesselName: string;
-  details: string | null;
+	id: string;
+	date: string;
+	orderNumber: string;
+	techlogNumber: string;
+	vesselName: string;
+	details: string | null;
 };
 
 type ArchiveMonthGroup = {
-  key: string;
-  year: number;
-  monthIndex: number;
-  label: string;
-  rows: ArchiveRow[];
+	key: string;
+	year: number;
+	monthIndex: number;
+	label: string;
+	rows: ArchiveRow[];
 };
-
-function formatDisplayDate(isoDate: string): string {
-  const d = new Date(isoDate);
-  if (Number.isNaN(d.getTime())) return isoDate;
-  return d.toLocaleDateString("nb-NO");
-}
 
 type Props = {
   monthGroups: ArchiveMonthGroup[];
@@ -97,33 +92,12 @@ export default function LosLoggArchiveClient({ monthGroups, defaultKey }: Props)
               </div>
             </div>
 
-            {selectedRows.length === 0 ? (
-              <p className="text-xs text-gray-500">Ingen LOS-oppdrag funnet for valgt maned.</p>
-            ) : (
-              <>
-                <div className="overflow-x-auto rounded-md border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200 text-xs">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Dato</th>
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Ordrenr.</th>
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Techlog</th>
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Fartoy</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {selectedRows.map((row) => (
-                        <tr key={row.id}>
-                          <td className="px-2 py-1.5 text-gray-900">{formatDisplayDate(row.date)}</td>
-                          <td className="px-2 py-1.5 text-gray-900">{row.orderNumber || "-"}</td>
-                          <td className="px-2 py-1.5 text-gray-900">{row.techlogNumber || "-"}</td>
-                          <td className="px-2 py-1.5 text-gray-900">{row.vesselName}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <details className="mt-3 rounded-md border border-gray-200 bg-white">
+		            {selectedRows.length === 0 ? (
+		              <p className="text-xs text-gray-500">Ingen LOS-oppdrag funnet for valgt maned.</p>
+		            ) : (
+		              <>
+		                <ArchiveRowsTable rows={selectedRows} />
+		                <details className="mt-3 rounded-md border border-gray-200 bg-white">
                   <summary className="cursor-pointer select-none px-3 py-1.5 text-xs font-medium text-blue-700">
                     Vis alle detaljer
                   </summary>

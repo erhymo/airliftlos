@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { getDb } from "../../../lib/firebaseAdmin";
-import ArchiveRowsTable from "./ArchiveRowsTable";
+import LosLoggArchiveClient from "./LosLoggArchiveClient";
 
 export const dynamic = "force-dynamic";
 
@@ -184,109 +183,23 @@ export default async function LosLoggArchivePage({
 		return b.year - a.year;
 	});
 
-		const now = new Date();
-		const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-		let selectedKey: string | undefined;
+		let defaultKey: string | null = null;
 		// Normaliser måned-parameteren slik at både "YYYY-MM" og "YYYY-MM-DD" fungerer
 		if (monthParam) {
 			const normalized = monthParam.slice(0, 7);
 			if (monthMap.has(normalized)) {
-				selectedKey = normalized;
+				defaultKey = normalized;
 			}
 		}
-		if (!selectedKey) {
+		if (!defaultKey) {
+			const now = new Date();
+			const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 			if (monthMap.has(currentKey)) {
-				selectedKey = currentKey;
+				defaultKey = currentKey;
 			} else if (monthGroups.length > 0) {
-				selectedKey = monthGroups[0].key;
+				defaultKey = monthGroups[0].key;
 			}
 		}
 
-	const selectedGroup = selectedKey ? monthMap.get(selectedKey) ?? null : null;
-	const selectedRows = selectedGroup ? [...selectedGroup.rows].sort((a, b) => b.date.localeCompare(a.date)) : [];
-
-	return (
-		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
-			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-				<header className="space-y-1">
-					<div className="flex items-center justify-between gap-2">
-						<h1 className="text-lg font-semibold">LOS-logg - arkiv</h1>
-						<Link
-							href="/loslogg"
-							className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-						>
-							Åpne bestillinger
-						</Link>
-					</div>
-					<p className="text-sm text-gray-600">
-						Her ser du fullførte LOS-oppdrag per måned. Datoen er dagen oppdraget ble gjennomført.
-					</p>
-				</header>
-
-				{monthGroups.length === 0 ? (
-					<p className="text-sm text-gray-600">
-						Ingen fullførte LOS-oppdrag i arkivet ennå.
-					</p>
-				) : (
-					<section className="space-y-3">
-						<div className="flex items-center justify-between gap-2">
-							<h2 className="text-sm font-medium text-gray-700">
-								Arkiv for {selectedGroup?.label ?? "ønsket måned"}
-							</h2>
-							<div className="flex flex-wrap justify-end gap-1">
-								{monthGroups.map((group) => {
-									const isActive = group.key === selectedKey;
-									return (
-										<Link
-											key={group.key}
-											href={`/loslogg/arkiv?month=${group.key}`}
-											className={`inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-medium ${isActive ? "border-blue-600 bg-blue-600 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
-										>
-											{group.label}
-										</Link>
-									);
-								})}
-							</div>
-						</div>
-
-						{selectedRows.length === 0 ? (
-							<p className="text-xs text-gray-500">Ingen LOS-oppdrag funnet for valgt måned.</p>
-						) : (
-							<>
-								<ArchiveRowsTable rows={selectedRows} />
-								<details className="mt-3 rounded-md border border-gray-200 bg-white">
-									<summary className="cursor-pointer select-none px-3 py-1.5 text-xs font-medium text-blue-700">
-										Vis alle detaljer
-									</summary>
-									<div className="mt-2 max-h-64 overflow-y-auto border-t border-gray-100">
-										<div className="overflow-x-auto">
-											<ul className="divide-y divide-gray-100 font-mono text-[10px] sm:text-xs">
-												{selectedRows.map((row) => (
-													<li
-														key={row.id}
-														className="whitespace-nowrap px-2 py-1"
-													>
-														{row.details ?? "Detaljer ikke tilgjengelig for denne raden."}
-													</li>
-												))}
-											</ul>
-										</div>
-									</div>
-								</details>
-							</>
-						)}
-					</section>
-				)}
-
-				<div className="pt-2">
-					<Link
-						href="/"
-						className="text-sm text-blue-600 hover:text-blue-700 underline"
-					>
-						Tilbake til forsiden
-					</Link>
-				</div>
-			</main>
-		</div>
-	);
+		return <LosLoggArchiveClient monthGroups={monthGroups} defaultKey={defaultKey} />;
 }
