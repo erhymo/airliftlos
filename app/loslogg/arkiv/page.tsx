@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDb } from "../../../lib/firebaseAdmin";
+import ArchiveRowsTable from "./ArchiveRowsTable";
 
 export const dynamic = "force-dynamic";
 
@@ -17,26 +18,20 @@ type SearchParams = {
 	[key: string]: string | string[] | undefined;
 };
 
-const MONTH_NAMES = [
-	"Januar",
-	"Februar",
-	"Mars",
-	"April",
-	"Mai",
-	"Juni",
-	"Juli",
-	"August",
-	"September",
-	"Oktober",
-	"November",
-	"Desember",
-];
-
-function formatDisplayDate(isoDate: string): string {
-	const d = new Date(isoDate);
-	if (Number.isNaN(d.getTime())) return isoDate;
-	return d.toLocaleDateString("nb-NO");
-}
+	const MONTH_NAMES = [
+		"Januar",
+		"Februar",
+		"Mars",
+		"April",
+		"Mai",
+		"Juni",
+		"Juli",
+		"August",
+		"September",
+		"Oktober",
+		"November",
+		"Desember",
+	];
 
 export default async function LosLoggArchivePage({
 	searchParams,
@@ -258,42 +253,7 @@ export default async function LosLoggArchivePage({
 							<p className="text-xs text-gray-500">Ingen LOS-oppdrag funnet for valgt måned.</p>
 						) : (
 							<>
-								<div className="overflow-x-auto rounded-md border border-gray-200">
-									<table className="min-w-full divide-y divide-gray-200 text-xs">
-										<thead className="bg-gray-50">
-											<tr>
-												<th className="px-2 py-1.5 text-left font-semibold text-gray-700">Dato</th>
-												<th className="px-2 py-1.5 text-left font-semibold text-gray-700">
-													Ordrenr.
-												</th>
-												<th className="px-2 py-1.5 text-left font-semibold text-gray-700">
-													Techlog
-												</th>
-												<th className="px-2 py-1.5 text-left font-semibold text-gray-700">
-													Fartøy
-												</th>
-											</tr>
-										</thead>
-										<tbody className="divide-y divide-gray-100 bg-white">
-											{selectedRows.map((row) => (
-												<tr key={row.id}>
-													<td className="px-2 py-1.5 text-gray-900">
-														{formatDisplayDate(row.date)}
-													</td>
-												<td className="px-2 py-1.5 text-gray-900">
-													{row.orderNumber || "-"}
-												</td>
-												<td className="px-2 py-1.5 text-gray-900">
-													{row.techlogNumber || "-"}
-												</td>
-													<td className="px-2 py-1.5 text-gray-900">
-														{row.vesselName}
-													</td>
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</div>
+								<ArchiveRowsTable rows={selectedRows} />
 								<details className="mt-3 rounded-md border border-gray-200 bg-white">
 									<summary className="cursor-pointer select-none px-3 py-1.5 text-xs font-medium text-blue-700">
 										Vis alle detaljer
