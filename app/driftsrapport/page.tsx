@@ -26,7 +26,8 @@ interface DriftsReport {
 	alternativ: string;
 	signatur: string;
 	metarLines: string[];
-	htiImageUrls?: string[];
+		htiImageUrls?: string[];
+		waveImageUrls?: string[];
 	/** Når rapporten ble lagret lokalt */
 	createdAt: number;
 		/** Hvilken enhet (telefon) som opprettet og sendte denne rapporten */
@@ -182,6 +183,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
   const [htiLoading, setHtiLoading] = useState(false);
   const [htiError, setHtiError] = useState<string | null>(null);
   const [useHti, setUseHti] = useState<"ja" | "nei">("nei");
+	  const [waveItems, setWaveItems] = useState<{ time: string; uri: string }[]>([]);
+	  const [selectedWaveUrls, setSelectedWaveUrls] = useState<string[]>([]);
+	  const [waveLoading, setWaveLoading] = useState(false);
+	  const [waveError, setWaveError] = useState<string | null>(null);
+	  const [useWaves, setUseWaves] = useState<"ja" | "nei">("nei");
 
 		  const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
 		  const [showArchive, setShowArchive] = useState(false);
@@ -218,7 +224,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
       alternativ,
       signatur,
       metarLines: selectedMetarLines,
-      htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
+	      htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
+	      waveImageUrls: useWaves === "ja" ? selectedWaveUrls : [],
     }),
 	    [
 	      base,
@@ -232,12 +239,14 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	      gjenopptakTimer,
 	      gjenopptakTekst,
 	      oppfolgingTimer,
-	      oppfolgingTekst,
-	      alternativ,
-	      signatur,
-	      selectedMetarLines,
-	      useHti,
-	      selectedHtiUrls,
+			  oppfolgingTekst,
+			  alternativ,
+			  signatur,
+			  selectedMetarLines,
+			  useHti,
+			  selectedHtiUrls,
+			  useWaves,
+			  selectedWaveUrls,
 	    ]
 	  );
 
@@ -324,6 +333,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setHtiLoading(false);
     setHtiError(null);
     setUseHti("nei");
+	    setWaveItems([]);
+	    setSelectedWaveUrls([]);
+	    setWaveLoading(false);
+	    setWaveError(null);
+	    setUseWaves("nei");
   }
 
   function resetFrom(r: DriftsReport) {
@@ -345,6 +359,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setUseMetar(r.metarLines && r.metarLines.length > 0 ? "ja" : "nei");
     setSelectedHtiUrls(r.htiImageUrls || []);
     setUseHti(r.htiImageUrls && r.htiImageUrls.length > 0 ? "ja" : "nei");
+	    setSelectedWaveUrls(r.waveImageUrls || []);
+	    setUseWaves(r.waveImageUrls && r.waveImageUrls.length > 0 ? "ja" : "nei");
   }
 
 		  async function saveCurrent(): Promise<DriftsReport> {
@@ -444,11 +460,39 @@ function Section(props: { title: string; children: React.ReactNode }) {
     }
   }
 
+	  async function fetchWaves() {
+	    setWaveLoading(true);
+	    setWaveError(null);
+
+	    try {
+	      const res = await fetch(`/api/waves?base=${encodeURIComponent(base)}`);
+	      if (!res.ok) {
+	        setWaveError("Klarte ikke å hente bølgekart.");
+	        return;
+	      }
+	      const data = await res.json();
+	      const items: { time: string; uri: string }[] = Array.isArray(data.items)
+	        ? data.items
+	        : [];
+	      setWaveItems(items);
+	    } catch {
+	      setWaveError("Klarte ikke å hente bølgekart.");
+	    } finally {
+	      setWaveLoading(false);
+	    }
+	  }
+
   function toggleHtiUrl(url: string) {
     setSelectedHtiUrls((prev) =>
       prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]
     );
   }
+
+	  function toggleWaveUrl(url: string) {
+	    setSelectedWaveUrls((prev) =>
+	      prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]
+	    );
+	  }
 
   function toggleMetarLine(line: string) {
     setSelectedMetarLines((prev) =>
@@ -494,6 +538,13 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		        );
 		      }
 		
+		      if (useWaves === "ja" && selectedWaveUrls.length > 0) {
+		        linjer.push("");
+		        linjer.push(
+		          `Bølgekart: ${selectedWaveUrls.length} bilde(r) lagt ved nederst i PDF.`
+		        );
+		      }
+		
 		      linjer.push(`Signatur: ${signatur || "(tom)"}`);
 		
 			      const plainText =
@@ -518,6 +569,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		          fromName,
 		          base,
 		          htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
+		          waveImageUrls: useWaves === "ja" ? selectedWaveUrls : [],
 		          reportType: "driftsrapport",
 		          driftsReport: newReport,
 		        }),
@@ -586,6 +638,13 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	        `HTI-kart: ${r.htiImageUrls.length} bilde(r) lagt ved nederst i PDF.`
 	      );
 	    }
+		
+		    if (r.waveImageUrls && r.waveImageUrls.length > 0) {
+		      linjer.push("");
+		      linjer.push(
+		        `Bølgekart: ${r.waveImageUrls.length} bilde(r) lagt ved nederst i PDF.`
+		      );
+		    }
 	
 	    linjer.push(`Signatur: ${r.signatur || "(tom)"}`);
 	
@@ -611,7 +670,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	        fromName,
 	        base: r.base,
 	        reportType: "driftsrapport",
-	        htiImageUrls: r.htiImageUrls || [],
+		        htiImageUrls: r.htiImageUrls || [],
+		        waveImageUrls: r.waveImageUrls || [],
 	      }),
 	    });
 	
@@ -830,14 +890,15 @@ function Section(props: { title: string; children: React.ReactNode }) {
     "Des",
   ];
 
-  const CAUSES = [
-    "Tåke",
-    "Lyn",
-    "Sikt/Skydekke",
-    "Vind/Bølgehøyde",
-    "Teknisk",
-    "Annet",
-  ] as const;
+	const CAUSES = [
+	  "Tåke",
+	  "Lyn",
+	  "Sikt/Skydekke",
+	  "Vind",
+	  "Bølgehøyde",
+	  "Teknisk",
+	  "Annet",
+	] as const;
 
   const availableYears = (() => {
     const nowYear = new Date().getFullYear();
@@ -907,8 +968,17 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		      perMonthCounts[m].totalReports += 1;
 		      perMonthHours[m].totalHours += duration;
 		
+		      // Backwards-kompatibilitet: eldre rapporter kan ha brukt samlet årsak
+		      // "Vind/Bølgehøyde". Vi mapper disse til både "Vind" og "Bølgehøyde"
+		      // slik at statistikken fortsatt fanger dem opp i de nye kategoriene.
+		      const causeSet = new Set(r.arsaker);
+		      if (causeSet.has("Vind/Bølgehøyde")) {
+		        causeSet.add("Vind");
+		        causeSet.add("Bølgehøyde");
+		      }
+		
 		      for (const cause of CAUSES) {
-		        if (r.arsaker.includes(cause)) {
+		        if (causeSet.has(cause)) {
 		          perMonthCounts[m].perCause[cause] += 1;
 		          perMonthHours[m].perCause[cause] += duration;
 		        }
@@ -1145,97 +1215,279 @@ function Section(props: { title: string; children: React.ReactNode }) {
                   </div>
                 )}
 
-                {arsaker.includes("Lyn") && (
-                  <div className="mt-6 space-y-3 border-t pt-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      Vil du legge til HTI-kart (kun relevant ved lyn)?
-                    </div>
+		                {arsaker.includes("Lyn") && (
+		                  <div className="mt-6 space-y-3 border-t pt-4">
+		                    <div className="text-sm font-medium text-gray-900">
+		                      Vil du legge til HTI-kart (kun relevant ved lyn)?
+		                    </div>
+		
+		                    <div className="grid grid-cols-1 gap-2">
+		                      <button
+		                        type="button"
+		                        onClick={() => {
+		                          setUseHti("nei");
+		                          setSelectedHtiUrls([]);
+		                        }}
+		                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+		                          useHti === "nei"
+		                            ? "border-gray-900 bg-gray-900 text-white"
+		                            : "border-gray-300 bg-white text-gray-900"
+		                        }`}
+		                      >
+		                        Nei, gå videre uten HTI
+		                      </button>
+		                      <button
+		                        type="button"
+		                        onClick={() => {
+		                          setUseHti("ja");
+		                          if (htiItems.length === 0) {
+		                            fetchHti();
+		                          }
+		                        }}
+		                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+		                          useHti === "ja"
+		                            ? "border-gray-900 bg-gray-900 text-white"
+		                            : "border-gray-300 bg-white text-gray-900"
+		                        }`}
+		                      >
+		                        Ja, vis HTI-kart for {base}
+		                      </button>
+		                    </div>
+		
+		                    {useHti === "ja" && (
+		                      <div className="space-y-2">
+		                        {htiLoading && (
+		                          <div className="text-sm text-gray-600">
+		                            Henter HTI-kart...
+		                          </div>
+		                        )}
+		                        {htiError && (
+		                          <div className="text-sm text-red-600">{htiError}</div>
+		                        )}
+		                        {!htiLoading && !htiError && htiItems.length > 0 && (
+		                          <>
+		                            <div className="text-sm text-gray-700">
+		                              Velg de kartene du vil legge ved:
+		                            </div>
+		                            <div className="space-y-2">
+		                              {htiItems.map((item, idx) => (
+		                                <label
+		                                  key={item.uri || idx}
+		                                  className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+		                                >
+		                                  <input
+		                                    type="checkbox"
+		                                    checked={selectedHtiUrls.includes(item.uri)}
+		                                    onChange={() => toggleHtiUrl(item.uri)}
+		                                    className="mt-1"
+		                                  />
+		                                  <span className="text-xs whitespace-pre-wrap">
+		                                    <div>
+		                                      <b>Gyldig tid:</b> {item.time}
+		                                    </div>
+		                                    <div className="mt-1">
+		                                      <a
+		                                        href={item.uri}
+		                                        target="_blank"
+		                                        rel="noreferrer"
+		                                        className="underline text-gray-900"
+		                                      >
+		                                        Åpne kart i ny fane
+		                                      </a>
+		                                    </div>
+		                                  </span>
+		                                </label>
+		                              ))}
+		                            </div>
+		                          </>
+		                        )}
+		                      </div>
+		                    )}
+		                  </div>
+		                )}
 
-                    <div className="grid grid-cols-1 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUseHti("nei");
-                          setSelectedHtiUrls([]);
-                        }}
-                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
-                          useHti === "nei"
-                            ? "border-gray-900 bg-gray-900 text-white"
-                            : "border-gray-300 bg-white text-gray-900"
-                        }`}
-                      >
-                        Nei, gå videre uten HTI
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUseHti("ja");
-                          if (htiItems.length === 0) {
-                            fetchHti();
-                          }
-                        }}
-                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
-                          useHti === "ja"
-                            ? "border-gray-900 bg-gray-900 text-white"
-                            : "border-gray-300 bg-white text-gray-900"
-                        }`}
-                      >
-                        Ja, vis HTI-kart for {base}
-                      </button>
-                    </div>
+			                {arsaker.includes("Bølgehøyde") && (
+		                  <div className="mt-6 space-y-3 border-t pt-4">
+		                    <div className="text-sm font-medium text-gray-900">
+			                      Vil du legge til bølgekart (relevant ved bølgehøyde)?
+		                    </div>
 
-                    {useHti === "ja" && (
-                      <div className="space-y-2">
-                        {htiLoading && (
-                          <div className="text-sm text-gray-600">
-                            Henter HTI-kart...
-                          </div>
-                        )}
-                        {htiError && (
-                          <div className="text-sm text-red-600">{htiError}</div>
-                        )}
-                        {!htiLoading && !htiError && htiItems.length > 0 && (
-                          <>
-                            <div className="text-sm text-gray-700">
-                              Velg de kartene du vil legge ved:
-                            </div>
-                            <div className="space-y-2">
-                              {htiItems.map((item, idx) => (
-                                <label
-                                  key={item.uri || idx}
-                                  className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedHtiUrls.includes(item.uri)}
-                                    onChange={() => toggleHtiUrl(item.uri)}
-                                    className="mt-1"
-                                  />
-                                  <span className="text-xs whitespace-pre-wrap">
-                                    <div>
-                                      <b>Gyldig tid:</b> {item.time}
-                                    </div>
-                                    <div className="mt-1">
-                                      <a
-                                        href={item.uri}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="underline text-gray-900"
-                                      >
-                                        Åpne kart i ny fane
-                                      </a>
-                                    </div>
-                                  </span>
-                                </label>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+		                    <div className="grid grid-cols-1 gap-2">
+		                      <button
+		                        type="button"
+		                        onClick={() => {
+		                          setUseWaves("nei");
+		                          setSelectedWaveUrls([]);
+		                        }}
+		                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+		                          useWaves === "nei"
+		                            ? "border-gray-900 bg-gray-900 text-white"
+		                            : "border-gray-300 bg-white text-gray-900"
+		                        }`}
+		                      >
+		                        Nei, gå videre uten bølgekart
+		                      </button>
+		                      <button
+		                        type="button"
+		                        onClick={() => {
+		                          setUseWaves("ja");
+		                          if (waveItems.length === 0) {
+		                            fetchWaves();
+		                          }
+		                        }}
+		                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+		                          useWaves === "ja"
+		                            ? "border-gray-900 bg-gray-900 text-white"
+		                            : "border-gray-300 bg-white text-gray-900"
+		                        }`}
+		                      >
+		                        Ja, vis bølgekart for {base}
+		                      </button>
+		                    </div>
+
+		                    {useWaves === "ja" && (
+		                      <div className="space-y-2">
+		                        {waveLoading && (
+		                          <div className="text-sm text-gray-600">
+		                            Henter bølgekart...
+		                          </div>
+		                        )}
+		                        {waveError && (
+		                          <div className="text-sm text-red-600">{waveError}</div>
+		                        )}
+		                        {!waveLoading && !waveError && waveItems.length > 0 && (
+		                          <>
+		                            <div className="text-sm text-gray-700">
+		                              Velg de kartene du vil legge ved:
+		                            </div>
+		                            <div className="space-y-2">
+		                              {waveItems.map((item, idx) => (
+		                                <label
+		                                  key={item.uri || idx}
+		                                  className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+		                                >
+		                                  <input
+		                                    type="checkbox"
+		                                    checked={selectedWaveUrls.includes(item.uri)}
+		                                    onChange={() => toggleWaveUrl(item.uri)}
+		                                    className="mt-1"
+		                                  />
+		                                  <span className="text-xs whitespace-pre-wrap">
+		                                    <div>
+		                                      <b>Gyldig tid:</b> {item.time}
+		                                    </div>
+		                                    <div className="mt-1">
+		                                      <a
+		                                        href={item.uri}
+		                                        target="_blank"
+		                                        rel="noreferrer"
+		                                        className="underline text-gray-900"
+		                                      >
+		                                        Åpne kart i ny fane
+		                                      </a>
+		                                    </div>
+		                                  </span>
+		                                </label>
+		                              ))}
+		                            </div>
+		                          </>
+		                        )}
+		                      </div>
+		                    )}
+		                  </div>
+		                )}
+
+		                {arsaker.includes("Vind/Blgeh fyde") && (
+		                  <div className="mt-6 space-y-3 border-t pt-4">
+		                    <div className="text-sm font-medium text-gray-900">
+		                      Vil du legge til b f8lgekart (relevant ved Vind/B f8lgeh f8yde)?
+		                    </div>
+
+		                    <div className="grid grid-cols-1 gap-2">
+		                      <button
+		                        type="button"
+		                        onClick={() => {
+		                          setUseWaves("nei");
+		                          setSelectedWaveUrls([]);
+		                        }}
+		                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+		                          useWaves === "nei"
+		                            ? "border-gray-900 bg-gray-900 text-white"
+		                            : "border-gray-300 bg-white text-gray-900"
+		                        }`}
+		                      >
+		                        Nei, gå videre uten b f8lgekart
+		                      </button>
+		                      <button
+		                        type="button"
+		                        onClick={() => {
+		                          setUseWaves("ja");
+		                          if (waveItems.length === 0) {
+		                            fetchWaves();
+		                          }
+		                        }}
+		                        className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
+		                          useWaves === "ja"
+		                            ? "border-gray-900 bg-gray-900 text-white"
+		                            : "border-gray-300 bg-white text-gray-900"
+		                        }`}
+		                      >
+		                        Ja, vis b f8lgekart for {base}
+		                      </button>
+		                    </div>
+
+		                    {useWaves === "ja" && (
+		                      <div className="space-y-2">
+		                        {waveLoading && (
+		                          <div className="text-sm text-gray-600">
+		                            Henter b f8lgekart...
+		                          </div>
+		                        )}
+		                        {waveError && (
+		                          <div className="text-sm text-red-600">{waveError}</div>
+		                        )}
+		                        {!waveLoading && !waveError && waveItems.length > 0 && (
+		                          <>
+		                            <div className="text-sm text-gray-700">
+		                              Velg de kartene du vil legge ved:
+		                            </div>
+		                            <div className="space-y-2">
+		                              {waveItems.map((item, idx) => (
+		                                <label
+		                                  key={item.uri || idx}
+		                                  className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+		                                >
+		                                  <input
+		                                    type="checkbox"
+		                                    checked={selectedWaveUrls.includes(item.uri)}
+		                                    onChange={() => toggleWaveUrl(item.uri)}
+		                                    className="mt-1"
+		                                  />
+		                                  <span className="text-xs whitespace-pre-wrap">
+		                                    <div>
+		                                      <b>Gyldig tid:</b> {item.time}
+		                                    </div>
+		                                    <div className="mt-1">
+		                                      <a
+		                                        href={item.uri}
+		                                        target="_blank"
+		                                        rel="noreferrer"
+		                                        className="underline text-gray-900"
+		                                      >
+		                                        Åpne kart i ny fane
+		                                      </a>
+		                                    </div>
+		                                  </span>
+		                                </label>
+		                              ))}
+		                            </div>
+		                          </>
+		                        )}
+		                      </div>
+		                    )}
+		                  </div>
+		                )}
+		              </div>
             </Section>
           </StepShell>
         )}

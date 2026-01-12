@@ -31,9 +31,10 @@ function wrapText(text: string, maxChars: number): string[] {
 }
 
 export async function createPdf(
-  title: string,
-  body: string,
-  htiImageUrls?: string[]
+	title: string,
+	body: string,
+	htiImageUrls?: string[],
+	waveImageUrls?: string[]
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595, 842]);
@@ -108,6 +109,7 @@ export async function createPdf(
 	    "Vurdering alternativ løsning:",
 	    "METAR/TAF:",
 	    "HTI-kart:",
+	    "Bølgekart:",
 	    "Signatur:",
 	  ];
 
@@ -188,61 +190,66 @@ export async function createPdf(
     color: rgb(0.5, 0.5, 0.5),
   });
 
-  // Eventuelle HTI-bilder som egne sider
-  if (htiImageUrls && htiImageUrls.length > 0) {
-    for (const url of htiImageUrls) {
-      try {
-        const res = await fetch(url, {
-          headers: {
-            "User-Agent": "airliftlos/1.0 (kontakt: myhre.oyvind@gmail.com)",
-          },
-        });
-        if (!res.ok) continue;
-        const pngBytes = await res.arrayBuffer();
-        const pngImage = await pdf.embedPng(pngBytes);
+	  // Eventuelle HTI- og bølgekart-bilder som egne sider
+	  async function addImagePages(urls?: string[]) {
+	    if (!urls || urls.length === 0) return;
 
-        const imgPage = pdf.addPage([595, 842]);
-        const imgPageWidth = imgPage.getWidth();
-        const imgPageHeight = imgPage.getHeight();
-        const maxWidth = imgPageWidth - 2 * marginX;
-        const maxHeight = imgPageHeight - 2 * marginX;
-        const scale = Math.min(
-          maxWidth / pngImage.width,
-          maxHeight / pngImage.height
-        );
-        const imgWidth = pngImage.width * scale;
-        const imgHeight = pngImage.height * scale;
-        const x = (imgPageWidth - imgWidth) / 2;
-        const yImg = (imgPageHeight - imgHeight) / 2;
+	    for (const url of urls) {
+	      try {
+	        const res = await fetch(url, {
+	          headers: {
+	            "User-Agent": "airliftlos/1.0 (kontakt: myhre.oyvind@gmail.com)",
+	          },
+	        });
+	        if (!res.ok) continue;
+	        const pngBytes = await res.arrayBuffer();
+	        const pngImage = await pdf.embedPng(pngBytes);
 
-        imgPage.drawImage(pngImage, {
-          x,
-          y: yImg,
-          width: imgWidth,
-          height: imgHeight,
-        });
+	        const imgPage = pdf.addPage([595, 842]);
+	        const imgPageWidth = imgPage.getWidth();
+	        const imgPageHeight = imgPage.getHeight();
+	        const maxWidth = imgPageWidth - 2 * marginX;
+	        const maxHeight = imgPageHeight - 2 * marginX;
+	        const scale = Math.min(
+	          maxWidth / pngImage.width,
+	          maxHeight / pngImage.height
+	        );
+	        const imgWidth = pngImage.width * scale;
+	        const imgHeight = pngImage.height * scale;
+	        const x = (imgPageWidth - imgWidth) / 2;
+	        const yImg = (imgPageHeight - imgHeight) / 2;
 
-        // Footer også på HTI-sidene
-        const htiFooterY = 40;
-        imgPage.drawRectangle({
-          x: marginX,
-          y: htiFooterY + 10,
-          width: imgPageWidth - marginX * 2,
-          height: 0.5,
-          color: rgb(0.9, 0.9, 0.9),
-        });
-        imgPage.drawText("Airlift - generert fra airliftlos", {
-          x: marginX,
-          y: htiFooterY,
-          size: 8,
-          font,
-          color: rgb(0.5, 0.5, 0.5),
-        });
-      } catch {
-        // Ignore HTI image errors
-      }
-    }
-  }
+	        imgPage.drawImage(pngImage, {
+	          x,
+	          y: yImg,
+	          width: imgWidth,
+	          height: imgHeight,
+	        });
+
+	        // Footer også på bildesidene
+	        const footerYImg = 40;
+	        imgPage.drawRectangle({
+	          x: marginX,
+	          y: footerYImg + 10,
+	          width: imgPageWidth - marginX * 2,
+	          height: 0.5,
+	          color: rgb(0.9, 0.9, 0.9),
+	        });
+	        imgPage.drawText("Airlift - generert fra airliftlos", {
+	          x: marginX,
+	          y: footerYImg,
+	          size: 8,
+	          font,
+	          color: rgb(0.5, 0.5, 0.5),
+	        });
+	      } catch {
+	        // Ignorer bilde-feil for denne typen
+	      }
+	    }
+	  }
+
+	  await addImagePages(htiImageUrls);
+	  await addImagePages(waveImageUrls);
 
   const bytes = await pdf.save();
   return bytes;
@@ -265,7 +272,8 @@ interface DriftsReportRecord {
   alternativ: string;
   signatur: string;
   metarLines: string[];
-  htiImageUrls?: string[];
+	  htiImageUrls?: string[];
+	  waveImageUrls?: string[];
   createdAt: number;
 	  createdOnDeviceId?: string;
   gjenopptattKl?: number;
@@ -282,6 +290,7 @@ interface SendReportPayload {
   /** Hvilken base rapporten gjelder (Bergen/Tromsø/Hammerfest) */
   base?: string;
   htiImageUrls?: string[];
+	  waveImageUrls?: string[];
   /** Type rapport (brukes til f.eks. SharePoint-opplasting) */
   reportType?: "driftsrapport" | "vaktrapport";
 	/** Strukturert driftsforstyrrelse som kan lagres i Firestore */
@@ -560,17 +569,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const {
-    subject,
-    body,
-    fileName,
-    title,
-    fromName,
-    htiImageUrls,
-    base,
-    reportType,
-    driftsReport,
-  } = payload;
+	  const {
+	    subject,
+	    body,
+	    fileName,
+	    title,
+	    fromName,
+	    htiImageUrls,
+	    waveImageUrls,
+	    base,
+	    reportType,
+	    driftsReport,
+	  } = payload;
 
   if (!subject || !body || !fileName || !title) {
     return NextResponse.json(
@@ -589,7 +599,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const pdfBytes = await createPdf(title, body, htiImageUrls);
+	    const pdfBytes = await createPdf(title, body, htiImageUrls, waveImageUrls);
     const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
 
     let sharepointResult: SharePointUploadResult | undefined;
