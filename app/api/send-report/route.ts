@@ -485,7 +485,8 @@ async function uploadPdfToSharePoint(
 
 async function uploadDriftsrapportToSharePoint(
   fileName: string,
-  pdfBytes: Uint8Array
+  pdfBytes: Uint8Array,
+  reportYear?: number
 ): Promise<SharePointUploadResult> {
   const folderPath = process.env.DRIFT_RAPPORT_SHAREPOINT_FOLDER_PATH;
 
@@ -501,7 +502,13 @@ async function uploadDriftsrapportToSharePoint(
     };
   }
 
-  return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
+  // Driftsrapporter skal også lagres i en årsmappestruktur i SharePoint.
+  // Hvis folderPath allerede inneholder et år, bytter vi til reportYear.
+  // Hvis ikke, appender vi årstallet som siste segment.
+  const year = reportYear ?? new Date().getFullYear();
+  const yearFolderPath = withYearFolder(folderPath, year);
+
+  return uploadPdfToSharePoint(yearFolderPath, fileName, pdfBytes);
 }
 
 function withYearFolder(folderPath: string, year: number): string {
@@ -541,6 +548,12 @@ function extractYearFromText(text: string | undefined): number | undefined {
 	}
 
 	return undefined;
+}
+
+function getDriftsrapportYear(title: string, body: string): number | undefined {
+	// Driftsforstyrrelse har dato i title ("Driftsforstyrrelse Bergen 2026-01-14")
+	// og også i body (for eksempel "Dato: 2026-01-14").
+	return extractYearFromText(title) ?? extractYearFromText(body);
 }
 
 function getVaktrapportYear(title: string, body: string): number | undefined {
@@ -724,37 +737,39 @@ export async function POST(req: Request) {
 	    const pdfBytes = await createPdf(title, body, htiImageUrls, waveImageUrls);
     const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
 
-    let sharepointResult: SharePointUploadResult | undefined;
-    if (reportType === "driftsrapport") {
-      try {
-        sharepointResult = await uploadDriftsrapportToSharePoint(
-          fileName,
-          pdfBytes
-        );
-      } catch (err) {
-        console.error("SharePoint: uventet feil ved opplasting", err);
-        sharepointResult = {
-          ok: false,
-          error: "Uventet feil ved opplasting til SharePoint",
-        };
-      }
-    } else if (reportType === "vaktrapport") {
-      try {
-	        const reportYear = getVaktrapportYear(title, body);
-        sharepointResult = await uploadVaktrapportToSharePoint(
-          base,
-          fileName,
+	  let sharepointResult: SharePointUploadResult | undefined;
+	    if (reportType === "driftsrapport") {
+	      try {
+		        const reportYear = getDriftsrapportYear(title, body);
+	        sharepointResult = await uploadDriftsrapportToSharePoint(
+	          fileName,
 	          pdfBytes,
 	          reportYear
-        );
-      } catch (err) {
-        console.error("SharePoint: uventet feil ved opplasting av vaktrapport", err);
-        sharepointResult = {
-          ok: false,
-          error: "Uventet feil ved opplasting av vaktrapport til SharePoint",
-        };
-      }
-    }
+	        );
+	      } catch (err) {
+	        console.error("SharePoint: uventet feil ved opplasting", err);
+	        sharepointResult = {
+	          ok: false,
+	          error: "Uventet feil ved opplasting til SharePoint",
+	        };
+	      }
+	    } else if (reportType === "vaktrapport") {
+	      try {
+		        const reportYear = getVaktrapportYear(title, body);
+	        sharepointResult = await uploadVaktrapportToSharePoint(
+	          base,
+	          fileName,
+		          pdfBytes,
+		          reportYear
+	        );
+	      } catch (err) {
+	        console.error("SharePoint: uventet feil ved opplasting av vaktrapport", err);
+	        sharepointResult = {
+	          ok: false,
+	          error: "Uventet feil ved opplasting av vaktrapport til SharePoint",
+	        };
+	      }
+	    }
 
     let firestoreResult:
       | {
