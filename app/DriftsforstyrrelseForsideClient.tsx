@@ -218,30 +218,28 @@ export default function DriftsforstyrrelseForsideClient() {
 	  return (
 	    <>
 	      {/* Aktiv driftsforstyrrelse: egen boble rett over hovedboblen på forsiden */}
-	      <div className="absolute inset-x-0 -top-4 z-30 flex justify-center px-4">
-	        <div className="w-full max-w-md space-y-3">
-	          {activeReports.map((report) => (
-	            <div
-	              key={report.id}
-	              className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-gray-900 shadow-md"
-	            >
-	              <div className="mb-2 flex items-center justify-between gap-2">
-	                <div className="font-medium">{report.base}</div>
-	                <div className="text-xs text-gray-700">
-	                  {report.dato} kl {report.tid}
-	                </div>
+	      <div className="w-full space-y-2">
+	        {activeReports.map((report) => (
+	          <div
+	            key={report.id}
+	            className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-gray-900 shadow-md"
+	          >
+	            <div className="mb-2 flex items-center justify-between gap-2">
+	              <div className="font-medium">{report.base}</div>
+	              <div className="text-xs text-gray-700">
+	                {report.dato} kl {report.tid}
 	              </div>
-	              <button
-	                type="button"
-	                onClick={() => startResume(report)}
-	                disabled={Boolean(sendingId)}
-	                className="mt-1 w-full rounded-xl border border-blue-700 bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-200 disabled:text-gray-500"
-	              >
-	                {sendingId === report.id ? "Sender..." : "Gjenoppta drift"}
-	              </button>
 	            </div>
-	          ))}
-	        </div>
+	            <button
+	              type="button"
+	              onClick={() => startResume(report)}
+	              disabled={Boolean(sendingId)}
+	              className="mt-1 w-full rounded-xl border border-blue-700 bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-200 disabled:text-gray-500"
+	            >
+	              {sendingId === report.id ? "Sender..." : "Gjenoppta drift"}
+	            </button>
+	          </div>
+	        ))}
 	      </div>
 
 	      {resumeReport && (
