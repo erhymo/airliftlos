@@ -384,6 +384,71 @@ async function uploadPdfToSharePoint(
     };
   }
 
+	// Forsøk å sikre at mappen vi skal skrive til finnes. Dette er spesielt nyttig
+	// for vaktrapporter der vi legger på årsmappen (2025, 2026, 2027, ...) dynamisk
+	// basert på datoen i rapporten. Vi antar at "basestien" (opp til f.eks. .../Bergen)
+	// allerede finnes og oppretter kun siste segment ved behov.
+	try {
+		const rawSegments = folderPath.split("/").filter(Boolean);
+		if (rawSegments.length > 0) {
+			const folderName = rawSegments[rawSegments.length - 1];
+			const parentSegments = rawSegments.slice(0, -1);
+			const encodedFolder = rawSegments
+				.map((segment) => encodeURIComponent(segment))
+				.join("/");
+			const folderUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedFolder}`;
+
+			const headRes = await fetch(folderUrl, {
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+				},
+			});
+
+			if (headRes.status === 404) {
+				// Mappen finnes ikke. Forsøker å opprette den som et barn av parent-stien.
+				const encodedParent = parentSegments
+					.map((segment) => encodeURIComponent(segment))
+					.join("/");
+				const parentUrl =
+					parentSegments.length === 0
+						? `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/children`
+						: `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedParent}:/children`;
+
+				const createRes = await fetch(parentUrl, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						name: folderName,
+						folder: {},
+						"@microsoft.graph.conflictBehavior": "fail",
+					}),
+				});
+
+				if (!createRes.ok && createRes.status !== 409) {
+					const text = await createRes.text().catch(() => "");
+					console.error(
+						"SharePoint: klarte ikke å opprette mappe for vaktrapport",
+						createRes.status,
+						text,
+					);
+				}
+			} else if (!headRes.ok) {
+				const text = await headRes.text().catch(() => "");
+				console.warn(
+					"SharePoint: klarte ikke å verifisere eksistens av mappe",
+					headRes.status,
+					text,
+				);
+			}
+		}
+	} catch (err) {
+		console.error("SharePoint: uventet feil ved sjekk/oppretting av mappe", err);
+	}
+
 	// Bygg sti til filen under dokumentbiblioteket, med korrekt URL-encoding per segment
 	const itemPath = buildSharePointItemPath(folderPath, fileName);
 
@@ -439,6 +504,51 @@ async function uploadDriftsrapportToSharePoint(
   return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
 }
 
+function withYearFolder(folderPath: string, year: number): string {
+	// Vaktrapporter lagres i en årsmappestruktur i SharePoint.
+	// For bakoverkompatibilitet støtter vi sti som allerede inneholder et år-segment
+	// (f.eks. /2025/ eller /2026/) og sti uten år (da appender vi året).
+	const segments = folderPath.split("/").filter(Boolean);
+	let lastYearIdx = -1;
+	for (let i = 0; i < segments.length; i += 1) {
+		if (/^(19|20)[0-9]{2}$/.test(segments[i])) lastYearIdx = i;
+	}
+
+	if (lastYearIdx >= 0) {
+		segments[lastYearIdx] = String(year);
+	} else {
+		segments.push(String(year));
+	}
+
+	return segments.join("/");
+}
+
+function extractYearFromText(text: string | undefined): number | undefined {
+	if (!text) return undefined;
+
+	// Støtt ISO-dato: YYYY-MM-DD
+	const isoMatch = text.match(/\b((?:19|20)[0-9]{2})-[0-9]{2}-[0-9]{2}\b/);
+	if (isoMatch) {
+		const year = Number(isoMatch[1]);
+		if (!Number.isNaN(year) && year >= 2000 && year <= 2100) return year;
+	}
+
+	// Støtt norsk datoformat: DD.MM.YYYY
+	const noMatch = text.match(/\b[0-9]{2}\.[0-9]{2}\.((?:19|20)[0-9]{2})\b/);
+	if (noMatch) {
+		const year = Number(noMatch[1]);
+		if (!Number.isNaN(year) && year >= 2000 && year <= 2100) return year;
+	}
+
+	return undefined;
+}
+
+function getVaktrapportYear(title: string, body: string): number | undefined {
+	// Vaktrapporten har dato i title ("Vaktrapport Bergen 2026-01-14")
+	// og ofte også i body ("Dato/Sign: 2026-01-14").
+	return extractYearFromText(title) ?? extractYearFromText(body);
+}
+
 function getVaktrapportFolderPath(base: string | undefined): string | undefined {
 	switch (base) {
 		case "Bergen":
@@ -455,7 +565,8 @@ function getVaktrapportFolderPath(base: string | undefined): string | undefined 
 async function uploadVaktrapportToSharePoint(
 	base: string | undefined,
 	fileName: string,
-	pdfBytes: Uint8Array
+	pdfBytes: Uint8Array,
+	reportYear?: number
 ): Promise<SharePointUploadResult> {
 	const folderPath = getVaktrapportFolderPath(base);
 
@@ -470,12 +581,15 @@ async function uploadVaktrapportToSharePoint(
 	  };
 	}
 
-	return uploadPdfToSharePoint(folderPath, fileName, pdfBytes);
+	const year = reportYear ?? new Date().getFullYear();
+	const yearFolderPath = withYearFolder(folderPath, year);
+	return uploadPdfToSharePoint(yearFolderPath, fileName, pdfBytes);
 }
 
 async function deleteVaktrapportFromSharePoint(
 	base: string | undefined,
-	fileName: string
+	fileName: string,
+	reportYear?: number
 ): Promise<SharePointUploadResult> {
 	const siteId = process.env.SHAREPOINT_SITE_ID;
 
@@ -492,10 +606,10 @@ async function deleteVaktrapportFromSharePoint(
 
 	const folderPath = getVaktrapportFolderPath(base);
 
-		if (!folderPath) {
-			console.warn(
-				`SharePoint: mangler mappe for vaktrapport-base ${base ?? "(ukjent)"} – hopper over sletting`
-			);
+	if (!folderPath) {
+		console.warn(
+			`SharePoint: mangler mappe for vaktrapport-base ${base ?? "(ukjent)"} – hopper over sletting`
+		);
 		return {
 			ok: false,
 			skipped: true,
@@ -511,41 +625,49 @@ async function deleteVaktrapportFromSharePoint(
 		};
 	}
 
-	const itemPath = buildSharePointItemPath(folderPath, fileName);
-	const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}`;
+	const nowYear = new Date().getFullYear();
+	const candidateYears = [reportYear, nowYear, nowYear - 1]
+		.filter((y): y is number => typeof y === "number" && Number.isFinite(y))
+		.filter((y, idx, arr) => arr.indexOf(y) === idx);
 
-	const res = await fetch(url, {
-		method: "DELETE",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-	});
+	for (let i = 0; i < candidateYears.length; i += 1) {
+		const year = candidateYears[i];
+		const yearFolderPath = withYearFolder(folderPath, year);
+		const itemPath = buildSharePointItemPath(yearFolderPath, fileName);
+		const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}`;
 
-	if (res.status === 404) {
-		// Filen finnes ikke lenger  vi betrakter dette som OK for  holde appen i sync
-		console.warn(
-			"SharePoint: filen som skulle slettes ble ikke funnet (404)  antar at den allerede er fjernet"
-		);
-		return { ok: true, skipped: true, error: "File already deleted (404)" };
+		const res = await fetch(url, {
+			method: "DELETE",
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+			},
+		});
+
+			if (res.status === 404) {
+				// Prøv neste år-kandidat. Hvis dette var siste forsøk, behandle som OK.
+				if (i < candidateYears.length - 1) continue;
+				console.warn(
+					"SharePoint: filen som skulle slettes ble ikke funnet (404) – antar at den allerede er fjernet"
+				);
+				return { ok: true, skipped: true, error: "File already deleted (404)" };
+			}
+
+		if (!res.ok) {
+			const text = await res.text().catch(() => "");
+			console.error("SharePoint: klarte ikke å slette fil", res.status, text);
+			return {
+				ok: false,
+				error:
+					text && text.length < 400
+						? text
+						: `HTTP ${res.status} fra Graph ved sletting`,
+			};
+		}
+
+		return { ok: true };
 	}
 
-	if (!res.ok) {
-		const text = await res.text().catch(() => "");
-		console.error(
-			"SharePoint: klarte ikke  slette fil",
-			res.status,
-			text
-		);
-		return {
-			ok: false,
-			error:
-				text && text.length < 400
-					? text
-					: `HTTP ${res.status} fra Graph ved sletting`,
-		};
-	}
-
-	return { ok: true };
+	return { ok: true, skipped: true };
 }
 
 export async function POST(req: Request) {
@@ -618,10 +740,12 @@ export async function POST(req: Request) {
       }
     } else if (reportType === "vaktrapport") {
       try {
+	        const reportYear = getVaktrapportYear(title, body);
         sharepointResult = await uploadVaktrapportToSharePoint(
           base,
           fileName,
-          pdfBytes
+	          pdfBytes,
+	          reportYear
         );
       } catch (err) {
         console.error("SharePoint: uventet feil ved opplasting av vaktrapport", err);
@@ -770,6 +894,7 @@ export async function POST(req: Request) {
 interface DeleteVaktrapportPayload {
 	base?: string;
 	fileName: string;
+	datoSign?: string;
 }
 
 export async function DELETE(req: Request) {
@@ -791,7 +916,7 @@ export async function DELETE(req: Request) {
 		return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 	}
 
-	const { base, fileName } = payload;
+	const { base, fileName, datoSign } = payload;
 
 	if (!fileName) {
 		return NextResponse.json(
@@ -801,7 +926,8 @@ export async function DELETE(req: Request) {
 	}
 
 	try {
-		const result = await deleteVaktrapportFromSharePoint(base, fileName);
+		const reportYear = extractYearFromText(datoSign);
+		const result = await deleteVaktrapportFromSharePoint(base, fileName, reportYear);
 		if (!result.ok && !result.skipped) {
 			return NextResponse.json(
 				{
