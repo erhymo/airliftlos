@@ -581,7 +581,7 @@ type LosType = "Båt" | "Rigg";
 								</div>
 						<div className="flex justify-between">
 							<dt className="text-gray-600">Los(er)</dt>
-							<dd className={manualPilotSelection ? "font-medium w-full" : "font-medium"}>
+							<dd className="font-medium">
 								{!manualPilotSelection ? (
 									booking.pilots.length > 0 ? (
 										<span className="flex flex-col items-end text-right">
@@ -593,9 +593,12 @@ type LosType = "Båt" | "Rigg";
 										"–"
 									)
 								) : (
-									<div className="flex flex-col gap-2 w-full">
+									<div className="flex flex-col items-end gap-1">
+										<div className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-900">
+											<span>Manuell registrering av los</span>
+										</div>
 										<select
-											className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white"
+											className="w-44 sm:w-52 rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white self-end"
 											value={booking.pilots[0] ?? ""}
 											onChange={(e) => {
 												const value = e.target.value;
@@ -626,14 +629,14 @@ type LosType = "Båt" | "Rigg";
 											<button
 												type="button"
 												onClick={() => setShowSecondPilotSelect(true)}
-												className="inline-flex items-center rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-700 bg-white hover:bg-gray-50 w-fit"
+												className="mt-1 inline-flex items-center rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-700 bg-white hover:bg-gray-50 w-fit self-end"
 											>
 												+
 											</button>
 										)}
 										{(showSecondPilotSelect || booking.pilots.length > 1) && (
 											<select
-												className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white"
+												className="w-44 sm:w-52 rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white self-end"
 												value={booking.pilots[1] ?? ""}
 												onChange={(e) => {
 													const value = e.target.value;
