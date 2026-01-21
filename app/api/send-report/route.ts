@@ -512,18 +512,34 @@ async function uploadDriftsrapportToSharePoint(
 }
 
 function withYearFolder(folderPath: string, year: number): string {
-	// Vaktrapporter lagres i en årsmappestruktur i SharePoint.
-	// For bakoverkompatibilitet støtter vi sti som allerede inneholder et år-segment
-	// (f.eks. /2025/ eller /2026/) og sti uten år (da appender vi året).
+	// Rapporter lagres i en årsmappestruktur i SharePoint.
+	// For bakoverkompatibilitet støtter vi både:
+	// - sti som allerede inneholder et eget år-segment ("/2025/"), og
+	// - sti der årstallet er en del av mappenavnet ("Vaktrapport Bergen 2025").
 	const segments = folderPath.split("/").filter(Boolean);
 	let lastYearIdx = -1;
+	let lastYearMatch: RegExpMatchArray | null = null;
+
 	for (let i = 0; i < segments.length; i += 1) {
-		if (/^(19|20)[0-9]{2}$/.test(segments[i])) lastYearIdx = i;
+		// Finn både rene år-mapper ("2025") og mapper der årstallet er en del
+		// av navnet (for eksempel "Vaktrapport Bergen 2025").
+		const match = segments[i].match(/(19|20)[0-9]{2}/);
+		if (match) {
+			lastYearIdx = i;
+			lastYearMatch = match;
+		}
 	}
 
-	if (lastYearIdx >= 0) {
-		segments[lastYearIdx] = String(year);
+	if (lastYearIdx >= 0 && lastYearMatch) {
+		// Bytt ut selve årstallet i segmentet slik at både
+		// "2025" -> "2026" og "Vaktrapport Bergen 2025" ->
+		// "Vaktrapport Bergen 2026" fungerer.
+		segments[lastYearIdx] = segments[lastYearIdx].replace(
+			lastYearMatch[0],
+			String(year)
+		);
 	} else {
+		// Ingen år i stien fra før – legg til år som egen undermappe.
 		segments.push(String(year));
 	}
 
