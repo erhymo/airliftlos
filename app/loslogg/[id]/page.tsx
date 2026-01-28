@@ -456,81 +456,89 @@ type LosType = "Båt" | "Rigg";
 						}
 					};
 
-					const handleConfirmRemoveWithReason = async () => {
-						if (!booking.id) {
-							setShowRemoveConfirm(false);
-							return;
-						}
-						if (!removeReason) {
-							setRemoveError("Velg årsak før du går videre.");
-							return;
-						}
-						setRemoveError(null);
-						setRemoving(true);
-						// Hvis brukeren kun vil rydde i listen, bruk eksisterende kanselleringsflyt uten logging.
-						if (removeReason === "Bare fjern fra listen") {
-							await handleConfirmRemove();
-							setRemoving(false);
-							return;
-						}
-
-						// For andre årsaker skal vi logge til LOS-logg (SharePoint) og samtidig fjerne båten.
-						// Kommentaren starter alltid med valgt årsak.
-						const trimmedComment = removeComment.trim();
-						const finalComment =
-							trimmedComment.length > 0
-								? `${removeReason} - ${trimmedComment}`
-								: removeReason;
-
-						try {
-							const res = await fetch("/api/los-logg", {
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									bookingId: booking.id,
-									date: booking.date,
-									orderNumber: booking.orderNumber,
-									vesselName: booking.vesselName,
-									gt: booking.gt,
-									base: booking.base,
-									pilots: booking.pilots,
-									techlogNumber,
-									location,
-									losType,
-									shipLanding,
-									tokeBomtur,
-									losToAirportCount,
-									enfjLandings,
-									hoistCount,
-									comment: finalComment,
-									sign,
-								}),
-							});
-							if (!res.ok) {
-								let message = "Klarte ikke å sende kansellering til LOS-logg.";
-								try {
-									const data = (await res.json()) as { error?: string };
-									if (data.error) message = data.error;
-								} catch {
-									// ignorér JSON-feil
-								}
-								setRemoveError(message);
-								setRemoving(false);
+						const handleConfirmRemoveWithReason = async () => {
+							if (!booking.id) {
+								setShowRemoveConfirm(false);
+								return;
+							}
+							if (!removeReason) {
+								setRemoveError("Velg årsak før du går videre.");
+								return;
+							}
+							// Hvis brukeren kun vil rydde i listen, bruk eksisterende kanselleringsflyt uten logging.
+							if (removeReason === "Bare fjern fra listen") {
+								setRemoveError(null);
+								await handleConfirmRemove();
 								return;
 							}
 
-							// Hvis vi kommer hit, er raden skrevet til Excel og booking markert som lukket i Firestore.
-							// Vi gjenbruker "sendt"-overlayen som allerede finnes for vanlig LOS-logg.
-							setShowRemoveConfirm(false);
-							setRemoveReason(null);
-							setRemoveComment("");
-							setHasSent(true);
-						} catch (error) {
-							console.error("Klarte ikke å sende kansellering til LOS-logg", error);
-							setRemoveError("Klarte ikke å sende kansellering til LOS-logg. Sjekk nettverk og prøv igjen.");
-							setRemoving(false);
-						}
-					};
+							// For kanselleringer som skal logges i LOS-logg, krever vi sign (3 bokstaver),
+							// siden backenden også validerer dette.
+							if (!sign || sign.length !== 3) {
+								setRemoveError("Velg sign (3 bokstaver) før du går videre.");
+								return;
+							}
+
+							setRemoveError(null);
+							setRemoving(true);
+
+							// For andre årsaker skal vi logge til LOS-logg (SharePoint) og samtidig fjerne båten.
+							// Kommentaren starter alltid med valgt årsak.
+							const trimmedComment = removeComment.trim();
+							const finalComment =
+								trimmedComment.length > 0
+									? `${removeReason} - ${trimmedComment}`
+									: removeReason;
+
+							try {
+								const res = await fetch("/api/los-logg", {
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({
+										bookingId: booking.id,
+										date: booking.date,
+										orderNumber: booking.orderNumber,
+										vesselName: booking.vesselName,
+										gt: booking.gt,
+										base: booking.base,
+										pilots: booking.pilots,
+										techlogNumber,
+										location,
+										losType,
+										shipLanding,
+										tokeBomtur,
+										losToAirportCount,
+										enfjLandings,
+										hoistCount,
+										comment: finalComment,
+										sign,
+									}),
+								});
+								if (!res.ok) {
+									let message = "Klarte ikke å sende kansellering til LOS-logg.";
+									try {
+										const data = (await res.json()) as { error?: string };
+										if (data.error) message = data.error;
+									} catch {
+										// ignorér JSON-feil
+									}
+									setRemoveError(message);
+									setRemoving(false);
+									return;
+								}
+
+								// Hvis vi kommer hit, er raden skrevet til Excel og booking markert som lukket i Firestore.
+								// Vi gjenbruker "sendt"-overlayen som allerede finnes for vanlig LOS-logg.
+								setShowRemoveConfirm(false);
+								setRemoveReason(null);
+								setRemoveComment("");
+								setHasSent(true);
+							} catch (error) {
+								console.error("Klarte ikke å sende kansellering til LOS-logg", error);
+								setRemoveError("Klarte ikke å sende kansellering til LOS-logg. Sjekk nettverk og prøv igjen.");
+								setRemoving(false);
+							}
+						};
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-4">
@@ -1094,8 +1102,9 @@ type LosType = "Båt" | "Rigg";
 										</label>
 									))}
 								</div>
-								{removeReason && removeReason !== "Bare fjern fra listen" && (
-									<div className="space-y-1 pt-2">
+							{removeReason && removeReason !== "Bare fjern fra listen" && (
+								<div className="space-y-3 pt-2">
+									<div className="space-y-1">
 										<label className="text-sm font-medium text-gray-700" htmlFor="remove-comment">
 											Kommentar
 										</label>
@@ -1106,9 +1115,28 @@ type LosType = "Båt" | "Rigg";
 											value={removeComment}
 											onChange={(e) => setRemoveComment(e.target.value)}
 											placeholder={`${removeReason} – skriv kort forklaring her (valgfritt)`}
-											/>
-										</div>
-									)}
+										/>
+									</div>
+									<div className="space-y-1">
+										<span className="text-sm font-medium text-gray-700">Sign (3 bokstaver)</span>
+										<select
+											className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
+											value={sign}
+											onChange={(e) => setSign(e.target.value)}
+										>
+											<option value="">Velg sign</option>
+											{signers.map((s) => (
+												<option key={s} value={s}>
+													{s}
+												</option>
+											))}
+										</select>
+										<p className="text-[11px] text-gray-500">
+											Dette er samme sign-liste som i vaktrapporten (kapteiner og styrmenn).
+										</p>
+									</div>
+								</div>
+							)}
 									{removeError && <p className="text-xs text-red-600">{removeError}</p>}
 									<div className="flex justify-between items-center pt-2">
 										<button
