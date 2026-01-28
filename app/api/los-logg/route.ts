@@ -22,7 +22,7 @@ type LosLoggPayload = {
 	date?: string | null;
 	orderNumber?: string | null;
 	vesselName?: string | null;
-		gt?: number | null;
+	gt?: number | null;
 	base?: string | null;
 	pilots?: string[];
 	techlogNumber?: number | null;
@@ -35,6 +35,7 @@ type LosLoggPayload = {
 	hoistCount?: number | null;
 	comment?: string | null;
 	sign?: string | null;
+ 	isCancellation?: boolean;
 };
 
 	function getExcelVesselName(raw?: string | null): string {
@@ -257,7 +258,10 @@ export async function POST(req: Request) {
 			);
 		}
 
-		if (!body.location || !body.losType) {
+		// For vanlige LOS-logger krever vi sted og type.
+		// For kanselleringer (isCancellation === true) er dette ikke påkrevd.
+		const isCancellation = body.isCancellation === true;
+		if (!isCancellation && (!body.location || !body.losType)) {
 			return NextResponse.json(
 				{ error: "Sted og type må være satt." },
 				{ status: 400 },

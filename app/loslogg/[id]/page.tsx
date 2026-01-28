@@ -512,6 +512,7 @@ type LosType = "Båt" | "Rigg";
 										hoistCount,
 										comment: finalComment,
 										sign,
+										isCancellation: true,
 									}),
 								});
 								if (!res.ok) {
