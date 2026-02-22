@@ -588,21 +588,36 @@ type LosType = "Båt" | "Rigg";
 									<dt className="text-gray-600">Terminal (tolket)</dt>
 									<dd className="font-medium">{booking.terminal ?? "–"}</dd>
 								</div>
-						<div className="flex justify-between">
-							<dt className="text-gray-600">Los(er)</dt>
-							<dd className="font-medium">
-								{!manualPilotSelection ? (
-									booking.pilots.length > 0 ? (
-										<span className="flex flex-col items-end text-right">
-											{booking.pilots.map((name) => (
-												<span key={name}>{name}</span>
-											))}
-										</span>
+							<div className="flex justify-between">
+								<dt className="text-gray-600">Los(er)</dt>
+								<dd className="font-medium">
+									{!manualPilotSelection ? (
+										booking.pilots.length > 0 ? (
+											<div className="flex items-start justify-end gap-2">
+												{booking.pilots.length === 1 && (
+													<button
+														type="button"
+														onClick={() => {
+															setManualPilotSelection(true);
+															setShowSecondPilotSelect(true);
+														}}
+														className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 text-xs text-gray-700 hover:bg-gray-50"
+														aria-label="Legg til ekstra los"
+													>
+														+
+													</button>
+												)}
+												<span className="flex flex-col items-end text-right">
+													{booking.pilots.map((name) => (
+														<span key={name}>{name}</span>
+													))}
+												</span>
+											</div>
+										) : (
+											"–"
+										)
 									) : (
-										"–"
-									)
-								) : (
-									<div className="flex flex-col items-end gap-1">
+										<div className="flex flex-col items-end gap-1">
 										<div className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-900">
 											<span>Manuell registrering av los</span>
 										</div>
