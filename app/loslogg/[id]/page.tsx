@@ -278,46 +278,70 @@ type LosType = "Båt" | "Rigg";
 			loadBooking();
 			}, [params]);
 
-		useEffect(() => {
-			try {
-				if (typeof window === "undefined") return;
-				const stored = window.localStorage.getItem(LAST_TECHLOG_STORAGE_KEY);
-				if (!stored) return;
-				const parsed = Number.parseInt(stored, 10);
-				if (Number.isNaN(parsed) || parsed <= 0) return;
-				setTechlogNumber(parsed);
-			} catch (error) {
-				console.warn("Klarte ikke å lese siste techlognummer fra localStorage", error);
-			}
-		}, []);
-
-			// Forhåndsvelg sted hvis vi har tolket terminal fra bestillingsmailen
-			// (f.eks. Holmengraa/Fedje vest → Mongstad/Sture) og piloten ikke har
-			// valgt noe selv ennå.
 			useEffect(() => {
-				if (location !== null) return;
-
-				const terminal = booking.terminal;
-				if (!terminal) return;
-
-				const KNOWN_LOCATIONS: Location[] = [
-					"Mongstad",
-					"Sture",
-					"Melkøya",
-					"Kårstø",
-					"Los øvrig",
-					"Nyhamna",
-				];
-
-				if (KNOWN_LOCATIONS.includes(terminal as Location)) {
-					setLocation(terminal as Location);
+				try {
+					if (typeof window === "undefined") return;
+					const stored = window.localStorage.getItem(LAST_TECHLOG_STORAGE_KEY);
+					if (!stored) return;
+					const parsed = Number.parseInt(stored, 10);
+					if (Number.isNaN(parsed) || parsed <= 0) return;
+					setTechlogNumber(parsed);
+				} catch (error) {
+					console.warn("Klarte ikke å lese siste techlognummer fra localStorage", error);
 				}
-			}, [booking.terminal, location]);
-
-		const signers = useMemo(
-		() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")),
-		[],
-	);
+			}, []);
+		
+				// Forhåndsvelg sted hvis vi har tolket terminal fra bestillingsmailen
+				// (f.eks. Holmengraa/Fedje vest → Mongstad/Sture) og piloten ikke har
+				// valgt noe selv ennå.
+				useEffect(() => {
+					if (location !== null) return;
+			
+					const terminal = booking.terminal;
+					if (!terminal) return;
+			
+					const KNOWN_LOCATIONS: Location[] = [
+						"Mongstad",
+						"Sture",
+						"Melkøya",
+						"Kårstø",
+						"Los øvrig",
+						"Nyhamna",
+					];
+			
+					if (KNOWN_LOCATIONS.includes(terminal as Location)) {
+						setLocation(terminal as Location);
+					}
+				}, [booking.terminal, location]);
+			
+			const signers = useMemo(
+				() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")),
+				[],
+			);
+		
+			const firstPilot = booking.pilots[0] ?? "";
+			const secondPilot = booking.pilots[1] ?? "";
+		
+			// Sikre at eksisterende los-navn fortsatt vises i nedtrekksmenyen
+			// selv om de ikke ligger i LOS_NAMES-listen fra før.
+			const pilot1Options = useMemo(
+				() =>
+					firstPilot && !LOS_NAMES.includes(firstPilot)
+						? [firstPilot, ...LOS_NAMES]
+						: LOS_NAMES,
+				[firstPilot],
+			);
+		
+			const pilot2Options = useMemo(
+				() => {
+					const baseList =
+						secondPilot && !LOS_NAMES.includes(secondPilot)
+							? [secondPilot, ...LOS_NAMES]
+							: LOS_NAMES;
+					return baseList.filter((name) => name !== firstPilot);
+				},
+				[firstPilot, secondPilot],
+			);
 
 			const canGoNext = () => {
 				switch (step) {
@@ -643,12 +667,12 @@ type LosType = "Båt" | "Rigg";
 												});
 											}}
 										>
-											<option value="">Velg los</option>
-											{LOS_NAMES.map((name) => (
-												<option key={name} value={name}>
-													{name}
-												</option>
-											))}
+						<option value="">Velg los</option>
+						{pilot1Options.map((name) => (
+							<option key={name} value={name}>
+								{name}
+							</option>
+						))}
 										</select>
 										{booking.pilots[0] && !showSecondPilotSelect && (
 											<button
@@ -680,12 +704,12 @@ type LosType = "Båt" | "Rigg";
 													});
 												}}
 											>
-												<option value="">Velg los 2 (valgfritt)</option>
-												{LOS_NAMES.filter((name) => name !== booking.pilots[0]).map((name) => (
-													<option key={name} value={name}>
-														{name}
-													</option>
-												))}
+						<option value="">Velg los 2 (valgfritt)</option>
+						{pilot2Options.map((name) => (
+							<option key={name} value={name}>
+								{name}
+							</option>
+						))}
 											</select>
 										)}
 									</div>
