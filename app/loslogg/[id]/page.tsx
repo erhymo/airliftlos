@@ -207,9 +207,10 @@ type LosType = "Båt" | "Rigg";
 		const [losToAirportCount, setLosToAirportCount] = useState<number | null>(null);
 		const [enfjLandings, setEnfjLandings] = useState<number | null>(null);
 	const [hoistCount, setHoistCount] = useState<number | null>(null);
-		const [manualPilotSelection, setManualPilotSelection] = useState(false);
-		const [showSecondPilotSelect, setShowSecondPilotSelect] = useState(false);
-		const [comment, setComment] = useState("");
+			const [manualPilotSelection, setManualPilotSelection] = useState(false);
+			const [showSecondPilotSelect, setShowSecondPilotSelect] = useState(false);
+			const [extraLosNames, setExtraLosNames] = useState<string[]>([]);
+			const [comment, setComment] = useState("");
 			const [sign, setSign] = useState("");
 					const [hasSent, setHasSent] = useState(false);
 					const [sending, setSending] = useState(false);
@@ -313,12 +314,39 @@ type LosType = "Båt" | "Rigg";
 						setLocation(terminal as Location);
 					}
 				}, [booking.terminal, location]);
+				
+				useEffect(() => {
+					async function loadExtraLosNames() {
+						try {
+							const res = await fetch("/api/los-names");
+							if (!res.ok) return;
+							const data = (await res.json()) as { ok?: boolean; names?: string[] };
+							if (data.ok && Array.isArray(data.names)) {
+								setExtraLosNames(data.names);
+							}
+						} catch (error) {
+							console.error("Klarte ikke å hente ekstra los-navn", error);
+						}
+					}
+
+					loadExtraLosNames();
+				}, []);
 			
 			const signers = useMemo(
 				() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")),
 				[],
 			);
 		
+				const allLosNames = useMemo(
+					() => {
+						const namesSet = new Set<string>();
+						LOS_NAMES.forEach((name) => namesSet.add(name));
+						extraLosNames.forEach((name) => namesSet.add(name));
+						return Array.from(namesSet).sort((a, b) => a.localeCompare(b, "nb-NO"));
+					},
+					[extraLosNames],
+				);
+			
 			const firstPilot = booking.pilots[0] ?? "";
 			const secondPilot = booking.pilots[1] ?? "";
 		
@@ -326,22 +354,58 @@ type LosType = "Båt" | "Rigg";
 			// selv om de ikke ligger i LOS_NAMES-listen fra før.
 			const pilot1Options = useMemo(
 				() =>
-					firstPilot && !LOS_NAMES.includes(firstPilot)
-						? [firstPilot, ...LOS_NAMES]
-						: LOS_NAMES,
-				[firstPilot],
+						firstPilot && !allLosNames.includes(firstPilot)
+							? [firstPilot, ...allLosNames]
+							: allLosNames,
+					[firstPilot, allLosNames],
 			);
 		
 			const pilot2Options = useMemo(
 				() => {
 					const baseList =
-						secondPilot && !LOS_NAMES.includes(secondPilot)
-							? [secondPilot, ...LOS_NAMES]
-							: LOS_NAMES;
+							secondPilot && !allLosNames.includes(secondPilot)
+								? [secondPilot, ...allLosNames]
+								: allLosNames;
 					return baseList.filter((name) => name !== firstPilot);
 				},
-				[firstPilot, secondPilot],
+					[firstPilot, secondPilot, allLosNames],
 			);
+			
+				useEffect(() => {
+					const pilots = booking.pilots ?? [];
+					const trimmed = pilots
+						.map((name) => name.trim())
+						.filter((name) => name.length > 0);
+
+					if (trimmed.length === 0) return;
+
+					const unknown = trimmed.filter((name) => !allLosNames.includes(name));
+					const uniqueUnknown = Array.from(new Set(unknown));
+					if (uniqueUnknown.length === 0) return;
+
+					async function saveNewLosNames() {
+						try {
+							const res = await fetch("/api/los-names", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ names: uniqueUnknown }),
+							});
+							if (!res.ok) return;
+							const data = (await res.json()) as { ok?: boolean; names?: string[] };
+							if (data.ok && Array.isArray(data.names) && data.names.length > 0) {
+								setExtraLosNames((prev) => {
+									const set = new Set(prev);
+									data.names?.forEach((name) => set.add(name));
+									return Array.from(set);
+								});
+							}
+						} catch (error) {
+							console.error("Klarte ikke å lagre nye los-navn", error);
+						}
+					}
+
+					saveNewLosNames();
+				}, [booking.pilots, allLosNames]);
 
 			const canGoNext = () => {
 				switch (step) {
