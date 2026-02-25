@@ -162,15 +162,14 @@ function Section(props: { title: string; children: React.ReactNode }) {
   const [arsaker, setArsaker] = useState<string[]>([]);
   const [teknisk, setTeknisk] = useState("");
   const [annen, setAnnen] = useState("");
-  const [varighetTimer, setVarighetTimer] = useState(0);
+		  const [varighetTimer, setVarighetTimer] = useState(0);
   const [varighetTekst, setVarighetTekst] = useState("");
-  const [gjenopptakTimer, setGjenopptakTimer] = useState(0);
-  const [gjenopptakTekst, setGjenopptakTekst] = useState("");
-  const [oppfolgingTimer, setOppfolgingTimer] = useState(0);
-	const [oppfolgingTekst, setOppfolgingTekst] = useState("");
-	const [isDraggingVarighet, setIsDraggingVarighet] = useState(false);
-	const [isDraggingGjenopptak, setIsDraggingGjenopptak] = useState(false);
-	const [isDraggingOppfolging, setIsDraggingOppfolging] = useState(false);
+	  const [gjenopptakTimer, setGjenopptakTimer] = useState(0);
+	  const [gjenopptakTekst, setGjenopptakTekst] = useState("");
+	  const [oppfolgingTimer, setOppfolgingTimer] = useState(0);
+		const [oppfolgingTekst, setOppfolgingTekst] = useState("");
+		const [isDraggingGjenopptak, setIsDraggingGjenopptak] = useState(false);
+		const [isDraggingOppfolging, setIsDraggingOppfolging] = useState(false);
 	const [alternativ, setAlternativ] = useState("");
   const [signatur, setSignatur] = useState("");
   const [metarTafPairs, setMetarTafPairs] = useState<
@@ -190,6 +189,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	  const [waveLoading, setWaveLoading] = useState(false);
 	  const [waveError, setWaveError] = useState<string | null>(null);
 	  const [useWaves, setUseWaves] = useState<"ja" | "nei">("nei");
+			const [gjenopptakError, setGjenopptakError] = useState<string | null>(null);
 
 		  const [reports, setReports] = useState<DriftsReport[]>(() => loadReports());
 		  const [showArchive, setShowArchive] = useState(false);
@@ -208,7 +208,9 @@ function Section(props: { title: string; children: React.ReactNode }) {
 			  const [statsPassword, setStatsPassword] = useState("");
 			  const [statsSending, setStatsSending] = useState(false);
 
-  const report: DraftDriftsReport = useMemo(
+			const estimatedDuration = computeEstimatedDurationHours(tid, gjenopptakTimer);
+
+		  const report: DraftDriftsReport = useMemo(
     () => ({
       id: crypto.randomUUID(),
       base,
@@ -325,7 +327,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
     );
   }
 
-  function reset() {
+		  function reset() {
     setStep(0);
     setBase("Bergen");
     setDato(getDefaultDate());
@@ -356,6 +358,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    setWaveLoading(false);
 	    setWaveError(null);
 	    setUseWaves("nei");
+				setGjenopptakError(null);
   }
 
   function resetFrom(r: DriftsReport) {
@@ -379,7 +382,41 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setUseHti(r.htiImageUrls && r.htiImageUrls.length > 0 ? "ja" : "nei");
 	    setSelectedWaveUrls(r.waveImageUrls || []);
 	    setUseWaves(r.waveImageUrls && r.waveImageUrls.length > 0 ? "ja" : "nei");
+					setGjenopptakError(null);
   }
+
+			function computeEstimatedDurationHours(
+				startTime: string,
+				gjenopptakHour: number,
+			): number | null {
+				if (!startTime) return null;
+				const parts = startTime.split(":");
+				if (parts.length < 2) return null;
+				const startHour = Number(parts[0]);
+				const startMinute = Number(parts[1]);
+				if (!Number.isFinite(startHour) || !Number.isFinite(startMinute)) {
+					return null;
+				}
+
+				const startTotalHours = startHour + startMinute / 60;
+				const estHour = Math.min(24, Math.max(0, gjenopptakHour));
+
+				let diffHours: number;
+				if (estHour >= startTotalHours) {
+					// Samme dag: estimert tid er etter starttid.
+					diffHours = estHour - startTotalHours;
+				} else {
+					// Neste dag: tolker lavere klokkeslett som "dagen etter".
+					diffHours = (24 - startTotalHours) + estHour;
+				}
+
+				if (!Number.isFinite(diffHours) || diffHours <= 0) {
+					return null;
+				}
+
+				const halfHours = Math.round((diffHours * 60) / 30);
+				return halfHours * 0.5;
+			}
 
 		  async function saveCurrent(): Promise<DriftsReport> {
 		    const newReport: DriftsReport = {
@@ -1540,8 +1577,8 @@ function Section(props: { title: string; children: React.ReactNode }) {
           </StepShell>
         )}
 
-        {step === 4 && (
-          <StepShell onPrev={() => setStep(3)} onNext={() => setStep(5)}>
+	        {step === 4 && (
+	          <StepShell onPrev={() => setStep(3)} onNext={() => setStep(6)}>
 	          <Section title="Andre kommentarer">
 	            <textarea
 	              value={annen}
@@ -1562,51 +1599,22 @@ function Section(props: { title: string; children: React.ReactNode }) {
           </StepShell>
         )}
 
-        {step === 5 && (
-          <StepShell onPrev={() => setStep(4)} onNext={() => setStep(6)}>
-            <Section title="Antatt varighet">
-              <div className="space-y-3">
-	              <div className="px-4 relative pt-6">
-	                {isDraggingVarighet && (
-	                  <div
-	                    className="pointer-events-none absolute -top-2 -translate-y-full -translate-x-1/2 rounded-full border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 shadow-sm"
-	                    style={{ left: `${(varighetTimer / 24) * 100}%` }}
-	                  >
-	                    {varighetTimer} timer
-	                  </div>
-	                )}
-	                <input
-	                  type="range"
-	                  min={0}
-	                  max={24}
-	                  value={varighetTimer}
-	                  onChange={(e) => setVarighetTimer(Number(e.target.value))}
-	                  className="w-full time-slider"
-	                  onMouseDown={() => setIsDraggingVarighet(true)}
-	                  onMouseUp={() => setIsDraggingVarighet(false)}
-	                  onMouseLeave={() => setIsDraggingVarighet(false)}
-	                  onTouchStart={() => setIsDraggingVarighet(true)}
-	                  onTouchEnd={() => setIsDraggingVarighet(false)}
-	                  onBlur={() => setIsDraggingVarighet(false)}
-	                />
-	                <div className="mt-1 text-sm text-gray-700">
-	                  {varighetTimer} timer
-	                </div>
-	              </div>
-                <textarea
-                  value={varighetTekst}
-                  onChange={(e) => setVarighetTekst(e.target.value)}
-                  rows={3}
-                  className="w-full border rounded-xl p-3 text-base text-gray-900"
-                  placeholder="Fritekst om varighet"
-                />
-              </div>
-            </Section>
-          </StepShell>
-        )}
-
-        {step === 6 && (
-          <StepShell onPrev={() => setStep(5)} onNext={() => setStep(7)}>
+	        {step === 6 && (
+	          <StepShell
+	            onPrev={() => setStep(4)}
+	            onNext={() => {
+	              const duration = computeEstimatedDurationHours(tid, gjenopptakTimer);
+	              if (duration == null) {
+	                setGjenopptakError(
+	                  "Estimert gjenopptakelse kan ikke være før starttidspunktet.",
+	                );
+	                return;
+	              }
+	              setVarighetTimer(duration);
+	              setGjenopptakError(null);
+	              setStep(7);
+	            }}
+	          >
             <Section title="Estimert tidspunkt for gjenopptakelse">
               <div className="space-y-3">
 	              <div className="px-4 relative pt-6">
@@ -1618,31 +1626,48 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                    Kl {gjenopptakTimer}:00
 	                  </div>
 	                )}
-	                <input
-	                  type="range"
-	                  min={0}
-	                  max={24}
-	                  value={gjenopptakTimer}
-	                  onChange={(e) => setGjenopptakTimer(Number(e.target.value))}
-	                  className="w-full time-slider"
-	                  onMouseDown={() => setIsDraggingGjenopptak(true)}
-	                  onMouseUp={() => setIsDraggingGjenopptak(false)}
-	                  onMouseLeave={() => setIsDraggingGjenopptak(false)}
-	                  onTouchStart={() => setIsDraggingGjenopptak(true)}
-	                  onTouchEnd={() => setIsDraggingGjenopptak(false)}
-	                  onBlur={() => setIsDraggingGjenopptak(false)}
+		                <input
+		                  type="range"
+		                  min={0}
+		                  max={24}
+		                  value={gjenopptakTimer}
+		                  onChange={(e) => {
+								setGjenopptakTimer(Number(e.target.value));
+								setGjenopptakError(null);
+							}}
+		                  className="w-full time-slider"
+		                  onMouseDown={() => setIsDraggingGjenopptak(true)}
+		                  onMouseUp={() => setIsDraggingGjenopptak(false)}
+		                  onMouseLeave={() => setIsDraggingGjenopptak(false)}
+		                  onTouchStart={() => setIsDraggingGjenopptak(true)}
+		                  onTouchEnd={() => setIsDraggingGjenopptak(false)}
+		                  onBlur={() => setIsDraggingGjenopptak(false)}
+		                />
+		                <div className="mt-1 text-sm text-gray-700">
+		                  Kl {gjenopptakTimer}:00
+		                </div>
+		              </div>
+						{gjenopptakError && (
+							<div className="mt-2 text-sm text-red-600">{gjenopptakError}</div>
+						)}
+						<div className="mt-2 text-sm text-gray-700">
+							Antatt varighet (beregnet):{" "}
+							{estimatedDuration != null ? `${estimatedDuration} timer` : "-"}
+						</div>
+	                <textarea
+	                  value={varighetTekst}
+	                  onChange={(e) => setVarighetTekst(e.target.value)}
+	                  rows={3}
+	                  className="w-full border rounded-xl p-3 text-base text-gray-900"
+	                  placeholder="Fritekst om varighet"
 	                />
-	                <div className="mt-1 text-sm text-gray-700">
-	                  Kl {gjenopptakTimer}:00
-	                </div>
-	              </div>
-                <textarea
-                  value={gjenopptakTekst}
-                  onChange={(e) => setGjenopptakTekst(e.target.value)}
-                  rows={3}
-                  className="w-full border rounded-xl p-3 text-base text-gray-900"
-                  placeholder="Fritekst om gjenopptakelse"
-                />
+	                <textarea
+	                  value={gjenopptakTekst}
+	                  onChange={(e) => setGjenopptakTekst(e.target.value)}
+	                  rows={3}
+	                  className="w-full border rounded-xl p-3 text-base text-gray-900"
+	                  placeholder="Fritekst om gjenopptakelse"
+	                />
               </div>
             </Section>
           </StepShell>
