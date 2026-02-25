@@ -153,31 +153,44 @@ export default function DriftsforstyrrelseForsideClient() {
 	        "(ingen kommentar)",
 	      ];
 
-	      const plainText = linjer.join("\n");
-	      const subject = `LOS-helikopter ${resumeReport.base} – drift gjenopptatt ${datoTekst}`;
-	      const fromName = `LOS Helikopter ${resumeReport.base}`;
-
-	      const response = await fetch("/api/resume-drift", {
-	        method: "POST",
-	        headers: {
-	          "Content-Type": "application/json",
-	        },
-	        body: JSON.stringify({
-	          base: resumeReport.base,
-	          subject,
-	          body: plainText,
-	          fromName,
-	        }),
-	      });
-
-	      let data: { ok?: boolean; error?: string; details?: string } | null = null;
+		  	  const plainText = linjer.join("\n");
+		  	  const subject = `LOS-helikopter ${resumeReport.base} – drift gjenopptatt ${datoTekst}`;
+		  	  const fromName = `LOS Helikopter ${resumeReport.base}`;
+		  	
+		  	  const response = await fetch("/api/resume-drift", {
+		  	    method: "POST",
+		  	    headers: {
+		  	      "Content-Type": "application/json",
+		  	    },
+		  	    body: JSON.stringify({
+		  	      base: resumeReport.base,
+		  	      subject,
+		  	      body: plainText,
+		  	      fromName,
+		  	      // Bruk rapport-ID slik at serveren kan hindre dobbel sending
+		  	      // og lagre gjenopptatt-status i Firestore.
+		  	      reportId: resumeReport.id,
+		  	      gjenopptattKl: hour,
+		  	      gjenopptattKommentar: "",
+		  	    }),
+		  	  });
+		  	
+		  	  let data:
+		  	    | {
+		  	        ok?: boolean;
+		  	        error?: string;
+		  	        details?: string;
+		  	        alreadyResumed?: boolean;
+		  	        gjenopptattSendtAt?: number;
+		  	      }
+		  	    | null = null;
 	      try {
 	        data = await response.json();
 	      } catch {
 	        // Ignorer JSON-feil
 	      }
 
-	      if (!response.ok || (data && data.ok === false)) {
+		  	  if (!response.ok || (data && data.ok === false)) {
 	        const msg =
 	          (data && (data.error || data.details)) ||
 	          "Klarte ikke å sende melding om gjenopptatt drift. Prøv igjen senere.";
@@ -185,7 +198,10 @@ export default function DriftsforstyrrelseForsideClient() {
 	        return;
 	      }
 
-	      const sentAt = Date.now();
+		  	  const sentAt =
+		  	    data && typeof data.gjenopptattSendtAt === "number"
+		  	      ? data.gjenopptattSendtAt
+		  	      : Date.now();
 	      setReports((prev) => {
 	        const next = prev.map((r) =>
 	          r.id === resumeReport.id

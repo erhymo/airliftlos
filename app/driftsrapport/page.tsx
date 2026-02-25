@@ -48,6 +48,8 @@ type SendReportResponseBody = {
 		ok?: boolean;
 		error?: string;
 		details?: string;
+			alreadyResumed?: boolean;
+			gjenopptattSendtAt?: number;
 		sharepoint?: {
 			ok?: boolean;
 			error?: string;
@@ -273,14 +275,30 @@ function Section(props: { title: string; children: React.ReactNode }) {
 							}
 							for (const r of serverReports) {
 								const existing = byId.get(r.id);
-								const merged: DriftsReport = {
-									...(r as DriftsReport),
-									// Behold lokalt «markert ferdig»-flagg selv om vi laster inn fra server
-									locallyClosed:
-										existing && typeof existing.locallyClosed === "boolean"
-											? existing.locallyClosed
-											: (r as DriftsReport).locallyClosed,
-								};
+							const server = r as DriftsReport;
+							const merged: DriftsReport = {
+								// Start med data fra server (inkludert gjenopptatt*-felter hvis de finnes).
+								...server,
+								// Behold lokalt «markert ferdig»-flagg selv om vi laster inn fra server.
+								locallyClosed:
+									existing && typeof existing.locallyClosed === "boolean"
+										? existing.locallyClosed
+										: server.locallyClosed,
+								// Hvis vi har gjenopptatt-informasjon lokalt, men ikke fra server ennå,
+								// behold den slik at enheten fortsatt oppfatter rapporten som gjenopptatt.
+								gjenopptattKl:
+									typeof server.gjenopptattKl === "number"
+										? server.gjenopptattKl
+										: existing?.gjenopptattKl,
+								gjenopptattKommentar:
+									typeof server.gjenopptattKommentar === "string"
+										? server.gjenopptattKommentar
+										: existing?.gjenopptattKommentar,
+								gjenopptattSendtAt:
+									typeof server.gjenopptattSendtAt === "number"
+										? server.gjenopptattSendtAt
+										: existing?.gjenopptattSendtAt,
+							};
 								byId.set(r.id, merged);
 							}
 							return Array.from(byId.values()).sort(
@@ -732,10 +750,15 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	          "Content-Type": "application/json",
 	        },
 	        body: JSON.stringify({
-	          base: resumeReport.base,
-	          subject,
-	          body: plainText,
-	          fromName,
+		          base: resumeReport.base,
+		          subject,
+		          body: plainText,
+		          fromName,
+		          // Bruk rapport-ID og detaljer slik at serveren kan hindre dobbel
+		          // sending og lagre gjenopptatt-status i Firestore.
+		          reportId: resumeReport.id,
+		          gjenopptattKl: resumeHour,
+		          gjenopptattKommentar: resumeComment,
 	        }),
 	      });
 	
@@ -754,7 +777,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	        return;
 	      }
 	
-	      const sentAt = Date.now();
+		      const sentAt =
+		        data && typeof data.gjenopptattSendtAt === "number"
+		          ? data.gjenopptattSendtAt
+		          : Date.now();
 	      const next = reports.map((r) =>
 	        r.id === resumeReport.id
 	          ? {
