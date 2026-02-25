@@ -7,6 +7,14 @@ import { useRouter } from "next/navigation";
 import { SIGNATURE_OPTIONS } from "../../lib/signatures";
 
 type Base = "Bergen" | "Hammerfest";
+// Baser som det kan hentes METAR/TAF for i driftsrapport-skjemaet
+type MetarBaseKey = "Bergen" | "Haugesund" | "Stavanger";
+const METAR_BASES: MetarBaseKey[] = ["Bergen", "Haugesund", "Stavanger"];
+
+interface MetarTafPair {
+	metar?: string;
+	taf?: string;
+}
 type StatsBaseFilter = "Alle" | Base;
 
 interface DriftsReport {
@@ -23,9 +31,11 @@ interface DriftsReport {
 	gjenopptakTekst: string;
 	oppfolgingTimer: number;
 	oppfolgingTekst: string;
-	alternativ: string;
-	signatur: string;
-	metarLines: string[];
+		alternativ: string;
+		signatur: string;
+		// Flat tekstrepresentasjon av METAR/TAF-linjer som legges på rapport/PDF.
+		// For eldre rapporter (før multi-base) kan dette være enkle blokker uten info om base.
+		metarLines: string[];
 		htiImageUrls?: string[];
 		waveImageUrls?: string[];
 	/** Når rapporten ble lagret lokalt */
@@ -172,10 +182,22 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		const [isDraggingOppfolging, setIsDraggingOppfolging] = useState(false);
 	const [alternativ, setAlternativ] = useState("");
   const [signatur, setSignatur] = useState("");
-  const [metarTafPairs, setMetarTafPairs] = useState<
-    { metar?: string; taf?: string }[]
-  >([]);
-  const [selectedMetarLines, setSelectedMetarLines] = useState<string[]>([]);
+		  const [metarTafByBase, setMetarTafByBase] = useState<
+		    Record<MetarBaseKey, MetarTafPair[]>
+		  >({ Bergen: [], Haugesund: [], Stavanger: [] });
+		  const [selectedMetarByBase, setSelectedMetarByBase] = useState<
+		    Record<MetarBaseKey, number[]>
+		  >({ Bergen: [], Haugesund: [], Stavanger: [] });
+		  const [selectedMetarBases, setSelectedMetarBases] = useState<MetarBaseKey[]>(
+		    [],
+		  );
+		  // For rapporter som er lastet inn fra server/lokal lagring fr
+		  // multi-base-METAR ble innfrt, beholder vi eksisterende tekst
+		  // som "legacy"-linjer. S snart brukeren gjr et nytt valg
+		  // i METAR/TAF-steget, nullstilles disse og vi bruker strukturerte valg.
+		  const [legacyMetarLines, setLegacyMetarLines] = useState<string[] | null>(
+		    null,
+		  );
   const [metarLoading, setMetarLoading] = useState(false);
   const [metarError, setMetarError] = useState<string | null>(null);
   const [useMetar, setUseMetar] = useState<"ja" | "nei">("nei");
@@ -210,7 +232,43 @@ function Section(props: { title: string; children: React.ReactNode }) {
 
 			const estimatedDuration = computeEstimatedDurationHours(tid, gjenopptakTimer);
 
-		  const report: DraftDriftsReport = useMemo(
+			// Bygg opp flate METAR/TAF-linjer for rapport/PDF basert p 
+			// hvilke baser og hvilke par som er valgt i UI.
+			const computedMetarLines: string[] = useMemo(() => {
+				const lines: string[] = [];
+				for (const baseKey of METAR_BASES) {
+					const selectedIdx = selectedMetarByBase[baseKey] ?? [];
+					if (!selectedIdx || selectedIdx.length === 0) continue;
+					const pairs = metarTafByBase[baseKey] ?? [];
+					// Egen underoverskrift per base, slik at det er tydelig hvor
+					// METAR/TAF kommer fra i rapporten/PDF-en.
+					lines.push(`METAR/TAF: ${baseKey}`);
+					for (const idx of selectedIdx) {
+						const pair = pairs[idx];
+						if (!pair) continue;
+						if (pair.metar) {
+							lines.push(`METAR: ${pair.metar}`);
+						}
+						if (pair.taf) {
+							lines.push(`TAF: ${pair.taf}`);
+						}
+					}
+					// Tom linje mellom baser for lesbarhet
+					lines.push("");
+				}
+				// Fjern evt. siste tomlinje for et litt penere resultat
+				while (lines.length > 0 && lines[lines.length - 1] === "") {
+					lines.pop();
+				}
+				return lines;
+			}, [metarTafByBase, selectedMetarByBase]);
+
+			// Hvis vi har "legacy"-linjer (lagret f 0 tidligere versjoner), bruker
+			// vi dem. S  snart brukeren gj r nye valg i METAR/TAF-steget settes
+			// legacyMetarLines til null, og vi g r over til computedMetarLines.
+			const activeMetarLines = legacyMetarLines ?? computedMetarLines;
+
+			  const report: DraftDriftsReport = useMemo(
     () => ({
       id: crypto.randomUUID(),
       base,
@@ -224,10 +282,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
       gjenopptakTimer,
       gjenopptakTekst,
       oppfolgingTimer,
-      oppfolgingTekst,
-      alternativ,
-      signatur,
-      metarLines: selectedMetarLines,
+		      oppfolgingTekst,
+		      alternativ,
+		      signatur,
+		      metarLines: activeMetarLines,
 	      htiImageUrls: useHti === "ja" ? selectedHtiUrls : [],
 	      waveImageUrls: useWaves === "ja" ? selectedWaveUrls : [],
     }),
@@ -243,10 +301,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	      gjenopptakTimer,
 	      gjenopptakTekst,
 	      oppfolgingTimer,
-			  oppfolgingTekst,
-			  alternativ,
-			  signatur,
-			  selectedMetarLines,
+			      oppfolgingTekst,
+				  alternativ,
+				  signatur,
+				  activeMetarLines,
 			  useHti,
 			  selectedHtiUrls,
 			  useWaves,
@@ -343,8 +401,14 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setOppfolgingTekst("");
     setAlternativ("");
     setSignatur("");
-    setMetarTafPairs([]);
-    setSelectedMetarLines([]);
+		    setMetarTafByBase({ Bergen: [], Haugesund: [], Stavanger: [] });
+		    setSelectedMetarByBase({
+		      Bergen: [],
+		      Haugesund: [],
+		      Stavanger: [],
+		    });
+		    setSelectedMetarBases([]);
+		    setLegacyMetarLines(null);
     setMetarLoading(false);
     setMetarError(null);
     setUseMetar("nei");
@@ -376,8 +440,17 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setOppfolgingTekst(r.oppfolgingTekst);
     setAlternativ(r.alternativ);
     setSignatur(r.signatur);
-    setSelectedMetarLines(r.metarLines || []);
-    setUseMetar(r.metarLines && r.metarLines.length > 0 ? "ja" : "nei");
+	    setMetarTafByBase({ Bergen: [], Haugesund: [], Stavanger: [] });
+	    setSelectedMetarByBase({
+	      Bergen: [],
+	      Haugesund: [],
+	      Stavanger: [],
+	    });
+	    setSelectedMetarBases([]);
+	    setLegacyMetarLines(
+	      r.metarLines && r.metarLines.length > 0 ? r.metarLines : null,
+	    );
+	    setUseMetar(r.metarLines && r.metarLines.length > 0 ? "ja" : "nei");
     setSelectedHtiUrls(r.htiImageUrls || []);
     setUseHti(r.htiImageUrls && r.htiImageUrls.length > 0 ? "ja" : "nei");
 	    setSelectedWaveUrls(r.waveImageUrls || []);
@@ -459,39 +532,46 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    setShowStats(false);
 	  }
 
-  async function fetchMetarTaf() {
-    setMetarLoading(true);
-    setMetarError(null);
+	  async function fetchMetarTafForBase(baseKey: MetarBaseKey) {
+	    setMetarLoading(true);
+	    setMetarError(null);
 
-    try {
-      const res = await fetch(`/api/weather?base=${encodeURIComponent(base)}`);
-      if (!res.ok) {
-        setMetarError("Klarte ikke å hente METAR/TAF.");
-        return;
-      }
-      const data = await res.json();
-      const tafLines: string[] = Array.isArray(data.taf) ? data.taf : [];
-      const metarLines: string[] = Array.isArray(data.metar) ? data.metar : [];
+	    try {
+	      const res = await fetch(
+	        `/api/weather?base=${encodeURIComponent(baseKey)}`,
+	      );
+	      if (!res.ok) {
+	        setMetarError(`Klarte ikke å hente METAR/TAF for ${baseKey}.`);
+	        return;
+	      }
+	      const data = await res.json();
+	      const tafLines: string[] = Array.isArray(data.taf) ? data.taf : [];
+	      const metarLinesArr: string[] = Array.isArray(data.metar)
+	        ? data.metar
+	        : [];
 
-      const pairs: { metar?: string; taf?: string }[] = [];
-      const maxPairs = 5;
+	      const pairs: MetarTafPair[] = [];
+	      const maxPairs = 5;
 
-      for (let i = 0; i < maxPairs; i++) {
-        const taf = tafLines[tafLines.length - 1 - i];
-        const metar = metarLines[metarLines.length - 1 - i];
-        if (!taf && !metar) {
-          break;
-        }
-        pairs.push({ metar, taf });
-      }
+	      for (let i = 0; i < maxPairs; i++) {
+	        const taf = tafLines[tafLines.length - 1 - i];
+	        const metar = metarLinesArr[metarLinesArr.length - 1 - i];
+	        if (!taf && !metar) {
+	          break;
+	        }
+	        pairs.push({ metar, taf });
+	      }
 
-      setMetarTafPairs(pairs);
+	      setMetarTafByBase((prev) => ({
+	        ...prev,
+	        [baseKey]: pairs,
+	      }));
 	    } catch {
-	      setMetarError("Klarte ikke å hente METAR/TAF.");
+	      setMetarError(`Klarte ikke å hente METAR/TAF for ${baseKey}.`);
 	    } finally {
-      setMetarLoading(false);
-    }
-  }
+	      setMetarLoading(false);
+	    }
+	  }
 
   async function fetchHti() {
     setHtiLoading(true);
@@ -549,11 +629,38 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	    );
 	  }
 
-  function toggleMetarLine(line: string) {
-    setSelectedMetarLines((prev) =>
-      prev.includes(line) ? prev.filter((l) => l !== line) : [...prev, line]
-    );
-  }
+	  function toggleMetarBase(baseKey: MetarBaseKey) {
+	    setLegacyMetarLines(null);
+	    setUseMetar("ja");
+	    setSelectedMetarBases((prev) => {
+	      if (prev.includes(baseKey)) {
+	        setSelectedMetarByBase((prevSel) => ({
+	          ...prevSel,
+	          [baseKey]: [],
+	        }));
+	        return prev.filter((b) => b !== baseKey);
+	      } else {
+	        if (!metarTafByBase[baseKey] || metarTafByBase[baseKey].length === 0) {
+	          void fetchMetarTafForBase(baseKey);
+	        }
+	        return [...prev, baseKey];
+	      }
+	    });
+	  }
+
+	  function toggleMetarPair(baseKey: MetarBaseKey, index: number) {
+	    setLegacyMetarLines(null);
+	    setSelectedMetarByBase((prev) => {
+	      const current = prev[baseKey] ?? [];
+	      const next = current.includes(index)
+	        ? current.filter((i) => i !== index)
+	        : [...current, index];
+	      return {
+	        ...prev,
+	        [baseKey]: next,
+	      };
+	    });
+	  }
 	
 		  async function handleSend() {
 		    if (sending) return;
@@ -580,10 +687,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		        `Vurdering alternativ løsning: ${alternativ || "(tom)"}`,
 		      ];
 		
-		      if (selectedMetarLines.length > 0) {
+			      if (activeMetarLines.length > 0) {
 		        linjer.push("");
 		        linjer.push("METAR/TAF:");
-		        linjer.push(...selectedMetarLines);
+			        linjer.push(...activeMetarLines);
 		      }
 		
 		      if (useHti === "ja" && selectedHtiUrls.length > 0) {
@@ -1192,7 +1299,19 @@ function Section(props: { title: string; children: React.ReactNode }) {
                     type="button"
                     onClick={() => {
                       setUseMetar("nei");
-                      setSelectedMetarLines([]);
+	                      setSelectedMetarBases([]);
+	                      setSelectedMetarByBase({
+	                        Bergen: [],
+	                        Haugesund: [],
+	                        Stavanger: [],
+	                      });
+	                      setMetarTafByBase({
+	                        Bergen: [],
+	                        Haugesund: [],
+	                        Stavanger: [],
+	                      });
+	                      setLegacyMetarLines(null);
+	                      setMetarError(null);
                     }}
                     className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
                       useMetar === "nei"
@@ -1206,77 +1325,98 @@ function Section(props: { title: string; children: React.ReactNode }) {
                     type="button"
                     onClick={() => {
                       setUseMetar("ja");
-                      if (metarTafPairs.length === 0) {
-                        fetchMetarTaf();
-                      }
                     }}
                     className={`w-full rounded-xl border px-3 py-2 text-sm text-left ${
                       useMetar === "ja"
                         ? "border-gray-900 bg-gray-900 text-white"
                         : "border-gray-300 bg-white text-gray-900"
                     }`}
-                  >
-                    Ja, hent METAR/TAF for {base}
-                  </button>
+	                    >
+	                    Ja, legg til METAR/TAF
+	                  </button>
                 </div>
 
-                {useMetar === "ja" && (
-                  <div className="space-y-2">
-                    {metarLoading && (
-                      <div className="text-sm text-gray-600">
-                        Henter METAR/TAF...
-                      </div>
-                    )}
-                    {metarError && (
-                      <div className="text-sm text-red-600">{metarError}</div>
-                    )}
-                    {!metarLoading && !metarError && metarTafPairs.length > 0 && (
-                      <>
-                        <div className="text-sm text-gray-700">
-                          Velg de linjene du vil legge ved:
-                        </div>
-                        <div className="space-y-2">
-                          {metarTafPairs.map((pair, idx) => {
-                            const parts: string[] = [];
-                            if (pair.metar) {
-                              parts.push(`METAR: ${pair.metar}`);
-                            }
-                            if (pair.taf) {
-                              parts.push(`TAF: ${pair.taf}`);
-                            }
-                            const blockText = parts.join("\n");
+	                {useMetar === "ja" && (
+	                  <div className="space-y-3">
+	                    <div className="space-y-1">
+	                      <div className="text-sm text-gray-700">
+	                        Velg hvilke baser du vil hente METAR/TAF for:
+	                      </div>
+	                      <div className="flex flex-wrap gap-2">
+	                        {METAR_BASES.map((b) => {
+	                          const selected = selectedMetarBases.includes(b);
+	                          return (
+	                            <button
+	                              key={b}
+	                              type="button"
+	                              onClick={() => toggleMetarBase(b)}
+	                              className={`rounded-full border px-3 py-1 text-sm ${
+	                                selected
+	                                  ? "border-gray-900 bg-gray-900 text-white"
+	                                  : "border-gray-300 bg-white text-gray-900"
+	                              }`}
+	                            >
+	                              {b}
+	                            </button>
+	                          );
+	                        })}
+	                      </div>
+	                    </div>
 
-                            return (
-                              <label
-                                key={idx}
-                                className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedMetarLines.includes(blockText)}
-                                  onChange={() => toggleMetarLine(blockText)}
-                                  className="mt-1"
-                                />
-                                <span className="text-xs whitespace-pre-wrap">
-                                  {pair.metar && (
-                                    <div>
-                                      <b>METAR:</b> {pair.metar}
-                                    </div>
-                                  )}
-                                  {pair.taf && (
-                                    <div>
-                                      <b>TAF:</b> {pair.taf}
-                                    </div>
-                                  )}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+	                    {metarLoading && (
+	                      <div className="text-sm text-gray-600">
+	                        Henter METAR/TAF...
+	                      </div>
+	                    )}
+	                    {metarError && (
+	                      <div className="text-sm text-red-600">{metarError}</div>
+	                    )}
+
+	                    {selectedMetarBases.map((b) => {
+	                      const pairs = metarTafByBase[b] ?? [];
+	                      const selectedIdx = selectedMetarByBase[b] ?? [];
+	                      return (
+	                        <div key={b} className="space-y-2">
+	                          <div className="text-sm font-semibold text-gray-900">
+	                            METAR/TAF {b}
+	                          </div>
+	                          {!metarLoading && !metarError && pairs.length === 0 && (
+	                            <div className="text-xs text-gray-600">
+	                              Ingen METAR/TAF funnet.
+	                            </div>
+	                          )}
+	                          <div className="space-y-2">
+	                            {pairs.map((pair, idx) => (
+	                              <label
+	                                key={idx}
+	                                className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2"
+	                              >
+	                                <input
+	                                  type="checkbox"
+	                                  checked={selectedIdx.includes(idx)}
+	                                  onChange={() => toggleMetarPair(b, idx)}
+	                                  className="mt-1"
+	                                />
+	                                <span className="text-xs whitespace-pre-wrap">
+	                                  {pair.metar && (
+	                                    <div>
+	                                      <b>METAR:</b> {pair.metar}
+	                                    </div>
+	                                  )}
+	                                  {pair.taf && (
+	                                    <div>
+	                                      <b>TAF:</b> {pair.taf}
+	                                    </div>
+	                                  )}
+	                                </span>
+	                              </label>
+	                            ))}
+	                          </div>
+	                        </div>
+	                      );
+	                    })}
+	                  </div>
+	                )}
 
 		                {arsaker.includes("Lyn") && (
 		                  <div className="mt-6 space-y-3 border-t pt-4">
@@ -1813,11 +1953,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
                     {alternativ || "(tom)"}
                   </div>
                 </div>
-                {selectedMetarLines.length > 0 && (
+	                {activeMetarLines.length > 0 && (
                   <div>
                     <b>METAR/TAF:</b>
                     <div className="whitespace-pre-wrap border rounded-lg p-2 mt-1">
-                      {selectedMetarLines.map((line, idx) => (
+	                      {activeMetarLines.map((line, idx) => (
                         <div key={idx}>{line}</div>
                       ))}
                     </div>

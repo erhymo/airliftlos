@@ -1,18 +1,26 @@
 export const runtime = "nodejs";
 
-type BaseKey = "Bergen" | "Tromsø" | "Hammerfest";
+	type BaseKey = "Bergen" | "Tromsø" | "Hammerfest" | "Haugesund" | "Stavanger";
 
-const BASE_TO_ICAO: Record<BaseKey, string> = {
-  Bergen: "ENBR",
-  Tromsø: "ENTC",
-  Hammerfest: "ENHF",
-};
+	const BASE_TO_ICAO: Record<BaseKey, string> = {
+	  Bergen: "ENBR",
+	  Tromsø: "ENTC",
+	  Hammerfest: "ENHF",
+	  Haugesund: "ENHD",
+	  Stavanger: "ENZV",
+	};
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const baseParam = (searchParams.get("base") ?? "Bergen") as BaseKey;
+	  const baseParam = (searchParams.get("base") ?? "Bergen") as BaseKey;
 
-  const allowedBases: BaseKey[] = ["Bergen", "Tromsø", "Hammerfest"];
+	  const allowedBases: BaseKey[] = [
+	    "Bergen",
+	    "Tromsø",
+	    "Hammerfest",
+	    "Haugesund",
+	    "Stavanger",
+	  ];
   const base: BaseKey = allowedBases.includes(baseParam) ? baseParam : "Bergen";
 
   const icao = BASE_TO_ICAO[base];
