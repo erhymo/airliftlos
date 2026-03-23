@@ -8,8 +8,8 @@ import { SIGNATURE_OPTIONS } from "../../lib/signatures";
 
 type Base = "Bergen" | "Hammerfest";
 // Baser som det kan hentes METAR/TAF for i driftsrapport-skjemaet
-type MetarBaseKey = "Bergen" | "Haugesund" | "Stavanger";
-const METAR_BASES: MetarBaseKey[] = ["Bergen", "Haugesund", "Stavanger"];
+type MetarBaseKey = "Bergen" | "Hammerfest" | "Haugesund" | "Stavanger";
+const METAR_BASES: MetarBaseKey[] = ["Bergen", "Hammerfest", "Haugesund", "Stavanger"];
 
 interface MetarTafPair {
 	metar?: string;
@@ -184,10 +184,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
   const [signatur, setSignatur] = useState("");
 		  const [metarTafByBase, setMetarTafByBase] = useState<
 		    Record<MetarBaseKey, MetarTafPair[]>
-		  >({ Bergen: [], Haugesund: [], Stavanger: [] });
+		  >({ Bergen: [], Hammerfest: [], Haugesund: [], Stavanger: [] });
 		  const [selectedMetarByBase, setSelectedMetarByBase] = useState<
 		    Record<MetarBaseKey, number[]>
-		  >({ Bergen: [], Haugesund: [], Stavanger: [] });
+		  >({ Bergen: [], Hammerfest: [], Haugesund: [], Stavanger: [] });
 		  const [selectedMetarBases, setSelectedMetarBases] = useState<MetarBaseKey[]>(
 		    [],
 		  );
@@ -401,9 +401,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setOppfolgingTekst("");
     setAlternativ("");
     setSignatur("");
-		    setMetarTafByBase({ Bergen: [], Haugesund: [], Stavanger: [] });
+		    setMetarTafByBase({ Bergen: [], Hammerfest: [], Haugesund: [], Stavanger: [] });
 		    setSelectedMetarByBase({
 		      Bergen: [],
+		      Hammerfest: [],
 		      Haugesund: [],
 		      Stavanger: [],
 		    });
@@ -440,9 +441,10 @@ function Section(props: { title: string; children: React.ReactNode }) {
     setOppfolgingTekst(r.oppfolgingTekst);
     setAlternativ(r.alternativ);
     setSignatur(r.signatur);
-	    setMetarTafByBase({ Bergen: [], Haugesund: [], Stavanger: [] });
+	    setMetarTafByBase({ Bergen: [], Hammerfest: [], Haugesund: [], Stavanger: [] });
 	    setSelectedMetarByBase({
 	      Bergen: [],
+	      Hammerfest: [],
 	      Haugesund: [],
 	      Stavanger: [],
 	    });
@@ -1302,11 +1304,13 @@ function Section(props: { title: string; children: React.ReactNode }) {
 	                      setSelectedMetarBases([]);
 	                      setSelectedMetarByBase({
 	                        Bergen: [],
+		                        Hammerfest: [],
 	                        Haugesund: [],
 	                        Stavanger: [],
 	                      });
 	                      setMetarTafByBase({
 	                        Bergen: [],
+		                        Hammerfest: [],
 	                        Haugesund: [],
 	                        Stavanger: [],
 	                      });
