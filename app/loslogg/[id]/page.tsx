@@ -946,7 +946,7 @@ type LosType = "Båt" | "Rigg";
 											<button
 												key={n}
 												type="button"
-												onClick={() => setEnfjLandings(n)}
+												onClick={() => setEnfjLandings((current) => (current === n ? null : n))}
 												className={`py-2 rounded-xl border text-sm ${
 														enfjLandings === n
 															? "bg-blue-50 border-blue-500 text-blue-900"
@@ -969,7 +969,7 @@ type LosType = "Båt" | "Rigg";
 										<button
 											key={n}
 											type="button"
-											onClick={() => setLosToAirportCount(n)}
+												onClick={() => setLosToAirportCount((current) => (current === n ? null : n))}
 											className={`py-2 rounded-xl border text-sm ${
 													losToAirportCount === n
 														? "bg-blue-50 border-blue-500 text-blue-900"
