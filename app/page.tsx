@@ -1,47 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getDb } from "../lib/firebaseAdmin";
+import { getOrCreateLosBookingsMeta } from "../lib/losBookingsMeta";
 import DriftsforstyrrelseForsideClient from "./DriftsforstyrrelseForsideClient";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 export default async function Home() {
   let openLosCount = 0;
 
   try {
     const db = getDb();
-	    let snapshot;
-
-	    // Forsøk først en mer effektiv spørring som bare henter åpne bestillinger.
-	    // Hvis den feiler (f.eks. manglende indeks i Firestore), faller vi trygt
-	    // tilbake til den opprinnelige spørringen som henter alle dokumenter.
-	    try {
-	      snapshot = await db
-	        .collection("losBookings")
-	        .where("status", "==", "open")
-	        .orderBy("createdAt", "desc")
-	        .get();
-	    } catch (innerError) {
-	      console.error(
-	        "Forside: optimalisert Firestore-spørring for åpne LOS-bookinger feilet, bruker fallback som henter alle dokumenter",
-	        innerError,
-	      );
-	      snapshot = await db
-	        .collection("losBookings")
-	        .orderBy("createdAt", "desc")
-	        .get();
-	    }
-
-	    openLosCount = snapshot.docs.reduce((acc, doc) => {
-	      const data = doc.data() as { status?: string | null };
-	      // For sikkerhets skyld filtrerer vi fortsatt bort lukkede/kansellerte
-	      // bestillinger også her, slik at vi bevarer eksisterende oppførsel
-	      // selv om spørringen over skulle endres i fremtiden.
-	      if (data.status === "closed" || data.status === "cancelled") {
-	        return acc;
-	      }
-	      return acc + 1;
-	    }, 0);
+		const meta = await getOrCreateLosBookingsMeta(db);
+		openLosCount = meta.openCount;
   } catch (error) {
     console.error("Klarte ikke å hente åpne LOS-bookinger for forsiden", error);
   }

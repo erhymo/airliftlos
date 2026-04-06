@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "../../../../lib/firebaseAdmin";
+import { isOpenLosBooking } from "../../../../lib/losBookings";
+import { touchLosBookingsMeta } from "../../../../lib/losBookingsMeta";
 
 export async function POST(req: Request) {
 	try {
@@ -17,6 +19,7 @@ export async function POST(req: Request) {
 		if (!snap.exists) {
 			return NextResponse.json({ ok: false, error: "Fant ikke bestilling" }, { status: 404 });
 		}
+		const wasOpen = isOpenLosBooking(snap.data() as { status?: string | null });
 
 		const now = Date.now();
 		await ref.set(
@@ -26,6 +29,14 @@ export async function POST(req: Request) {
 			},
 			{ merge: true },
 		);
+
+		if (wasOpen) {
+			try {
+				await touchLosBookingsMeta(db, { openCountDelta: -1, bumpVersion: true });
+			} catch (metaError) {
+				console.error("LOS-bookings cancel: klarte ikke å oppdatere losBookings-meta", metaError);
+			}
+		}
 
 		return NextResponse.json({ ok: true });
 	} catch (error) {

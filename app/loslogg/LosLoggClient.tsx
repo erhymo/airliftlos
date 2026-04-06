@@ -13,56 +13,90 @@ type DisplayBooking = {
 
 type Props = {
 	initialBookings: DisplayBooking[];
+	initialVersion: number;
 };
+
+type MetaResponse = {
+	meta?: {
+		version?: number;
+	};
+};
+
+type BookingsResponse = {
+	bookings?: Array<Record<string, unknown>>;
+};
+
+const POLL_INTERVAL_MS = 120_000;
 
 const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb-NO");
 
-export default function LosLoggClient({ initialBookings }: Props) {
+function mapApiBookings(raw: Array<Record<string, unknown>>): DisplayBooking[] {
+	return raw.map((doc) => {
+		const vesselName = (doc.vesselName as string | undefined) ?? "Ukjent fartøy";
+		const date = (doc.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
+		const fromLocation = (doc.fromLocation as string | null | undefined) ?? null;
+		const toLocation = (doc.toLocation as string | null | undefined) ?? null;
+		const id = doc.id as string;
+
+		return { id, vesselName, date, fromLocation, toLocation };
+	});
+}
+
+
+export default function LosLoggClient({ initialBookings, initialVersion }: Props) {
 		const [bookings, setBookings] = useState<DisplayBooking[]>(initialBookings);
+
+			useEffect(() => {
+				setBookings(initialBookings);
+			}, [initialBookings]);
 
 		useEffect(() => {
 		let cancelled = false;
+			let knownVersion = initialVersion;
+			let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-		async function poll() {
+			async function pollMeta() {
 			if (cancelled) return;
 			try {
-				const res = await fetch("/api/los-bookings", { cache: "no-store" });
-				if (!res.ok) return;
+					const metaRes = await fetch("/api/los-bookings/meta", { cache: "no-store" });
+					if (!metaRes.ok) return;
 
-				const data = (await res.json()) as { bookings?: Array<Record<string, unknown>> };
-				const raw = data.bookings ?? [];
+					const metaData = (await metaRes.json()) as MetaResponse;
+					const nextVersion =
+						typeof metaData.meta?.version === "number" ? metaData.meta.version : knownVersion;
 
-				const mapped: DisplayBooking[] = raw.map((doc) => {
-					const vesselName = (doc.vesselName as string | undefined) ?? "Ukjent fartøy";
-					const date =
-						(doc.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
-					const fromLocation = (doc.fromLocation as string | null | undefined) ?? null;
-					const toLocation = (doc.toLocation as string | null | undefined) ?? null;
-					const id = doc.id as string;
+					if (nextVersion === knownVersion) {
+						return;
+					}
 
-					return { id, vesselName, date, fromLocation, toLocation };
-				});
+					const bookingsRes = await fetch("/api/los-bookings", { cache: "no-store" });
+					if (!bookingsRes.ok) return;
 
+					const data = (await bookingsRes.json()) as BookingsResponse;
 					if (!cancelled) {
 						// Oppdater alltid listen – også når den er tom – slik at
 						// ferdigbehandlede bestillinger forsvinner fra UI-et.
-						setBookings(mapped);
+						setBookings(mapApiBookings(data.bookings ?? []));
+						knownVersion = nextVersion;
 					}
 			} catch {
 				// Ignorer nettverksfeil
 			} finally {
 				if (!cancelled) {
-					setTimeout(poll, 60_000);
+						timeoutId = setTimeout(pollMeta, POLL_INTERVAL_MS);
 				}
 			}
 		}
 
-			poll();
+				void pollMeta();
 
 			return () => {
 				cancelled = true;
+					if (timeoutId) {
+						clearTimeout(timeoutId);
+					}
 			};
-	}, [initialBookings]);
+		}, [initialVersion]);
 
 		const displayBookings = bookings;
 

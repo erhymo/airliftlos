@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { getDb } from "../../lib/firebaseAdmin";
+import { getOpenLosBookingsSnapshot, isOpenLosBooking } from "../../lib/losBookings";
+import { getOrCreateLosBookingsMeta } from "../../lib/losBookingsMeta";
 import LosLoggClient from "./LosLoggClient";
 
-// Sørg for at denne siden alltid henter ferske data fra Firestore
-// (ikke statisk bygges eller caches for lenge).
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 type DisplayBooking = {
 	id: string;
@@ -16,30 +16,15 @@ type DisplayBooking = {
 
 	export default async function LosLoggHome() {
 		let bookings: DisplayBooking[] = [];
+			let initialVersion = 0;
 
 		try {
-				const db = getDb();
-				let snapshot;
-
-				// Forsøk først en mer effektiv spørring som bare henter åpne bestillinger.
-				// Hvis den feiler (f.eks. manglende indeks i Firestore), faller vi trygt
-				// tilbake til den opprinnelige spørringen som henter alle dokumenter.
-				try {
-						snapshot = await db
-							.collection("losBookings")
-							.where("status", "==", "open")
-							.orderBy("createdAt", "desc")
-							.get();
-				} catch (innerError) {
-						console.error(
-							"LOS-logg: optimalisert Firestore-spørring for åpne bestillinger feilet, bruker fallback som henter alle dokumenter",
-							innerError,
-						);
-						snapshot = await db
-							.collection("losBookings")
-							.orderBy("createdAt", "desc")
-							.get();
-				}
+					const db = getDb();
+					const [meta, snapshot] = await Promise.all([
+						getOrCreateLosBookingsMeta(db),
+						getOpenLosBookingsSnapshot(db),
+					]);
+					initialVersion = meta.version;
 
 					bookings = snapshot.docs.reduce<DisplayBooking[]>((acc, doc) => {
 						const data = doc.data() as {
@@ -56,7 +41,7 @@ type DisplayBooking = {
 						// Selv om spørringen over allerede filtrerer på status="open",
 						// beholder vi denne sjekken for å sikre samme oppførsel hvis
 						// spørringen skulle endres senere.
-						if (data.status === "closed" || data.status === "cancelled") {
+							if (!isOpenLosBooking(data)) {
 							return acc;
 						}
 
@@ -92,7 +77,7 @@ type DisplayBooking = {
 						</p>
 					</header>
 
-				<LosLoggClient initialBookings={bookings} />
+				<LosLoggClient initialBookings={bookings} initialVersion={initialVersion} />
 
 					<div className="pt-2">
 						<Link

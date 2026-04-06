@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getDb } from "../../../../lib/firebaseAdmin";
+import { isOpenLosBooking } from "../../../../lib/losBookings";
+import { touchLosBookingsMeta } from "../../../../lib/losBookingsMeta";
 
 export const runtime = "nodejs";
 
@@ -30,8 +32,14 @@ export async function GET() {
 
     const batch = db.batch();
     const now = Date.now();
+	    let closedOpenCount = 0;
 
     snapshot.forEach((doc) => {
+	      const data = doc.data() as { status?: string | null };
+	      if (isOpenLosBooking(data)) {
+	        closedOpenCount += 1;
+	      }
+
       batch.set(
         doc.ref,
         {
@@ -42,9 +50,18 @@ export async function GET() {
       );
     });
 
-    await batch.commit();
+	    if (closedOpenCount === 0) {
+	      return NextResponse.json({ ok: true, updated: 0 });
+	    }
 
-    return NextResponse.json({ ok: true, updated: snapshot.size });
+    await batch.commit();
+	    try {
+	      await touchLosBookingsMeta(db, { openCountDelta: -closedOpenCount, bumpVersion: true });
+	    } catch (metaError) {
+	      console.error("LOS-bookings close-all: klarte ikke å oppdatere losBookings-meta", metaError);
+	    }
+
+	    return NextResponse.json({ ok: true, updated: closedOpenCount });
   } catch (error) {
     console.error("LOS-bookings close-all: klarte ikke å oppdatere dokumenter", error);
     return NextResponse.json(

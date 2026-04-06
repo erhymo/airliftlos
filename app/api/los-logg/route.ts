@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "../../../lib/firebaseAdmin";
+import { isOpenLosBooking } from "../../../lib/losBookings";
+import { touchLosBookingsMeta } from "../../../lib/losBookingsMeta";
 import { saveGtForVessel } from "../../../lib/vesselGt";
 
 const MONTH_SHEETS = [
@@ -326,6 +328,7 @@ export async function POST(req: Request) {
 						const ref = db.collection("losBookings").doc(body.bookingId);
 						const snap = await ref.get();
 						if (snap.exists) {
+							const wasOpen = isOpenLosBooking(snap.data() as { status?: string | null });
 								const now = Date.now();
 								const updateData: Record<string, unknown> = {
 								status: "closed",
@@ -367,6 +370,16 @@ export async function POST(req: Request) {
 									}
 						
 								await ref.set(updateData, { merge: true });
+							if (wasOpen) {
+								try {
+									await touchLosBookingsMeta(db, { openCountDelta: -1, bumpVersion: true });
+								} catch (metaError) {
+									console.error(
+										"LOS-logg: klarte ikke å oppdatere losBookings-meta etter lukking",
+										metaError,
+									);
+								}
+							}
 						} else {
 							console.warn(
 								"LOS-logg: bookingId finnes ikke i losBookings, hopper over status-oppdatering",
