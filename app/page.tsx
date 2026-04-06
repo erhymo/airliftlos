@@ -29,6 +29,7 @@ export default async function Home() {
 	      snapshot = await db
 	        .collection("losBookings")
 	        .orderBy("createdAt", "desc")
+	        .limit(200)
 	        .get();
 	    }
 
