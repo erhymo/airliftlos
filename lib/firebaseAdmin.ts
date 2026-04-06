@@ -27,7 +27,6 @@ export function getDb(): Firestore {
       });
 
   cachedDb = getFirestore(app);
-  cachedDb.settings({ preferRest: true });
   return cachedDb;
 }
 
