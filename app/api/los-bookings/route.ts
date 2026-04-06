@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "../../../lib/firebaseAdmin";
 import { getOpenLosBookingsSnapshot, isOpenLosBooking } from "../../../lib/losBookings";
+import { getGtFromLocalDatabase } from "../../../lib/vesselGt";
 
 type FirestoreLosBooking = {
   id: string;
@@ -19,7 +20,20 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       const data = doc.data() as Record<string, unknown>;
-      return NextResponse.json({ ok: true, booking: { id: doc.id, ...data } });
+
+	      let gt = typeof data.gt === "number" ? data.gt : null;
+	      if (gt === null && typeof data.vesselName === "string" && data.vesselName.trim()) {
+	        gt = await getGtFromLocalDatabase(data.vesselName);
+	      }
+
+	      return NextResponse.json({
+	        ok: true,
+	        booking: {
+	          id: doc.id,
+	          ...data,
+	          gt,
+	        },
+	      });
     }
 
 			    const snapshot = await getOpenLosBookingsSnapshot(db);
