@@ -15,7 +15,8 @@ export interface MetarTafPair {
 	metar?: string;
 	taf?: string;
 }
-export type StatsBaseFilter = "Alle" | Base;
+export type { StatsBaseFilter } from "./driftsConstants";
+import { CAUSES, MONTH_LABELS } from "./driftsConstants";
 
 export interface DriftsReport {
 	id: string;
@@ -152,6 +153,7 @@ function StepShell(props: {
 
 import { DriftsrapportArkiv } from "./DriftsrapportArkiv";
 import { DriftsrapportStatistikk } from "./DriftsrapportStatistikk";
+import type { StatsBaseFilter } from "./driftsConstants";
 
 function Section(props: { title: string; children: React.ReactNode }) {
   return (
@@ -164,30 +166,6 @@ function Section(props: { title: string; children: React.ReactNode }) {
   );
 }
 
-export const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "Mai",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Okt",
-  "Nov",
-  "Des",
-];
-
-export const CAUSES = [
-  "Tåke",
-  "Lyn",
-  "Sikt/Skydekke",
-  "Vind",
-  "Bølgehøyde",
-  "Teknisk",
-  "Annet",
-] as const;
 
 	export default function DriftsrapportPage() {
 		  const router = useRouter();

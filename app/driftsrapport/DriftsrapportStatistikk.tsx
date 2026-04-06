@@ -1,6 +1,7 @@
 import React from "react";
-import type { DriftsReport, StatsBaseFilter } from "./page";
-import { CAUSES, MONTH_LABELS } from "./page";
+import type { DriftsReport } from "./page";
+import type { StatsBaseFilter } from "./driftsConstants";
+import { CAUSES, MONTH_LABELS } from "./driftsConstants";
 
 interface Props {
   reports: DriftsReport[];
