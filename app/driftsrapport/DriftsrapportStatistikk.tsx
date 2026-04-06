@@ -12,8 +12,8 @@ interface Props {
   setStatsBase: (b: StatsBaseFilter) => void;
   setStatsTo: (v: string) => void;
   setShowStatsSendDialog: (v: boolean) => void;
-  perMonthCounts: any;
-  perMonthHours: any;
+  perMonthCounts: { perCause: Record<string, number>; totalReports: number }[];
+  perMonthHours: { perCause: Record<string, number>; totalHours: number }[];
   totalHoursByCause: Record<string, number>;
   totalHoursYear: number;
   showStatsSendDialog: boolean;
