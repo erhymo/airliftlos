@@ -6,18 +6,18 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { SIGNATURE_OPTIONS } from "../../lib/signatures";
 
-type Base = "Bergen" | "Hammerfest";
+export type Base = "Bergen" | "Hammerfest";
 // Baser som det kan hentes METAR/TAF for i driftsrapport-skjemaet
-type MetarBaseKey = "Bergen" | "Hammerfest" | "Haugesund" | "Stavanger";
-const METAR_BASES: MetarBaseKey[] = ["Bergen", "Hammerfest", "Haugesund", "Stavanger"];
+export type MetarBaseKey = "Bergen" | "Hammerfest" | "Haugesund" | "Stavanger";
+export const METAR_BASES: MetarBaseKey[] = ["Bergen", "Hammerfest", "Haugesund", "Stavanger"];
 
-interface MetarTafPair {
+export interface MetarTafPair {
 	metar?: string;
 	taf?: string;
 }
-type StatsBaseFilter = "Alle" | Base;
+export type StatsBaseFilter = "Alle" | Base;
 
-interface DriftsReport {
+export interface DriftsReport {
 	id: string;
 	base: Base;
 	dato: string;
@@ -150,6 +150,9 @@ function StepShell(props: {
   );
 }
 
+import { DriftsrapportArkiv } from "./DriftsrapportArkiv";
+import { DriftsrapportStatistikk } from "./DriftsrapportStatistikk";
+
 function Section(props: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-3">
@@ -160,6 +163,31 @@ function Section(props: { title: string; children: React.ReactNode }) {
     </div>
   );
 }
+
+export const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Des",
+];
+
+export const CAUSES = [
+  "Tåke",
+  "Lyn",
+  "Sikt/Skydekke",
+  "Vind",
+  "Bølgehøyde",
+  "Teknisk",
+  "Annet",
+] as const;
 
 	export default function DriftsrapportPage() {
 		  const router = useRouter();
@@ -1047,32 +1075,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
 				}
 			}
 
-	  const MONTH_LABELS = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "Mai",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Okt",
-    "Nov",
-    "Des",
-  ];
-
-	const CAUSES = [
-	  "Tåke",
-	  "Lyn",
-	  "Sikt/Skydekke",
-	  "Vind",
-	  "Bølgehøyde",
-	  "Teknisk",
-	  "Annet",
-	] as const;
-
-  const availableYears = (() => {
+	  const availableYears = (() => {
     const nowYear = new Date().getFullYear();
     const set = new Set<number>();
     for (const r of reports) {
@@ -2011,345 +2014,44 @@ function Section(props: { title: string; children: React.ReactNode }) {
         )}
       </main>
       )}
-	      {showArchive && !showStats && (
-        <main className="mx-auto max-w-md p-4">
-          <div className="bg-white rounded-2xl shadow divide-y">
-            <div className="p-4 font-semibold">Arkiv (nyeste øverst)</div>
-
-            {reports.length === 0 && (
-              <div className="p-4 text-sm text-gray-800">
-                Ingen rapporter enda.
-              </div>
-            )}
-
-	          {reports.map((r) => {
-	              const alreadyResumedFromServer = Boolean(r.gjenopptattSendtAt);
-	              const hasCreatorDevice = Boolean(r.createdOnDeviceId);
-	              const isLocallyClosed = r.locallyClosed === true;
-	              // Historiske rapporter uten createdOnDeviceId skal ikke kunne gjenopptas
-	              // med den nye funksjonen. Vi behandler dem som "allerede gjenopptatt"
-	              // i UI slik at knappen blir grået ut og ikke kan trykkes.
-	              const treatedAsResumed = alreadyResumedFromServer || !hasCreatorDevice;
-	              const canResumeOnThisDevice =
-	                !treatedAsResumed && !isLocallyClosed && r.createdOnDeviceId === deviceId;
-	              const isResumeDisabled = treatedAsResumed || isLocallyClosed || !canResumeOnThisDevice;
-	              const resumedLabelTime =
-	                typeof r.gjenopptattKl === "number"
-	                  ? String(r.gjenopptattKl).padStart(2, "0") + ":00"
-	                  : null;
-		              return (
-		                <div key={r.id} className="p-4">
-		                  <div className="text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-		                    <div>
-		                      <div className="font-medium">
-		                        {r.base} – {r.dato} {r.tid}
-		                      </div>
-		                      <div className="text-gray-900 text-sm">
-		                        {r.arsaker.join(", ") || "Ingen årsak valgt"} •{" "}
-		                        {new Date(r.createdAt).toLocaleString()}
-		                      </div>
-	                      {treatedAsResumed && (
-		                        <div className="mt-1 text-xs text-gray-700">
-		                          Drift gjenopptatt
-		                          {resumedLabelTime ? ` kl ${resumedLabelTime}` : ""}
-		                          {r.gjenopptattSendtAt
-		                            ? ` (melding sendt ${new Date(
-		                                r.gjenopptattSendtAt
-		                              ).toLocaleString()})`
-		                            : ""}
-		                        </div>
-		                      )}
-		                    </div>
-		
-		                    <div className="flex-1 flex flex-col gap-2 sm:items-end">
-		                      <div className="flex gap-2 justify-end">
-		                        <button
-		                          onClick={() => openExisting(r)}
-		                          className="text-blue-600 underline"
-		                        >
-		                          Åpne
-		                        </button>
-		                        <button
-		                          className="text-gray-900 underline"
-		                          onClick={() => resendReport(r)}
-		                        >
-		                          Send på nytt
-		                        </button>
-	                        <button
-	                          className="text-gray-900 underline"
-	                          onClick={() => markReportDone(r)}
-	                        >
-	                          Marker ferdig
-	                        </button>
-		                      </div>
-		                      <button
-		                        type="button"
-		                        onClick={() => startResumeFlow(r)}
-		                        disabled={isResumeDisabled}
-	                        className={`mt-1 w-full sm:w-auto px-3 py-2 rounded-xl text-sm font-semibold border transition ${
-	                          isResumeDisabled
-	                            ? "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed"
-	                            : "bg-blue-600 text-white border-blue-700"
-	                        }`}
-	                        >
-	                        {treatedAsResumed
-	                          ? "Drift er gjenopptatt"
-	                          : isLocallyClosed
-	                          ? "Markert ferdig"
-	                          : "Gjenoppta drift"}
-		                      </button>
-		                    </div>
-		                  </div>
-		                </div>
-		              );
-		            })}
-          </div>
-
-          <div className="mt-4">
-            <button
-              onClick={() => {
-                reset();
-                setShowArchive(false);
-              }}
-              className="w-full py-3 rounded-xl bg-black text-white"
-            >
-	              Ny driftsforstyrrelse
-            </button>
-          </div>
-        </main>
+	                  {showArchive && !showStats && (
+        <DriftsrapportArkiv
+          reports={reports}
+          deviceId={deviceId}
+          openExisting={openExisting}
+          resendReport={resendReport}
+          markReportDone={markReportDone}
+          startResumeFlow={startResumeFlow}
+          reset={reset}
+          setShowArchive={setShowArchive}
+        />
       )}
 
-		      {showStats && (
-		        <main className="mx-auto max-w-3xl p-4">
-		          <div className="bg-white rounded-2xl shadow p-4 text-gray-900">
-		            <div className="flex items-center justify-between gap-2 mb-4">
-		              <h2 className="text-lg font-semibold">Statistikk driftsforstyrrelser</h2>
-	              <button
-	                onClick={() => setShowStats(false)}
-	                className="px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-900"
-	              >
-	                Tilbake
-	              </button>
-	            </div>
+      {showStats && (
+        <DriftsrapportStatistikk
+          reports={reports}
+          setShowStats={setShowStats}
+          availableYears={availableYears}
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
+          statsBase={statsBase}
+          setStatsBase={setStatsBase}
+          setStatsTo={setStatsTo}
+          setShowStatsSendDialog={setShowStatsSendDialog}
+          perMonthCounts={perMonthCounts}
+          perMonthHours={perMonthHours}
+          totalHoursByCause={totalHoursByCause}
+          totalHoursYear={totalHoursYear}
+          showStatsSendDialog={showStatsSendDialog}
+          statsTo={statsTo}
+          statsPassword={statsPassword}
+          setStatsPassword={setStatsPassword}
+          statsSending={statsSending}
+          handleSendStats={handleSendStats}
+        />
+      )}
 
-		        <div className="mb-3 text-xs text-gray-700 flex flex-wrap items-center gap-2 justify-between">
-			              <span>
-			                Statistikken bygger på driftsforstyrrelser som er sendt (lagret sentralt).
-				                Velg år og eventuelt base nedenfor.
-			              </span>
-			              {reports.length > 0 && (
-			                <div className="flex flex-wrap gap-2">
-			                  <button
-				                    type="button"
-				                    onClick={() => {
-				                      setStatsTo("");
-				                      setShowStatsSendDialog(true);
-				                    }}
-				                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-900"
-				                  >
-				                    Send statistikk
-				                  </button>
-				                </div>
-				              )}
-				            </div>
-
-		            <div className="mb-4 flex flex-wrap gap-2">
-	  	            {availableYears.map((year) => (
-	  	              <button
-	  	                key={year}
-	  	                onClick={() => setSelectedYear(year)}
-	  	                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-	  	                  selectedYear === year
-	  	                    ? "bg-gray-900 text-white border-gray-900"
-	  	                    : "bg-white text-gray-900 border-gray-300"
-	  	                }`}
-	  	              >
-	  	                {year}
-	  	              </button>
-	  	            ))}
-	  	          </div>
-
-	            <div className="mb-4 flex flex-wrap items-center gap-2">
-		            <span className="text-xs text-gray-700 mr-1">Base:</span>
-		            {(["Alle", "Bergen", "Hammerfest"] as StatsBaseFilter[]).map(
-		              (b) => (
-	  	                <button
-	  	                  key={b}
-	  	                  onClick={() => setStatsBase(b)}
-	  	                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-	  	                    statsBase === b
-	  	                      ? "bg-gray-900 text-white border-gray-900"
-	  	                      : "bg-white text-gray-900 border-gray-300"
-	  	                  }`}
-	  	                >
-	  	                  {b === "Alle" ? "Alle baser" : b}
-	  	                </button>
-	  	              )
-	  	            )}
-	  	          </div>
-
-	            <div className="space-y-6">
-		              <div>
-		                <h3 className="font-semibold mb-2 text-sm">
-		                  Antall driftsforstyrrelser per måned og årsak – {selectedYear} ({
-		                    statsBase === "Alle" ? "alle baser" : statsBase
-		                  })
-		                </h3>
-	                <div className="overflow-x-auto">
-	                  <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
-	                    <thead className="bg-gray-50">
-	                      <tr>
-	                        <th className="border px-1 py-0.5 text-left">Måned</th>
-	                        {CAUSES.map((cause) => (
-	                          <th key={cause} className="border px-1 py-0.5 text-left">
-	                            {cause}
-	                          </th>
-	                        ))}
-	                        <th className="border px-1 py-0.5 text-left">Totalt</th>
-	                      </tr>
-	                    </thead>
-	                    <tbody>
-	                      {MONTH_LABELS.map((label, index) => {
-	                        const countsRow = perMonthCounts[index];
-	                        const monthTotal = countsRow.totalReports;
-	                        return (
-	                          <tr key={label}>
-	                            <td className="border px-1 py-0.5 font-medium whitespace-nowrap">
-	                              {label}
-	                            </td>
-	                            {CAUSES.map((cause) => (
-	                              <td key={cause} className="border px-1 py-0.5 text-right">
-	                                {countsRow.perCause[cause] || 0}
-	                              </td>
-	                            ))}
-	                            <td className="border px-1 py-0.5 text-right font-semibold">
-	                              {monthTotal}
-	                            </td>
-	                          </tr>
-	                        );
-	                      })}
-	                    </tbody>
-	                  </table>
-	                </div>
-	              </div>
-
-		              <div>
-		                <h3 className="font-semibold mb-2 text-sm">
-		                  Antall timer stopp per måned og årsak – {selectedYear} ({
-		                    statsBase === "Alle" ? "alle baser" : statsBase
-		                  })
-		                </h3>
-	                <div className="overflow-x-auto">
-	                  <table className="min-w-full border border-gray-200 text-[10px] sm:text-xs">
-	                    <thead className="bg-gray-50">
-	                      <tr>
-	                        <th className="border px-1 py-0.5 text-left">Måned</th>
-	                        {CAUSES.map((cause) => (
-	                          <th key={cause} className="border px-1 py-0.5 text-left">
-	                            {cause}
-	                          </th>
-	                        ))}
-	                        <th className="border px-1 py-0.5 text-left">Totalt timer</th>
-	                      </tr>
-	                    </thead>
-	                    <tbody>
-	                      {MONTH_LABELS.map((label, index) => {
-	                        const hoursRow = perMonthHours[index];
-	                        return (
-	                          <tr key={label}>
-	                            <td className="border px-1 py-0.5 font-medium whitespace-nowrap">
-	                              {label}
-	                            </td>
-	                            {CAUSES.map((cause) => (
-	                              <td key={cause} className="border px-1 py-0.5 text-right">
-	                                {hoursRow.perCause[cause] || 0}
-	                              </td>
-	                            ))}
-	                            <td className="border px-1 py-0.5 text-right font-semibold">
-	                              {hoursRow.totalHours || 0}
-	                            </td>
-	                          </tr>
-	                        );
-	                      })}
-	                      <tr className="bg-gray-50">
-	                        <td className="border px-1 py-0.5 font-semibold">Sum år</td>
-	                        {CAUSES.map((cause) => (
-	                          <td
-	                            key={cause}
-	                            className="border px-1 py-0.5 text-right font-semibold"
-	                          >
-	                            {totalHoursByCause[cause] || 0}
-	                          </td>
-	                        ))}
-	                        <td className="border px-1 py-0.5 text-right font-bold">
-	                          {totalHoursYear || 0}
-	                        </td>
-	                      </tr>
-	                    </tbody>
-	                  </table>
-	                </div>
-	              </div>
-	            </div>
-          </div>
-		        </main>
-		      )}
-
-		      {showStatsSendDialog && (
-		        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
-		          <div className="mx-auto w-full max-w-md p-4">
-		            <div className="bg-white rounded-2xl shadow p-4">
-		              <h2 className="text-lg font-semibold mb-1">Send statistikk</h2>
-		              <p className="text-sm text-gray-700 mb-3">
-		                Statistikk for {selectedYear} sendes som PDF-vedlegg. Skriv inn
-		                e-postadresser (komma, mellomrom eller semikolon mellom hver).
-		              </p>
-		              <input
-		                type="text"
-		                value={statsTo}
-		                onChange={(e) => setStatsTo(e.target.value)}
-		                className="w-full border rounded-xl p-3 text-sm text-gray-900"
-		                placeholder="fornavn.etternavn@firma.no, annen@epost.no"
-		                disabled={statsSending}
-		              />
-							<div className="mt-3">
-							<p className="text-xs text-gray-700 mb-1">
-								Passord
-							</p>
-								<input
-									type="password"
-									value={statsPassword}
-									onChange={(e) => setStatsPassword(e.target.value)}
-									className="w-full border rounded-xl p-3 text-sm text-gray-900"
-									placeholder="Passord"
-									disabled={statsSending}
-								/>
-							</div>
-		              <div className="mt-4 flex justify-end gap-2">
-		                <button
-		                  type="button"
-		                  onClick={() => {
-		                    if (statsSending) return;
-		                    setShowStatsSendDialog(false);
-		                  }}
-		                  className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white"
-		                >
-		                  Avbryt
-		                </button>
-		                <button
-		                  type="button"
-		                  onClick={handleSendStats}
-		                  disabled={statsSending}
-		                  className="px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white border border-blue-700"
-		                >
-		                  {statsSending ? "Sender..." : "Send"}
-		                </button>
-		              </div>
-		            </div>
-		          </div>
-		        </div>
-		      )}
-
-	      {resumeReport && (
+      {resumeReport && (
 	        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40">
 	          <div className="mx-auto w-full max-w-md p-4">
 	            <div className="bg-white rounded-2xl shadow p-4">
