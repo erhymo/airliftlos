@@ -1,10 +1,11 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-		"crons": [
-			{
-				"path": "/api/los-bookings-sync",
-				"schedule": "* * * * *"
-			}
-		]
+	"regions": ["arn1"],
+	"crons": [
+		{
+			"path": "/api/los-bookings-sync",
+			"schedule": "* * * * *"
+		}
+	]
 }
 
