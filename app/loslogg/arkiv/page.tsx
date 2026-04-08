@@ -9,6 +9,7 @@ type ArchiveRow = {
 	orderNumber: string;
 	techlogNumber: string;
 	vesselName: string;
+	sortTimestamp: number;
 		// Sammendragslinje med alle felter som er skrevet til Excel (adminRowData)
 		details: string | null;
 };
@@ -55,6 +56,9 @@ export default async function LosLoggArchivePage({
 						orderNumber?: string | null;
 						techlogNumber?: number | string | null;
 						vesselName?: string | null;
+						losLogSentAt?: number | null;
+						adminUpdatedAt?: number | null;
+						createdAt?: number | null;
 						adminRowData?: Record<string, unknown> | null;
 					};
 					const admin = (data.adminRowData ?? {}) as Record<string, unknown>;
@@ -104,6 +108,17 @@ export default async function LosLoggArchivePage({
 							? (admin.hoistCount as number)
 							: null;
 					const comment = admin.comment != null ? String(admin.comment) : "";
+					const sortTimestampCandidates = [
+						data.losLogSentAt,
+						data.adminUpdatedAt,
+						data.createdAt,
+					].filter(
+						(value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0,
+					);
+					const parsedDateTimestamp = Date.parse(String(data.date ?? ""));
+					const sortTimestamp =
+						sortTimestampCandidates[0] ??
+						(Number.isNaN(parsedDateTimestamp) ? 0 : parsedDateTimestamp);
 
 					if (sign) parts.push(`Sign: ${sign.toUpperCase()}`);
 					if (excelDate) parts.push(`Dato: ${excelDate}`);
@@ -136,6 +151,7 @@ export default async function LosLoggArchivePage({
 						orderNumber,
 						techlogNumber: techlogNumberStr,
 						vesselName,
+						sortTimestamp,
 						details,
 					};
 				})

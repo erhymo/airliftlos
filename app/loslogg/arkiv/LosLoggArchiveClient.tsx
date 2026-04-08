@@ -10,6 +10,7 @@ type ArchiveRow = {
 	orderNumber: string;
 	techlogNumber: string;
 	vesselName: string;
+	sortTimestamp: number;
 	details: string | null;
 };
 
@@ -41,7 +42,15 @@ export default function LosLoggArchiveClient({ monthGroups, defaultKey }: Props)
   );
 
   const selectedRows = useMemo(
-    () => (selectedGroup ? [...selectedGroup.rows].sort((a, b) => b.date.localeCompare(a.date)) : []),
+	  () =>
+			(selectedGroup
+				? [...selectedGroup.rows].sort((a, b) => {
+					if (a.sortTimestamp !== b.sortTimestamp) {
+						return b.sortTimestamp - a.sortTimestamp;
+					}
+					return b.date.localeCompare(a.date);
+				})
+				: []),
     [selectedGroup],
   );
 
