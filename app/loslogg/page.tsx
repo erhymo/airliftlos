@@ -4,7 +4,7 @@ import { getOpenLosBookingsSnapshot, isOpenLosBooking } from "../../lib/losBooki
 import { getOrCreateLosBookingsMeta } from "../../lib/losBookingsMeta";
 import LosLoggClient from "./LosLoggClient";
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 type DisplayBooking = {
 	id: string;

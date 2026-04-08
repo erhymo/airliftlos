@@ -4,7 +4,7 @@ import { getDb } from "../lib/firebaseAdmin";
 import { getOrCreateLosBookingsMeta } from "../lib/losBookingsMeta";
 import DriftsforstyrrelseForsideClient from "./DriftsforstyrrelseForsideClient";
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let openLosCount = 0;
@@ -57,6 +57,7 @@ export default async function Home() {
 	          <div className="mt-6 border-t border-gray-200 pt-4">
 	            <Link
 	              href="/loslogg"
+	              prefetch={false}
 	              className="block w-full rounded-lg bg-gray-100 text-gray-900 text-center py-4 px-4 text-base font-medium border border-gray-300 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
 	            >
 	              <div className="flex items-center justify-center gap-2">
