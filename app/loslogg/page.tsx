@@ -10,6 +10,7 @@ type DisplayBooking = {
 	id: string;
 	vesselName: string;
 	date: string;
+	scheduledTime?: string | null;
 	fromLocation?: string | null;
 	toLocation?: string | null;
 };
@@ -30,6 +31,7 @@ type DisplayBooking = {
 						const data = doc.data() as {
 							vesselName?: string;
 							date?: string;
+						scheduledTime?: string | null;
 							fromLocation?: string | null;
 							toLocation?: string | null;
 							status?: string | null;
@@ -49,6 +51,7 @@ type DisplayBooking = {
 							id: doc.id,
 							vesselName: data.vesselName ?? "Ukjent fartøy",
 							date: data.date ?? new Date().toISOString().slice(0, 10),
+						scheduledTime: data.scheduledTime ?? null,
 							fromLocation: data.fromLocation ?? null,
 							toLocation: data.toLocation ?? null,
 						});

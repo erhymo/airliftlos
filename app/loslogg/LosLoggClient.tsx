@@ -7,6 +7,7 @@ type DisplayBooking = {
 	id: string;
 	vesselName: string;
 	date: string;
+	scheduledTime?: string | null;
 	fromLocation?: string | null;
 	toLocation?: string | null;
 };
@@ -34,11 +35,12 @@ function mapApiBookings(raw: Array<Record<string, unknown>>): DisplayBooking[] {
 	return raw.map((doc) => {
 		const vesselName = (doc.vesselName as string | undefined) ?? "Ukjent fartøy";
 		const date = (doc.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
+		const scheduledTime = (doc.scheduledTime as string | null | undefined) ?? null;
 		const fromLocation = (doc.fromLocation as string | null | undefined) ?? null;
 		const toLocation = (doc.toLocation as string | null | undefined) ?? null;
 		const id = doc.id as string;
 
-		return { id, vesselName, date, fromLocation, toLocation };
+		return { id, vesselName, date, scheduledTime, fromLocation, toLocation };
 	});
 }
 
@@ -117,7 +119,10 @@ export default function LosLoggClient({ initialBookings, initialVersion }: Props
 							<div className="flex w-full items-center justify-between gap-3">
 								<div className="space-y-0.5">
 									<p className="text-base font-semibold tracking-wide">{booking.vesselName}</p>
-									<p className="text-xs text-gray-600">{formatDate(booking.date)}</p>
+									<p className="text-xs text-gray-600">
+										{formatDate(booking.date)}
+										{booking.scheduledTime ? ` ${booking.scheduledTime}` : ""}
+									</p>
 								</div>
 								{(booking.fromLocation || booking.toLocation) && (
 									<div className="text-right text-xs text-gray-700">
