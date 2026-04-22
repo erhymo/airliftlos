@@ -1,5 +1,8 @@
 export type Base = "Bergen" | "Tromsø" | "Hammerfest";
-export type Maskin = "LN-OXH" | "LN-OXI" | "LN-OXJ";
+
+export const MASKINER = ["LN-OXH", "LN-OXI", "LN-OXJ", "LN-OXK"] as const;
+export type Maskin = (typeof MASKINER)[number];
+export const DEFAULT_MASKIN: Maskin = MASKINER[0];
 
 export interface CheckItem {
   key: string;

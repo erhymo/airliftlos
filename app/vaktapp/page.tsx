@@ -9,6 +9,7 @@ import Section from "./components/Section";
 import CrewPicker from "./components/CrewPicker";
 import VaktReportArchive from "./components/VaktReportArchive";
 import { SIGNATURE_OPTIONS } from "../../lib/signatures";
+import { DEFAULT_MASKIN, MASKINER } from "./types";
 
 // ----- Typer -----
 import type { Base, Maskin, CheckItem, VaktReport, DraftReport } from "./types";
@@ -92,7 +93,7 @@ export default function VaktAppPage() {
   const [crew, setCrew] = useState("");
   const [ukeFra, setUkeFra] = useState(() => defaultWeekRange().from);
   const [ukeTil, setUkeTil] = useState(() => defaultWeekRange().to);
-  const [maskin, setMaskin] = useState<Maskin>("LN-OXH");
+  const [maskin, setMaskin] = useState<Maskin>(DEFAULT_MASKIN);
   const [base, setBase] = useState<Base>("Bergen");
   const [operativ, setOperativ] = useState("");
   const [annen, setAnnen] = useState("");
@@ -249,7 +250,7 @@ export default function VaktAppPage() {
     const weekRange = defaultWeekRange();
     setUkeFra(weekRange.from);
     setUkeTil(weekRange.to);
-    setMaskin("LN-OXH");
+    setMaskin(DEFAULT_MASKIN);
     setBase("Bergen");
     setOperativ("");
     setAnnen("");
@@ -405,7 +406,7 @@ export default function VaktAppPage() {
             <StepShell onPrev={() => setStep(1)} onNext={() => setStep(3)}>
               <Section title="Hvilken maskin i bruk?">
                 <div className="grid grid-cols-1 gap-2">
-                  {(["LN-OXH", "LN-OXI", "LN-OXJ"] as Maskin[]).map((m) => (
+                  {MASKINER.map((m) => (
                     <label
                       key={m}
                       className={`p-3 border rounded-xl flex items-center gap-3 ${
