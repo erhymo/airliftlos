@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getDb } from "../lib/firebaseAdmin";
 import { getOrCreateLosBookingsMeta } from "../lib/losBookingsMeta";
 import DriftsforstyrrelseForsideClient from "./DriftsforstyrrelseForsideClient";
+import PoliceEntryClient from "./PoliceEntryClient";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,7 @@ export default async function Home() {
 	                <span>LOS-logg</span>
 	              </div>
 	            </Link>
+		            <PoliceEntryClient />
 	          </div>
 	        </main>
 	      </div>

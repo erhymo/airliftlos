@@ -1,24 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   children: React.ReactNode;
 }
 
 export function AccessGuard({ children }: Props) {
-	  const [unlocked, setUnlocked] = useState<boolean | null>(() => {
-	    if (typeof window === "undefined") return null;
-	    try {
-	      const stored = window.localStorage.getItem("airliftlos_access");
-	      return stored === "ok";
-	    } catch {
-	      return false;
-	    }
-	  });
+	  const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+	useEffect(() => {
+		const timeout = window.setTimeout(() => {
+			try {
+				const stored = window.localStorage.getItem("airliftlos_access");
+				setUnlocked(stored === "ok");
+			} catch {
+				setUnlocked(false);
+			}
+		}, 0);
+
+		return () => window.clearTimeout(timeout);
+	}, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
