@@ -26,9 +26,9 @@ const UTMELDING_REASONS = ["Teknisk", "Vær", "Crew", "Operativ begrensning", "A
 const MITIGATING_ACTIONS = ["Tekniker varslet", "Reservecrew vurderes", "Alternativ maskin vurderes", "Operativ begrensning meldt", "Annet"];
 const TRAINING_TYPES = ["Politioperativ", "Søk og redning", "Navigasjon", "Nattflyging", "NVG-trening", "Bakkeoperasjoner", "Annet"];
 const FIELD_CONTROL_CLASS = "min-w-0 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-base text-gray-900";
-const COMPACT_DATE_TIME_CLASS = "min-w-0 w-full rounded-xl border border-gray-300 bg-white px-2 py-3 text-[15px] leading-tight text-gray-900";
+const COMPACT_DATE_TIME_CLASS = "min-w-0 w-full appearance-none rounded-lg border border-gray-300 bg-white px-1.5 py-2.5 text-[14px] leading-tight text-gray-900";
 const TEXTAREA_CLASS = `${FIELD_CONTROL_CLASS} resize-y`;
-const COMPACT_TWO_COLUMN_GRID = "grid grid-cols-2 gap-2";
+const COMPACT_TWO_COLUMN_GRID = "grid grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] gap-1.5";
 
 type CrewRole = "captains" | "firstOfficers" | "technicians";
 type CustomCrewOptions = Record<CrewRole, string[]>;
@@ -261,7 +261,7 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div><FieldLabel>Utdyping / fritekst</FieldLabel><textarea value={reasonDetails} onChange={(e) => setReasonDetails(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Beskriv årsak nærmere..." /></div>
 				<div className={COMPACT_TWO_COLUMN_GRID}>
 						<div className="min-w-0"><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
-						<div className="min-w-0"><FieldLabel>Tidspunkt</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+						<div className="min-w-0"><FieldLabel>Tid</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
 				</div>
 			</Section>
 			<Section title="Varighet">
