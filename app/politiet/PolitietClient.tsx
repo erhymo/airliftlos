@@ -25,6 +25,10 @@ const WATCH_PHONE = "479 04 276 – Tromsø base";
 const UTMELDING_REASONS = ["Teknisk", "Vær", "Crew", "Operativ begrensning", "Annet"];
 const MITIGATING_ACTIONS = ["Tekniker varslet", "Reservecrew vurderes", "Alternativ maskin vurderes", "Operativ begrensning meldt", "Annet"];
 const TRAINING_TYPES = ["Politioperativ", "Søk og redning", "Navigasjon", "Nattflyging", "NVG-trening", "Bakkeoperasjoner", "Annet"];
+const FIELD_CONTROL_CLASS = "min-w-0 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-base text-gray-900";
+const COMPACT_DATE_TIME_CLASS = "min-w-0 w-full rounded-xl border border-gray-300 bg-white px-2 py-3 text-[15px] leading-tight text-gray-900";
+const TEXTAREA_CLASS = `${FIELD_CONTROL_CLASS} resize-y`;
+const COMPACT_TWO_COLUMN_GRID = "grid grid-cols-2 gap-2";
 
 type CrewRole = "captains" | "firstOfficers" | "technicians";
 type CustomCrewOptions = Record<CrewRole, string[]>;
@@ -69,7 +73,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
-		<section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+		<section className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
 			<h2 className="mb-4 text-base font-semibold text-gray-900">{title}</h2>
 			<div className="space-y-4">{children}</div>
 		</section>
@@ -138,15 +142,15 @@ function CrewOptionsEditor({ onClose, onSaved }: { onClose: () => void; onSaved:
 				</div>
 				<div>
 					<FieldLabel>Fartøysjef</FieldLabel>
-					<input value={captainName} onChange={(e) => setCaptainName(e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-3 text-base text-gray-900" placeholder="Navn eller initialer" />
+					<input value={captainName} onChange={(e) => setCaptainName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Navn eller initialer" />
 				</div>
 				<div>
 					<FieldLabel>Co-pilot</FieldLabel>
-					<input value={firstOfficerName} onChange={(e) => setFirstOfficerName(e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-3 text-base text-gray-900" placeholder="Navn eller initialer" />
+					<input value={firstOfficerName} onChange={(e) => setFirstOfficerName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Navn eller initialer" />
 				</div>
 				<div>
 					<FieldLabel>Tekniker / Task Specialist</FieldLabel>
-					<input value={technicianName} onChange={(e) => setTechnicianName(e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-3 text-base text-gray-900" placeholder="Navn eller initialer" />
+					<input value={technicianName} onChange={(e) => setTechnicianName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Navn eller initialer" />
 				</div>
 				<StatusMessage status={status} />
 				<button type="submit" disabled={status.type === "sending"} className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white disabled:opacity-60">Lagre</button>
@@ -159,7 +163,7 @@ function SelectField({ label, value, onChange, options, placeholder }: { label: 
 	return (
 		<div>
 			<FieldLabel>{label}</FieldLabel>
-			<select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-base text-gray-900">
+			<select value={value} onChange={(event) => onChange(event.target.value)} className={FIELD_CONTROL_CLASS}>
 				<option value="">{placeholder}</option>
 				{options.map((option) => (
 					<option key={option} value={option}>{option}</option>
@@ -206,11 +210,11 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
 			<Section title="Vaktperiode">
-				<div className="grid grid-cols-2 gap-3">
-					<div><FieldLabel>Fra dato</FieldLabel><input type="date" value={periodFromDate} onChange={(e) => setPeriodFromDate(e.target.value)} className="w-full rounded-xl border p-3" /></div>
-					<div><FieldLabel>Fra tid</FieldLabel><input type="time" value={periodFromTime} onChange={(e) => setPeriodFromTime(e.target.value)} className="w-full rounded-xl border p-3" /></div>
-					<div><FieldLabel>Til dato</FieldLabel><input type="date" value={periodToDate} onChange={(e) => setPeriodToDate(e.target.value)} className="w-full rounded-xl border p-3" /></div>
-					<div><FieldLabel>Til tid</FieldLabel><input type="time" value={periodToTime} onChange={(e) => setPeriodToTime(e.target.value)} className="w-full rounded-xl border p-3" /></div>
+				<div className={COMPACT_TWO_COLUMN_GRID}>
+						<div className="min-w-0"><FieldLabel>Fra dato</FieldLabel><input type="date" value={periodFromDate} onChange={(e) => setPeriodFromDate(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+						<div className="min-w-0"><FieldLabel>Fra tid</FieldLabel><input type="time" value={periodFromTime} onChange={(e) => setPeriodFromTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+						<div className="min-w-0"><FieldLabel>Til dato</FieldLabel><input type="date" value={periodToDate} onChange={(e) => setPeriodToDate(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+						<div className="min-w-0"><FieldLabel>Til tid</FieldLabel><input type="time" value={periodToTime} onChange={(e) => setPeriodToTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
 				</div>
 			</Section>
 			<Section title="Vakttelefon"><div className="rounded-xl border bg-gray-50 p-3 text-gray-900">{WATCH_PHONE}</div></Section>
@@ -254,20 +258,20 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		<form onSubmit={handleSubmit} className="space-y-4">
 			<Section title="Utmelding">
 				<SelectField label="Årsak til utmelding" value={reason} onChange={setReason} options={UTMELDING_REASONS} placeholder="Velg årsak" />
-				<div><FieldLabel>Utdyping / fritekst</FieldLabel><textarea value={reasonDetails} onChange={(e) => setReasonDetails(e.target.value)} rows={4} className="w-full rounded-xl border p-3" placeholder="Beskriv årsak nærmere..." /></div>
-				<div className="grid grid-cols-2 gap-3">
-					<div><FieldLabel>Dato for utmelding</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-xl border p-3" /></div>
-					<div><FieldLabel>Tidspunkt</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full rounded-xl border p-3" /></div>
+				<div><FieldLabel>Utdyping / fritekst</FieldLabel><textarea value={reasonDetails} onChange={(e) => setReasonDetails(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Beskriv årsak nærmere..." /></div>
+				<div className={COMPACT_TWO_COLUMN_GRID}>
+						<div className="min-w-0"><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+						<div className="min-w-0"><FieldLabel>Tidspunkt</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
 				</div>
 			</Section>
 			<Section title="Varighet">
 				<div className="text-2xl font-semibold text-amber-600">{durationHours >= 24 ? "24+ timer" : `${durationHours} timer`}</div>
 				<input type="range" min="1" max="24" value={durationHours} onChange={(e) => setDurationHours(Number(e.target.value))} className="time-slider" />
-				<div><FieldLabel>Presiser forventet varighet</FieldLabel><textarea value={durationText} onChange={(e) => setDurationText(e.target.value)} rows={3} className="w-full rounded-xl border p-3" placeholder="F.eks: Avventer tekniker fra Bergen, ETA 18:00..." /></div>
+				<div><FieldLabel>Presiser forventet varighet</FieldLabel><textarea value={durationText} onChange={(e) => setDurationText(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="F.eks: Avventer tekniker fra Bergen, ETA 18:00..." /></div>
 			</Section>
 			<Section title="Mitigerende tiltak">
 				<SelectField label="Tiltak" value={mitigatingAction} onChange={setMitigatingAction} options={MITIGATING_ACTIONS} placeholder="Velg tiltak" />
-				<div><FieldLabel>Tilleggsinfo tiltak</FieldLabel><textarea value={mitigatingActionDetails} onChange={(e) => setMitigatingActionDetails(e.target.value)} rows={3} className="w-full rounded-xl border p-3" placeholder="Eventuelle tilleggsopplysninger..." /></div>
+				<div><FieldLabel>Tilleggsinfo tiltak</FieldLabel><textarea value={mitigatingActionDetails} onChange={(e) => setMitigatingActionDetails(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Eventuelle tilleggsopplysninger..." /></div>
 			</Section>
 			<Section title="Avsender">
 				<SelectField label="Sendt av (fartøysjef)" value={sender} onChange={setSender} options={crewOptions.captains} placeholder="Velg avsender" />
@@ -319,8 +323,8 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 						<button key={type} type="button" onClick={() => setReportType(type)} className={`rounded-xl border px-3 py-3 text-sm font-medium ${reportType === type ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-200 bg-white text-gray-800"}`}>{type === "training" ? "Training Report" : "Mission Report"}</button>
 					))}
 				</div>
-				{reportType === "mission" && <div><FieldLabel>Oppdragsnummer</FieldLabel><input value={missionNumber} onChange={(e) => setMissionNumber(e.target.value)} className="w-full rounded-xl border p-3" placeholder="Oppdragsnummer" /></div>}
-				<div><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-xl border p-3" /></div>
+				{reportType === "mission" && <div><FieldLabel>Oppdragsnummer</FieldLabel><input value={missionNumber} onChange={(e) => setMissionNumber(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Oppdragsnummer" /></div>}
+				<div><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_CONTROL_CLASS} /></div>
 			</Section>
 			<Section title="Crew">
 				{crew.map((value, index) => (
@@ -345,10 +349,10 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div className="flex flex-wrap gap-2">
 					{TRAINING_TYPES.map((type) => <button key={type} type="button" onClick={() => toggleTrainingType(type)} className={`rounded-full border px-3 py-1.5 text-sm ${trainingTypes.includes(type) ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-300 bg-white text-gray-700"}`}>{type}</button>)}
 				</div>
-				<div><FieldLabel>Beskrivelse</FieldLabel><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className="w-full rounded-xl border p-3" placeholder="Detaljert beskrivelse..." /></div>
+				<div><FieldLabel>Beskrivelse</FieldLabel><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Detaljert beskrivelse..." /></div>
 			</Section>
 			<Section title="Lessons learned">
-				<textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className="w-full rounded-xl border p-3" placeholder="Hva fungerte bra? Hva kan forbedres?" />
+				<textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Hva fungerte bra? Hva kan forbedres?" />
 			</Section>
 			<StatusMessage status={status} />
 			<button disabled={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:opacity-60">Lagre rapport</button>
@@ -411,7 +415,7 @@ export default function PolitietClient() {
 					))}
 				</nav>
 			</header>
-			<main className="mx-auto max-w-md space-y-4 p-4 pb-10">
+			<main className="mx-auto max-w-md space-y-4 px-3 py-4 pb-10 sm:px-4">
 				{tab === "crew" && <CrewForm crewOptions={crewOptions} />}
 				{tab === "utmelding" && <UtmeldingForm crewOptions={crewOptions} />}
 				{tab === "rapport" && <ReportForm crewOptions={crewOptions} />}
