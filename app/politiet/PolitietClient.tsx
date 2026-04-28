@@ -14,7 +14,7 @@ const addDaysISO = (days: number) => {
 	return date.toISOString().slice(0, 10);
 };
 const nowTime = () => new Date().toTimeString().slice(0, 5);
-const WATCH_PHONE = "479 04 276 – Tromsø base";
+const WATCH_PHONE = "Nummer til vakttlf TOS/HFT";
 
 const UTMELDING_REASONS = ["Teknisk", "Vær", "Crew", "Operativ begrensning", "Annet"];
 const MITIGATING_ACTIONS = ["Tekniker varslet", "Reservecrew vurderes", "Alternativ maskin vurderes", "Operativ begrensning meldt", "Annet"];
@@ -23,6 +23,7 @@ const FIELD_CONTROL_CLASS = "min-w-0 w-full rounded-xl border border-gray-300 bg
 const COMPACT_DATE_TIME_CLASS = "min-w-0 w-full appearance-none rounded-lg border border-gray-300 bg-white px-1.5 py-2.5 text-[14px] leading-tight text-gray-900";
 const TEXTAREA_CLASS = `${FIELD_CONTROL_CLASS} resize-y`;
 const COMPACT_TWO_COLUMN_GRID = "grid grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] gap-1.5";
+const CREW_FORM_SEND_ENABLED = false;
 
 type PoliceCrewOptions = { captains: string[]; firstOfficers: string[]; technicians: string[]; all: string[] };
 
@@ -76,6 +77,7 @@ function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirec
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [fullName, setFullName] = useState("");
 	const [code, setCode] = useState("");
+	const [phone, setPhone] = useState("");
 	const [role, setRole] = useState<CrewRole>("captain");
 	const [active, setActive] = useState(true);
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
@@ -84,6 +86,7 @@ function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirec
 		setEditingId(null);
 		setFullName("");
 		setCode("");
+		setPhone("");
 		setRole("captain");
 		setActive(true);
 		setStatus({ type: "idle" });
@@ -93,6 +96,7 @@ function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirec
 		setEditingId(entry.id);
 		setFullName(entry.fullName);
 		setCode(entry.code);
+		setPhone(entry.phone ?? "");
 		setRole(entry.role);
 		setActive(entry.active);
 		setStatus({ type: "idle" });
@@ -110,7 +114,7 @@ function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirec
 			const res = await fetch("/api/crew-directory", {
 				method: editingId ? "PATCH" : "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ id: editingId, fullName, code, role, active }),
+				body: JSON.stringify({ id: editingId, fullName, code, phone, role, active }),
 			});
 			const data = (await res.json().catch(() => ({}))) as { error?: string; entry?: CrewDirectoryEntry };
 			if (!res.ok || !data.entry) throw new Error(data.error || "Klarte ikke å lagre person.");
@@ -139,6 +143,7 @@ function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirec
 						<button type="button" onClick={startNew} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">Ny person</button>
 					</div>
 					<div><FieldLabel>Fullt navn</FieldLabel><input value={fullName} onChange={(e) => setFullName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. Tom Østrem" /></div>
+					<div><FieldLabel>Telefon</FieldLabel><input value={phone} onChange={(e) => setPhone(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 98623414" inputMode="tel" /></div>
 					<div className="grid grid-cols-[1fr_1.4fr] gap-2">
 						<div><FieldLabel>Crew-kode</FieldLabel><input value={code} onChange={(e) => setCode(e.target.value.toLocaleUpperCase("nb-NO"))} className={FIELD_CONTROL_CLASS} placeholder="ØST" /></div>
 						<div><FieldLabel>Rolle</FieldLabel><select value={role} onChange={(e) => setRole(e.target.value as CrewRole)} className={FIELD_CONTROL_CLASS}>{Object.entries(CREW_ROLE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>
@@ -200,6 +205,10 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
+		if (!CREW_FORM_SEND_ENABLED) {
+			setStatus({ type: "error", message: "Innsending av crew-skjema er midlertidig deaktivert." });
+			return;
+		}
 		setStatus({ type: "sending", message: "Sender crew-skjema..." });
 		try {
 			await submitJson("/api/police/crew", { base: "Tromsø", periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone: WATCH_PHONE, captain, firstOfficer, technician, helicopter });
@@ -227,8 +236,9 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<HelicopterSelect value={helicopter} onChange={setHelicopter} />
 			</Section>
 			<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Oppnås ikke kontakt på vakttelefon kan vakttelefon til tekniker eller direkte telefon til crewet brukes. Flyr helikopteret, ring direkte på GSM eller Iridium.</div>
+			{!CREW_FORM_SEND_ENABLED && <div className="rounded-xl border border-gray-200 bg-gray-100 p-3 text-sm text-gray-700">Innsending av crew-skjema er midlertidig deaktivert. Skjemaet kan fortsatt fylles ut og klargjøres.</div>}
 			<StatusMessage status={status} />
-			<button disabled={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:opacity-60">Send crew-skjema</button>
+			<button disabled={!CREW_FORM_SEND_ENABLED || status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-not-allowed disabled:opacity-60">{CREW_FORM_SEND_ENABLED ? "Send crew-skjema" : "Crew-skjema deaktivert"}</button>
 		</form>
 	);
 }

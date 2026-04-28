@@ -5,6 +5,7 @@ export type CrewDirectoryEntry = {
 	id: string;
 	code: string;
 	fullName: string;
+	phone?: string;
 	role: CrewRole;
 	active: boolean;
 	updatedAt?: number;

@@ -13,14 +13,15 @@ export const runtime = "nodejs";
 
 const COLLECTION_NAME = "crewDirectory";
 
-type CrewDirectoryPayload = Partial<Pick<CrewDirectoryEntry, "id" | "code" | "fullName" | "role" | "active">>;
+type CrewDirectoryPayload = Partial<Pick<CrewDirectoryEntry, "id" | "code" | "fullName" | "phone" | "role" | "active">>;
 
 function cleanEntry(id: string, data: CrewDirectoryPayload, updatedAt = Date.now()): CrewDirectoryEntry | null {
 	const code = typeof data.code === "string" ? normalizeCrewCode(data.code) : "";
 	const fullName = typeof data.fullName === "string" ? data.fullName.trim() : "";
+	const phone = typeof data.phone === "string" ? data.phone.trim() : "";
 	const active = typeof data.active === "boolean" ? data.active : true;
 	if (!code || !isCrewRole(data.role)) return null;
-	return { id, code, fullName, role: data.role, active, updatedAt };
+	return { id, code, fullName, phone, role: data.role, active, updatedAt };
 }
 
 async function getDirectoryEntries() {
