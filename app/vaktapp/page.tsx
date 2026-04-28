@@ -6,9 +6,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import StepShell from "./components/StepShell";
 import Section from "./components/Section";
-import CrewPicker from "./components/CrewPicker";
+import CrewPicker, { type CrewPickerOptionGroups } from "./components/CrewPicker";
 import VaktReportArchive from "./components/VaktReportArchive";
-import { SIGNATURE_OPTIONS } from "../../lib/signatures";
+import { DEFAULT_CREW_DIRECTORY, formatCrewDirectoryEntry, sortCrewDirectoryEntries, type CrewDirectoryEntry, type CrewRole } from "../../lib/crewDirectory";
 import { DEFAULT_MASKIN, MASKINER } from "./types";
 
 // ----- Typer -----
@@ -79,9 +79,15 @@ function saveReports(reports: VaktReport[]) {
 	  localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
 	}
 
-const PILOT_NAMES = [...SIGNATURE_OPTIONS].sort((a, b) =>
-	  a.localeCompare(b, "nb-NO")
-);
+function crewPickerOptionsByRole(entries: CrewDirectoryEntry[], role: CrewRole) {
+	return entries
+		.filter((entry) => entry.active && entry.role === role)
+		.map((entry) => ({ value: entry.code, label: formatCrewDirectoryEntry(entry) || entry.code }));
+}
+
+function signerNamesFromDirectory(entries: CrewDirectoryEntry[]) {
+	return Array.from(new Set(entries.filter((entry) => entry.active && entry.fullName.trim()).map((entry) => entry.fullName.trim()))).sort((a, b) => a.localeCompare(b, "nb-NO"));
+}
 
 // ----- UI-byggeklosser -----
 // ----- Hovedkomponent (side) -----
@@ -110,6 +116,34 @@ export default function VaktAppPage() {
 		  const [showSignerPicker, setShowSignerPicker] = useState(false);
 		  const [signerMode, setSignerMode] = useState<"picker" | "manual">("picker");
 		  const signerInputRef = useRef<HTMLInputElement | null>(null);
+			  const [crewDirectory, setCrewDirectory] = useState<CrewDirectoryEntry[]>(() => sortCrewDirectoryEntries(DEFAULT_CREW_DIRECTORY));
+
+			  const crewPickerOptions = useMemo<CrewPickerOptionGroups>(
+			    () => ({
+			      captains: crewPickerOptionsByRole(crewDirectory, "captain"),
+			      firstOfficers: crewPickerOptionsByRole(crewDirectory, "firstOfficer"),
+			      technicians: crewPickerOptionsByRole(crewDirectory, "technician"),
+			    }),
+			    [crewDirectory]
+			  );
+
+			  const signerNames = useMemo(() => signerNamesFromDirectory(crewDirectory), [crewDirectory]);
+
+			  useEffect(() => {
+			    let cancelled = false;
+			    fetch("/api/crew-directory")
+			      .then((res) => (res.ok ? res.json() : null))
+			      .then((data: { ok?: boolean; entries?: CrewDirectoryEntry[] } | null) => {
+			        if (cancelled || !data?.ok || !Array.isArray(data.entries)) return;
+			        setCrewDirectory(sortCrewDirectoryEntries(data.entries));
+			      })
+			      .catch(() => {
+			        // Fallback-listen over brukes hvis Firestore/API ikke er tilgjengelig.
+			      });
+			    return () => {
+			      cancelled = true;
+			    };
+			  }, []);
 
 		  useEffect(() => {
 		    if (signerMode === "manual" && !showSignerPicker && signerInputRef.current) {
@@ -702,6 +736,7 @@ export default function VaktAppPage() {
 	          initialCrew={crew}
 	          onChangeCrew={setCrew}
 	          onClose={() => setShowCrewPicker(false)}
+		          options={crewPickerOptions}
 	        />
 	      )}
 
@@ -716,11 +751,11 @@ export default function VaktAppPage() {
 	          >
 	            <h2 className="text-lg font-semibold mb-2">Velg navn for signering</h2>
 		            <p className="text-sm text-gray-700 mb-3">
-		              Trykk på et navn for å fylle inn feltet Skrevet av. Listen viser
-		              kapteiner og styrmenn.
+			              Trykk på et navn for å fylle inn feltet Skrevet av. Listen hentes fra
+			              felles crew-liste.
 		            </p>
 	            <div className="space-y-2">
-	              {PILOT_NAMES.map((name) => (
+		              {signerNames.map((name) => (
 	                <button
 	                  key={name}
 	                  type="button"

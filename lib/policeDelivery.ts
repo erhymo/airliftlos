@@ -20,6 +20,9 @@ const SHAREPOINT_ENV: Record<PoliceDeliveryKind, string> = {
 	report: "POLICE_REPORT_SHAREPOINT_FOLDER_PATH",
 };
 
+const DEFAULT_POLICE_FROM_EMAIL = "politiberedskap@airlift.no";
+const DEFAULT_POLICE_FROM_NAME = "Airlift Politiberedskap";
+
 function parseEmails(value: string | undefined): string[] {
 	return (value ?? "")
 		.split(/[;,]/)
@@ -70,7 +73,8 @@ async function sendEmail(kind: PoliceDeliveryKind, subject: string, body: string
 	const toEmails = parseEmails(process.env[EMAIL_ENV[kind]]);
 	if (toEmails.length === 0) return { ok: true, skipped: true, error: `${EMAIL_ENV[kind]} er ikke konfigurert` };
 	const apiKey = process.env.SENDGRID_API_KEY;
-	const fromEmail = process.env.SENDGRID_FROM;
+	const fromEmail = process.env.POLICE_SENDGRID_FROM_EMAIL || DEFAULT_POLICE_FROM_EMAIL;
+	const fromName = process.env.POLICE_SENDGRID_FROM_NAME || DEFAULT_POLICE_FROM_NAME;
 	if (!apiKey || !fromEmail) return { ok: true, skipped: true, error: "SendGrid er ikke konfigurert" };
 
 	const ccEmails = parseEmails(process.env[`${EMAIL_ENV[kind].replace("_TO_", "_CC_")}`]);
@@ -79,7 +83,7 @@ async function sendEmail(kind: PoliceDeliveryKind, subject: string, body: string
 		headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
 		body: JSON.stringify({
 			personalizations: [{ to: toEmails.map((email) => ({ email })), ...(ccEmails.length ? { cc: ccEmails.map((email) => ({ email })) } : {}), subject }],
-			from: { email: fromEmail, name: "Airlift Politiberedskap" },
+			from: { email: fromEmail, name: fromName },
 			content: [{ type: "text/plain", value: body }],
 			attachments: [{ content: Buffer.from(pdfBytes).toString("base64"), type: "application/pdf", filename: fileName, disposition: "attachment" }],
 		}),

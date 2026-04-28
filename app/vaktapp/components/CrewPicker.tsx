@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export const CAPTAINS = [
 	  "AMU",
@@ -43,16 +43,36 @@ const TECHNICIANS = [
 	"HES",
 ].sort((a, b) => a.localeCompare(b, "nb-NO"));
 
-function parseCrew(initialCrew: string) {
+export type CrewPickerOption = { value: string; label: string };
+export type CrewPickerOptionGroups = {
+	captains: CrewPickerOption[];
+	firstOfficers: CrewPickerOption[];
+	technicians: CrewPickerOption[];
+};
+
+function toOptions(values: string[]): CrewPickerOption[] {
+	return values.map((value) => ({ value, label: value }));
+}
+
+const DEFAULT_OPTION_GROUPS: CrewPickerOptionGroups = {
+	captains: toOptions(CAPTAINS),
+	firstOfficers: toOptions(FIRST_OFFICERS),
+	technicians: toOptions(TECHNICIANS),
+};
+
+function parseCrew(initialCrew: string, options: CrewPickerOptionGroups) {
   const tokens = initialCrew
     .split(/[\/ ,]+/)
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
+	const captainValues = options.captains.map((option) => option.value);
+	const firstOfficerValues = options.firstOfficers.map((option) => option.value);
+	const technicianValues = options.technicians.map((option) => option.value);
 
   return {
-    captains: tokens.filter((t) => CAPTAINS.includes(t)),
-    firstOfficers: tokens.filter((t) => FIRST_OFFICERS.includes(t)),
-    technicians: tokens.filter((t) => TECHNICIANS.includes(t)),
+    captains: tokens.filter((t) => captainValues.includes(t)),
+    firstOfficers: tokens.filter((t) => firstOfficerValues.includes(t)),
+    technicians: tokens.filter((t) => technicianValues.includes(t)),
   };
 }
 
@@ -60,23 +80,26 @@ interface CrewPickerProps {
   initialCrew: string;
   onChangeCrew: (crew: string) => void;
   onClose: () => void;
+	options?: CrewPickerOptionGroups;
 }
 
 export default function CrewPicker({
   initialCrew,
   onChangeCrew,
   onClose,
+	options,
 }: CrewPickerProps) {
+  const optionGroups = useMemo(() => options ?? DEFAULT_OPTION_GROUPS, [options]);
   const [selectedCaptains, setSelectedCaptains] = useState<string[]>([]);
   const [selectedFirstOfficers, setSelectedFirstOfficers] = useState<string[]>([]);
   const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
 
   useEffect(() => {
-    const { captains, firstOfficers, technicians } = parseCrew(initialCrew);
+    const { captains, firstOfficers, technicians } = parseCrew(initialCrew, optionGroups);
     setSelectedCaptains(captains);
     setSelectedFirstOfficers(firstOfficers);
     setSelectedTechnicians(technicians);
-  }, [initialCrew]);
+  }, [initialCrew, optionGroups]);
 
   const handleDone = () => {
     const crewString = [
@@ -109,17 +132,17 @@ export default function CrewPicker({
           <div>
             <h3 className="text-sm font-semibold mb-2">Kapteiner</h3>
             <div className="space-y-2">
-              {CAPTAINS.map((c) => {
-                const selected = selectedCaptains.includes(c);
+              {optionGroups.captains.map((option) => {
+                const selected = selectedCaptains.includes(option.value);
                 return (
                   <button
-                    key={c}
+                    key={option.value}
                     type="button"
                     onClick={() =>
                       setSelectedCaptains((prev) =>
-                        prev.includes(c)
-                          ? prev.filter((x) => x !== c)
-                          : [...prev, c]
+                        prev.includes(option.value)
+                          ? prev.filter((x) => x !== option.value)
+                          : [...prev, option.value]
                       )
                     }
                     className={
@@ -129,7 +152,7 @@ export default function CrewPicker({
                         : "bg-white hover:bg-gray-50")
                     }
                   >
-                    {c}
+                    {option.label}
                   </button>
                 );
               })}
@@ -139,17 +162,17 @@ export default function CrewPicker({
           <div>
             <h3 className="text-sm font-semibold mb-2">Styrmenn</h3>
             <div className="space-y-2">
-              {FIRST_OFFICERS.map((c) => {
-                const selected = selectedFirstOfficers.includes(c);
+              {optionGroups.firstOfficers.map((option) => {
+                const selected = selectedFirstOfficers.includes(option.value);
                 return (
                   <button
-                    key={c}
+                    key={option.value}
                     type="button"
                     onClick={() =>
                       setSelectedFirstOfficers((prev) =>
-                        prev.includes(c)
-                          ? prev.filter((x) => x !== c)
-                          : [...prev, c]
+                        prev.includes(option.value)
+                          ? prev.filter((x) => x !== option.value)
+                          : [...prev, option.value]
                       )
                     }
                     className={
@@ -159,7 +182,7 @@ export default function CrewPicker({
                         : "bg-white hover:bg-gray-50")
                     }
                   >
-                    {c}
+                    {option.label}
                   </button>
                 );
               })}
@@ -169,17 +192,17 @@ export default function CrewPicker({
           <div>
             <h3 className="text-sm font-semibold mb-2">Teknikere</h3>
             <div className="space-y-2">
-              {TECHNICIANS.map((c) => {
-                const selected = selectedTechnicians.includes(c);
+              {optionGroups.technicians.map((option) => {
+                const selected = selectedTechnicians.includes(option.value);
                 return (
                   <button
-                    key={c}
+                    key={option.value}
                     type="button"
                     onClick={() =>
                       setSelectedTechnicians((prev) =>
-                        prev.includes(c)
-                          ? prev.filter((x) => x !== c)
-                          : [...prev, c]
+                        prev.includes(option.value)
+                          ? prev.filter((x) => x !== option.value)
+                          : [...prev, option.value]
                       )
                     }
                     className={
@@ -189,7 +212,7 @@ export default function CrewPicker({
                         : "bg-white hover:bg-gray-50")
                     }
                   >
-                    {c}
+                    {option.label}
                   </button>
                 );
               })}

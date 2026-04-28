@@ -2,14 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-	CAPTAINS,
-	DEFAULT_MASKIN,
-	FIRST_OFFICERS,
-	MASKINER,
-	TECHNICIANS,
-	type Maskin,
-} from "../../lib/aviationOptions";
+import { DEFAULT_MASKIN, MASKINER, type Maskin } from "../../lib/aviationOptions";
+import { CREW_ROLE_LABELS, DEFAULT_CREW_DIRECTORY, formatCrewDirectoryEntry, sortCrewDirectoryEntries, type CrewDirectoryEntry, type CrewRole } from "../../lib/crewDirectory";
 import PoliceMapPicker from "./PoliceMapPicker";
 import type { ApiSubmitResponse, PolicePin, PoliceReportType, PoliceTab, SubmitStatus } from "./types";
 
@@ -30,29 +24,21 @@ const COMPACT_DATE_TIME_CLASS = "min-w-0 w-full appearance-none rounded-lg borde
 const TEXTAREA_CLASS = `${FIELD_CONTROL_CLASS} resize-y`;
 const COMPACT_TWO_COLUMN_GRID = "grid grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] gap-1.5";
 
-type CrewRole = "captains" | "firstOfficers" | "technicians";
-type CustomCrewOptions = Record<CrewRole, string[]>;
-type PoliceCrewOptions = CustomCrewOptions & { all: string[] };
+type PoliceCrewOptions = { captains: string[]; firstOfficers: string[]; technicians: string[]; all: string[] };
 
-const EMPTY_CUSTOM_CREW_OPTIONS: CustomCrewOptions = {
-	captains: [],
-	firstOfficers: [],
-	technicians: [],
-};
-
-function uniqueSorted(values: string[]) {
-	return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "nb-NO"));
+function displayNamesByRole(entries: CrewDirectoryEntry[], role: CrewRole) {
+	return entries.filter((entry) => entry.active && entry.role === role).map(formatCrewDirectoryEntry).filter(Boolean);
 }
 
-function buildCrewOptions(custom: CustomCrewOptions): PoliceCrewOptions {
-	const captains = uniqueSorted([...CAPTAINS, ...custom.captains]);
-	const firstOfficers = uniqueSorted([...FIRST_OFFICERS, ...custom.firstOfficers]);
-	const technicians = uniqueSorted([...TECHNICIANS, ...custom.technicians]);
+function buildCrewOptions(entries: CrewDirectoryEntry[]): PoliceCrewOptions {
+	const captains = displayNamesByRole(entries, "captain");
+	const firstOfficers = displayNamesByRole(entries, "firstOfficer");
+	const technicians = displayNamesByRole(entries, "technician");
 	return {
 		captains,
 		firstOfficers,
 		technicians,
-		all: uniqueSorted([...captains, ...firstOfficers, ...technicians]),
+		all: Array.from(new Set([...captains, ...firstOfficers, ...technicians])).sort((a, b) => a.localeCompare(b, "nb-NO")),
 	};
 }
 
@@ -86,44 +72,50 @@ function StatusMessage({ status }: { status: SubmitStatus }) {
 	return <div className={`rounded-xl border px-3 py-2 text-sm ${colors}`}>{status.message}</div>;
 }
 
-function CrewOptionsEditor({ onClose, onSaved }: { onClose: () => void; onSaved: (entries: { role: CrewRole; name: string }[]) => void }) {
-	const [captainName, setCaptainName] = useState("");
-	const [firstOfficerName, setFirstOfficerName] = useState("");
-	const [technicianName, setTechnicianName] = useState("");
+function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirectoryEntry[]; onClose: () => void; onSaved: (entry: CrewDirectoryEntry) => void }) {
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [fullName, setFullName] = useState("");
+	const [code, setCode] = useState("");
+	const [role, setRole] = useState<CrewRole>("captain");
+	const [active, setActive] = useState(true);
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
+
+	function startNew() {
+		setEditingId(null);
+		setFullName("");
+		setCode("");
+		setRole("captain");
+		setActive(true);
+		setStatus({ type: "idle" });
+	}
+
+	function startEdit(entry: CrewDirectoryEntry) {
+		setEditingId(entry.id);
+		setFullName(entry.fullName);
+		setCode(entry.code);
+		setRole(entry.role);
+		setActive(entry.active);
+		setStatus({ type: "idle" });
+	}
 
 	async function handleSave(event: React.FormEvent) {
 		event.preventDefault();
-		const entries = [
-			{ role: "captains" as const, name: captainName.trim() },
-			{ role: "firstOfficers" as const, name: firstOfficerName.trim() },
-			{ role: "technicians" as const, name: technicianName.trim() },
-		].filter((entry) => entry.name.length > 0);
-
-		if (entries.length === 0) {
-			setStatus({ type: "error", message: "Skriv inn minst ett navn før du lagrer." });
+		if (!code.trim()) {
+			setStatus({ type: "error", message: "Crew-kode må fylles ut." });
 			return;
 		}
 
 		setStatus({ type: "sending", message: "Lagrer person..." });
 		try {
-			await Promise.all(
-				entries.map(async (entry) => {
-					const res = await fetch("/api/police/crew-options", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify(entry),
-					});
-					if (!res.ok) {
-						const data = (await res.json().catch(() => ({}))) as { error?: string };
-						throw new Error(data.error || "Klarte ikke å lagre person.");
-					}
-				}),
-			);
-			onSaved(entries);
-			setCaptainName("");
-			setFirstOfficerName("");
-			setTechnicianName("");
+			const res = await fetch("/api/crew-directory", {
+				method: editingId ? "PATCH" : "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ id: editingId, fullName, code, role, active }),
+			});
+			const data = (await res.json().catch(() => ({}))) as { error?: string; entry?: CrewDirectoryEntry };
+			if (!res.ok || !data.entry) throw new Error(data.error || "Klarte ikke å lagre person.");
+			onSaved(data.entry);
+			setEditingId(data.entry.id);
 			setStatus({ type: "success", message: "Person lagret." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
@@ -132,29 +124,39 @@ function CrewOptionsEditor({ onClose, onSaved }: { onClose: () => void; onSaved:
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-			<form onSubmit={handleSave} className="w-full max-w-md space-y-4 rounded-2xl bg-white p-4 shadow-lg">
+			<div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-lg">
 				<div className="flex items-start justify-between gap-3">
 					<div>
-						<h2 className="text-lg font-semibold text-gray-900">Rediger crew</h2>
-						<p className="text-sm text-gray-600">Legg inn nytt navn under riktig stilling.</p>
+						<h2 className="text-lg font-semibold text-gray-900">Rediger crew-liste</h2>
+						<p className="text-sm text-gray-600">Listen brukes av Politiet og Vaktrapport. Deaktiver personer som ikke skal vises.</p>
 					</div>
 					<button type="button" onClick={onClose} className="rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-700">Lukk</button>
 				</div>
-				<div>
-					<FieldLabel>Fartøysjef</FieldLabel>
-					<input value={captainName} onChange={(e) => setCaptainName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Navn eller initialer" />
+
+				<form onSubmit={handleSave} className="mt-4 space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-3">
+					<div className="flex items-center justify-between gap-2">
+						<h3 className="text-sm font-semibold text-gray-900">{editingId ? "Rediger person" : "Legg til person"}</h3>
+						<button type="button" onClick={startNew} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700">Ny person</button>
+					</div>
+					<div><FieldLabel>Fullt navn</FieldLabel><input value={fullName} onChange={(e) => setFullName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. Tom Østrem" /></div>
+					<div className="grid grid-cols-[1fr_1.4fr] gap-2">
+						<div><FieldLabel>Crew-kode</FieldLabel><input value={code} onChange={(e) => setCode(e.target.value.toLocaleUpperCase("nb-NO"))} className={FIELD_CONTROL_CLASS} placeholder="ØST" /></div>
+						<div><FieldLabel>Rolle</FieldLabel><select value={role} onChange={(e) => setRole(e.target.value as CrewRole)} className={FIELD_CONTROL_CLASS}>{Object.entries(CREW_ROLE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>
+					</div>
+					<label className="flex items-center gap-2 text-sm text-gray-800"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Aktiv i dropdowns</label>
+					<StatusMessage status={status} />
+					<button type="submit" disabled={status.type === "sending"} className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white disabled:opacity-60">Lagre</button>
+				</form>
+
+				<div className="mt-4 space-y-2">
+					{entries.map((entry) => (
+						<button key={entry.id} type="button" onClick={() => startEdit(entry)} className={`w-full rounded-xl border p-3 text-left text-sm ${entry.active ? "border-gray-200 bg-white" : "border-gray-200 bg-gray-100 text-gray-500"}`}>
+							<div className="font-medium text-gray-900">{formatCrewDirectoryEntry(entry) || entry.code}</div>
+							<div className="text-xs text-gray-600">{CREW_ROLE_LABELS[entry.role]}{entry.active ? "" : " · deaktivert"}</div>
+						</button>
+					))}
 				</div>
-				<div>
-					<FieldLabel>Co-pilot</FieldLabel>
-					<input value={firstOfficerName} onChange={(e) => setFirstOfficerName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Navn eller initialer" />
-				</div>
-				<div>
-					<FieldLabel>Tekniker / Task Specialist</FieldLabel>
-					<input value={technicianName} onChange={(e) => setTechnicianName(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Navn eller initialer" />
-				</div>
-				<StatusMessage status={status} />
-				<button type="submit" disabled={status.type === "sending"} className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white disabled:opacity-60">Lagre</button>
-			</form>
+			</div>
 		</div>
 	);
 }
@@ -363,20 +365,16 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 export default function PolitietClient() {
 	const [tab, setTab] = useState<PoliceTab>("crew");
 	const [showCrewEditor, setShowCrewEditor] = useState(false);
-	const [customCrewOptions, setCustomCrewOptions] = useState<CustomCrewOptions>(EMPTY_CUSTOM_CREW_OPTIONS);
-	const crewOptions = useMemo(() => buildCrewOptions(customCrewOptions), [customCrewOptions]);
+	const [crewDirectory, setCrewDirectory] = useState<CrewDirectoryEntry[]>(() => sortCrewDirectoryEntries(DEFAULT_CREW_DIRECTORY));
+	const crewOptions = useMemo(() => buildCrewOptions(crewDirectory), [crewDirectory]);
 
 	useEffect(() => {
 		let cancelled = false;
-		fetch("/api/police/crew-options")
+		fetch("/api/crew-directory")
 			.then((res) => (res.ok ? res.json() : null))
-			.then((data: (CustomCrewOptions & { ok?: boolean }) | null) => {
+			.then((data: { ok?: boolean; entries?: CrewDirectoryEntry[] } | null) => {
 				if (cancelled || !data?.ok) return;
-				setCustomCrewOptions({
-					captains: Array.isArray(data.captains) ? data.captains : [],
-					firstOfficers: Array.isArray(data.firstOfficers) ? data.firstOfficers : [],
-					technicians: Array.isArray(data.technicians) ? data.technicians : [],
-				});
+				if (Array.isArray(data.entries)) setCrewDirectory(sortCrewDirectoryEntries(data.entries));
 			})
 			.catch(() => {
 				// Hvis Firestore/env ikke er klart lokalt, bruker vi bare standardlistene.
@@ -387,19 +385,13 @@ export default function PolitietClient() {
 		};
 	}, []);
 
-	function handleCrewOptionsSaved(entries: { role: CrewRole; name: string }[]) {
-		setCustomCrewOptions((current) => {
-			const next = { ...current };
-			entries.forEach((entry) => {
-				next[entry.role] = uniqueSorted([...next[entry.role], entry.name]);
-			});
-			return next;
-		});
+	function handleCrewDirectorySaved(entry: CrewDirectoryEntry) {
+		setCrewDirectory((current) => sortCrewDirectoryEntries([...current.filter((item) => item.id !== entry.id), entry]));
 	}
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900">
-			{showCrewEditor && <CrewOptionsEditor onClose={() => setShowCrewEditor(false)} onSaved={handleCrewOptionsSaved} />}
+			{showCrewEditor && <CrewDirectoryEditor entries={crewDirectory} onClose={() => setShowCrewEditor(false)} onSaved={handleCrewDirectorySaved} />}
 			<header className="sticky top-0 z-10 border-b border-gray-200 bg-white/95 backdrop-blur">
 				<div className="mx-auto flex max-w-md items-center justify-between gap-3 p-4">
 					<div>
