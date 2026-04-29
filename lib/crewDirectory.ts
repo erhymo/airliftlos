@@ -31,25 +31,38 @@ export const DEFAULT_CREW_DIRECTORY: CrewDirectoryEntry[] = [
 	{ id: "captain-bac", code: "BAC", fullName: "Øyvind Juel Bache", phone: "982 13 413", role: "captain", active: true },
 	{ id: "captain-ohn", code: "OHN", fullName: "Mikal Ohnstad", phone: "901 10 207", role: "captain", active: true },
 	{ id: "first-officer-lun", code: "LUN", fullName: "Bjørnar Lund", phone: "413 03 358", role: "firstOfficer", active: true },
-	{ id: "first-officer-kir", code: "KIR", fullName: "", role: "firstOfficer", active: true },
 	{ id: "first-officer-dam", code: "DAM", fullName: "Dagfinn Damsgaard", phone: "971 87 220", role: "firstOfficer", active: true },
-	{ id: "first-officer-hol", code: "HOL", fullName: "", role: "firstOfficer", active: true },
 	{ id: "first-officer-ost", code: "ØST", fullName: "Tom Andreas Østrem", phone: "986 23 414", role: "firstOfficer", active: true },
 	{ id: "first-officer-han", code: "HAN", fullName: "Henning Hansen", phone: "975 21 061", role: "firstOfficer", active: true },
 	{ id: "first-officer-myh", code: "MYH", fullName: "Øyvind Myhre", phone: "917 53 151", role: "firstOfficer", active: true },
 	{ id: "first-officer-sma", code: "SMÅ", fullName: "Ivan Småland", phone: "979 93 040", role: "firstOfficer", active: true },
 	{ id: "first-officer-kon", code: "KON", fullName: "Per Kristian Kongsvik", phone: "415 15 750", role: "firstOfficer", active: true },
-	{ id: "first-officer-kro", code: "KRO", fullName: "Kristian Krog", phone: "916 62 370", role: "firstOfficer", active: true },
 	{ id: "technician-mael", code: "MÆL", fullName: "", role: "technician", active: true },
 	{ id: "technician-dyp", code: "DYP", fullName: "", role: "technician", active: true },
-	{ id: "technician-ste", code: "STE", fullName: "", role: "technician", active: true },
 	{ id: "technician-fik", code: "FIK", fullName: "", role: "technician", active: true },
 	{ id: "technician-hov", code: "HØV", fullName: "", role: "technician", active: true },
-	{ id: "technician-rot", code: "ROT", fullName: "", role: "technician", active: true },
 	{ id: "technician-ads", code: "ADS", fullName: "", role: "technician", active: true },
-	{ id: "technician-fes", code: "FES", fullName: "", role: "technician", active: true },
-	{ id: "technician-hes", code: "HES", fullName: "", role: "technician", active: true },
 ];
+
+const RETIRED_CREW_DIRECTORY_ENTRY_IDS = new Set([
+	"first-officer-kir",
+	"first-officer-hol",
+	"first-officer-kro",
+	"technician-ste",
+	"technician-rot",
+	"technician-fes",
+	"technician-hes",
+]);
+
+const RETIRED_CREW_DIRECTORY_ROLE_CODES = new Set([
+	"firstOfficer:KIR",
+	"firstOfficer:HOL",
+	"firstOfficer:KRO",
+	"technician:STE",
+	"technician:ROT",
+	"technician:FES",
+	"technician:HES",
+]);
 
 export function isCrewRole(value: unknown): value is CrewRole {
 	return typeof value === "string" && CREW_ROLES.includes(value as CrewRole);
@@ -57,6 +70,10 @@ export function isCrewRole(value: unknown): value is CrewRole {
 
 export function normalizeCrewCode(value: string) {
 	return value.trim().toLocaleUpperCase("nb-NO");
+}
+
+export function isRetiredCrewDirectoryEntry(entry: Pick<CrewDirectoryEntry, "id" | "code" | "role">) {
+	return RETIRED_CREW_DIRECTORY_ENTRY_IDS.has(entry.id) || RETIRED_CREW_DIRECTORY_ROLE_CODES.has(`${entry.role}:${normalizeCrewCode(entry.code)}`);
 }
 
 export function formatCrewDirectoryEntry(entry: Pick<CrewDirectoryEntry, "code" | "fullName">) {

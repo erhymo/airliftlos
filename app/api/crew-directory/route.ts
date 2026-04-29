@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../lib/apiAccess";
 import {
 	DEFAULT_CREW_DIRECTORY,
+	isRetiredCrewDirectoryEntry,
 	isCrewRole,
 	normalizeCrewCode,
 	sortCrewDirectoryEntries,
@@ -30,7 +31,7 @@ async function getDirectoryEntries() {
 	snapshot.forEach((doc) => {
 		const data = doc.data() as CrewDirectoryPayload & { updatedAt?: number };
 		const entry = cleanEntry(doc.id, data, typeof data.updatedAt === "number" ? data.updatedAt : undefined);
-		if (entry) defaults.set(doc.id, { ...entry, phone: entry.phone || defaults.get(doc.id)?.phone });
+		if (entry && !isRetiredCrewDirectoryEntry(entry)) defaults.set(doc.id, { ...entry, phone: entry.phone || defaults.get(doc.id)?.phone });
 	});
 	return sortCrewDirectoryEntries(Array.from(defaults.values()));
 }

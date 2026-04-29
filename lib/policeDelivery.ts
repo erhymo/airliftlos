@@ -22,6 +22,7 @@ const SHAREPOINT_ENV: Record<PoliceDeliveryKind, string> = {
 
 const DEFAULT_POLICE_FROM_EMAIL = "politiberedskap@airlift.no";
 const DEFAULT_POLICE_FROM_NAME = "Airlift Politiberedskap";
+const POLICE_CREW_TEST_EMAILS = ["oyvind.myhre@airlift.no", "tom.ostrem@airlift.no"];
 
 function parseEmails(value: string | undefined): string[] {
 	return (value ?? "")
@@ -70,7 +71,7 @@ export async function createPolicePdf(title: string, body: string): Promise<Uint
 }
 
 async function sendEmail(kind: PoliceDeliveryKind, subject: string, body: string): Promise<DeliveryStatus> {
-	const toEmails = parseEmails(process.env[EMAIL_ENV[kind]]);
+	const toEmails = kind === "crew" ? POLICE_CREW_TEST_EMAILS : parseEmails(process.env[EMAIL_ENV[kind]]);
 	if (toEmails.length === 0) return { ok: true, skipped: true, error: `${EMAIL_ENV[kind]} er ikke konfigurert` };
 	const apiKey = process.env.SENDGRID_API_KEY;
 	const fromEmail = process.env.POLICE_SENDGRID_FROM_EMAIL || DEFAULT_POLICE_FROM_EMAIL;

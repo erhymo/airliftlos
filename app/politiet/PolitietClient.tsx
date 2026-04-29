@@ -19,6 +19,7 @@ const WATCH_PHONE_OPTIONS = {
 	Hammerfest: "Hammerfest: 902 06 902",
 } as const;
 type WatchPhoneBase = keyof typeof WATCH_PHONE_OPTIONS;
+const WATCH_PHONE_BASES = Object.keys(WATCH_PHONE_OPTIONS) as WatchPhoneBase[];
 const DEFAULT_WATCH_PHONE = WATCH_PHONE_OPTIONS.Tromsø;
 
 const UTMELDING_REASONS = ["Teknisk", "Vær", "Crew", "Operativ begrensning", "Annet"];
@@ -28,7 +29,7 @@ const FIELD_CONTROL_CLASS = "min-w-0 w-full rounded-xl border border-gray-300 bg
 const COMPACT_DATE_TIME_CLASS = "min-w-0 w-full appearance-none rounded-lg border border-gray-300 bg-white px-1.5 py-2.5 text-[14px] leading-tight text-gray-900";
 const TEXTAREA_CLASS = `${FIELD_CONTROL_CLASS} resize-y`;
 const COMPACT_TWO_COLUMN_GRID = "grid grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] gap-1.5";
-const CREW_FORM_SEND_ENABLED = false;
+const CREW_FORM_SEND_ENABLED = true;
 
 type PoliceCrewOptions = { captains: string[]; firstOfficers: string[]; technicians: string[]; all: string[] };
 
@@ -207,8 +208,10 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [technician, setTechnician] = useState("");
 	const [helicopter, setHelicopter] = useState<Maskin | "">(DEFAULT_MASKIN);
 	const [watchPhoneBase, setWatchPhoneBase] = useState<WatchPhoneBase>("Tromsø");
+	const [showWatchPhoneOptions, setShowWatchPhoneOptions] = useState(false);
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
 	const watchPhone = WATCH_PHONE_OPTIONS[watchPhoneBase];
+	const otherWatchPhoneBases = WATCH_PHONE_BASES.filter((base) => base !== watchPhoneBase);
 
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
@@ -236,13 +239,22 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				</div>
 			</Section>
 			<Section title="Vakttelefon">
-				<div>
-					<FieldLabel>Velg base for vakttelefon</FieldLabel>
-					<select value={watchPhoneBase} onChange={(e) => setWatchPhoneBase(e.target.value as WatchPhoneBase)} className={FIELD_CONTROL_CLASS}>
-						{Object.keys(WATCH_PHONE_OPTIONS).map((base) => <option key={base} value={base}>{base}</option>)}
-					</select>
+				<div className="relative">
+					<FieldLabel>Trykk på vakttelefonen for å bytte base</FieldLabel>
+					<button type="button" onClick={() => setShowWatchPhoneOptions((open) => !open)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-300 bg-gray-50 p-3 text-left text-gray-900">
+						<span>{watchPhone}</span>
+						<span className="text-sm text-gray-500">Bytt</span>
+					</button>
+					{showWatchPhoneOptions && (
+						<div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+							{otherWatchPhoneBases.map((base) => (
+								<button key={base} type="button" onClick={() => { setWatchPhoneBase(base); setShowWatchPhoneOptions(false); }} className="w-full px-3 py-3 text-left text-gray-900 hover:bg-gray-50">
+									{WATCH_PHONE_OPTIONS[base]}
+								</button>
+							))}
+						</div>
+					)}
 				</div>
-				<div className="rounded-xl border bg-gray-50 p-3 text-gray-900">{watchPhone}</div>
 			</Section>
 			<Section title="Helikopter crew">
 				<SelectField label="Fartøysjef" value={captain} onChange={setCaptain} options={crewOptions.captains} placeholder="Velg fartøysjef" />

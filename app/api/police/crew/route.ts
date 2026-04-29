@@ -6,6 +6,7 @@ import {
 	formatCrewDirectoryEntry,
 	formatCrewDisplayNameForRole,
 	isCrewRole,
+	isRetiredCrewDirectoryEntry,
 	normalizeCrewCode,
 	type CrewDirectoryEntry,
 	type CrewRole,
@@ -14,7 +15,7 @@ import { getDb } from "../../../../lib/firebaseAdmin";
 import { deliverPoliceSubmission } from "../../../../lib/policeDelivery";
 
 export const runtime = "nodejs";
-const CREW_SUBMISSION_ENABLED = process.env.POLICE_CREW_SUBMISSION_ENABLED === "true";
+const CREW_SUBMISSION_ENABLED = true;
 const DEFAULT_WATCH_PHONE = "Tromsø: 479 04 276";
 
 type CrewPayload = {
@@ -73,7 +74,7 @@ async function getCrewDirectoryEntries() {
 		const snapshot = await getDb().collection("crewDirectory").get();
 		snapshot.forEach((doc) => {
 			const entry = cleanCrewEntry(doc.id, doc.data() as Partial<CrewDirectoryEntry>);
-			if (entry) entries.set(doc.id, { ...entry, phone: entry.phone || entries.get(doc.id)?.phone });
+			if (entry && !isRetiredCrewDirectoryEntry(entry)) entries.set(doc.id, { ...entry, phone: entry.phone || entries.get(doc.id)?.phone });
 		});
 	} catch (error) {
 		console.error("Politiet crew: bruker fallback for crew-directory", error);
