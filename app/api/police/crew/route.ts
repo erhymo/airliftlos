@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../../lib/apiAccess";
+import { HELICOPTER_CONTACTS, type Maskin } from "../../../../lib/aviationOptions";
 import {
 	DEFAULT_CREW_DIRECTORY,
 	formatCrewDirectoryEntry,
@@ -14,6 +15,7 @@ import { deliverPoliceSubmission } from "../../../../lib/policeDelivery";
 
 export const runtime = "nodejs";
 const CREW_SUBMISSION_ENABLED = process.env.POLICE_CREW_SUBMISSION_ENABLED === "true";
+const DEFAULT_WATCH_PHONE = "Tromsø: 479 04 276 / Hammerfest: 902 06 902";
 
 type CrewPayload = {
 	base?: string;
@@ -69,7 +71,7 @@ async function getCrewDirectoryEntries() {
 		const snapshot = await getDb().collection("crewDirectory").get();
 		snapshot.forEach((doc) => {
 			const entry = cleanCrewEntry(doc.id, doc.data() as Partial<CrewDirectoryEntry>);
-			if (entry) entries.set(doc.id, entry);
+			if (entry) entries.set(doc.id, { ...entry, phone: entry.phone || entries.get(doc.id)?.phone });
 		});
 	} catch (error) {
 		console.error("Politiet crew: bruker fallback for crew-directory", error);
@@ -87,6 +89,16 @@ function crewOrDash(value: string | undefined, role: CrewRole, entries: CrewDire
 	const displayName = entry ? formatCrewDirectoryEntry(entry) : formatCrewDisplayNameForRole(value, role);
 	if (!displayName) return "-";
 	return `${displayName} - ${entry?.phone?.trim() || "Telefonnummer"}`;
+}
+
+function isMaskin(value: string | undefined): value is Maskin {
+	return !!value && value in HELICOPTER_CONTACTS;
+}
+
+function helicopterContactLine(value: string | undefined) {
+	const registration = valueOrDash(value);
+	const contact = isMaskin(value) ? HELICOPTER_CONTACTS[value] : null;
+	return `AW169 ${registration}: telefonnummer: ${contact?.mobile || "xxxxxxxxx"} - Iridium: ${contact?.iridium || "xxxxxxxxxxx"}`;
 }
 
 export async function POST(req: Request) {
@@ -114,7 +126,7 @@ export async function POST(req: Request) {
 		"",
 		line("Base", "Tromsø/Hammerfest"),
 		"",
-		line("Vakttelefon", valueOrDash(payload.watchPhone)),
+		line("Vakttelefon", valueOrDash(payload.watchPhone) === "-" ? DEFAULT_WATCH_PHONE : valueOrDash(payload.watchPhone)),
 		"",
 		"Crew:",
 		line("Fartøysjef", crewOrDash(payload.captain, "captain", crewEntries)),
@@ -122,7 +134,7 @@ export async function POST(req: Request) {
 		line("Tekniker / Task Specialist", crewOrDash(payload.technician, "technician", crewEntries)),
 		"",
 		"Helikopter:",
-		`AW169 ${valueOrDash(payload.helicopter)}: telefonnummer: xxxxxxxxx - Iridium: xxxxxxxxxxx`,
+		helicopterContactLine(payload.helicopter),
 		"",
 		"Andre relevante nummer:",
 		"Driftssjef Airlift: Erlend Haugsbø - 90129863",

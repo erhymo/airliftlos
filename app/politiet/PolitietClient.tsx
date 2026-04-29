@@ -14,7 +14,7 @@ const addDaysISO = (days: number) => {
 	return date.toISOString().slice(0, 10);
 };
 const nowTime = () => new Date().toTimeString().slice(0, 5);
-const WATCH_PHONE = "Nummer til vakttlf TOS/HFT";
+const WATCH_PHONE = "Tromsø: 479 04 276 / Hammerfest: 902 06 902";
 
 const UTMELDING_REASONS = ["Teknisk", "Vær", "Crew", "Operativ begrensning", "Annet"];
 const MITIGATING_ACTIONS = ["Tekniker varslet", "Reservecrew vurderes", "Alternativ maskin vurderes", "Operativ begrensning meldt", "Annet"];

@@ -30,7 +30,7 @@ async function getDirectoryEntries() {
 	snapshot.forEach((doc) => {
 		const data = doc.data() as CrewDirectoryPayload & { updatedAt?: number };
 		const entry = cleanEntry(doc.id, data, typeof data.updatedAt === "number" ? data.updatedAt : undefined);
-		if (entry) defaults.set(doc.id, entry);
+		if (entry) defaults.set(doc.id, { ...entry, phone: entry.phone || defaults.get(doc.id)?.phone });
 	});
 	return sortCrewDirectoryEntries(Array.from(defaults.values()));
 }

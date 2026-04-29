@@ -28,11 +28,11 @@ export const FIRST_OFFICERS = [
   "MYH",
   "SMÅ",
   "KON",
+	"KRO",
 ].sort((a, b) => a.localeCompare(b, "nb-NO"));
 
 const TECHNICIANS = [
 	"MÆL",
-	"KRO",
 	"DYP",
 	"STE",
 	"FIK",
