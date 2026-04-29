@@ -31,6 +31,27 @@ function parseEmails(value: string | undefined): string[] {
 		.filter(Boolean);
 }
 
+function escapeHtml(value: string) {
+	return value
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+function buildEmailHtml(body: string) {
+	const lines = body.split("\n").map((line) => {
+		if (!line.trim()) return '<div style="height:12px;line-height:12px;">&nbsp;</div>';
+		const escapedLine = escapeHtml(line);
+		if (line.startsWith("Vakttelefon:")) {
+			return `<div style="margin:12px 0;font-size:20px;line-height:1.35;font-weight:700;color:#111827;">${escapedLine}</div>`;
+		}
+		return `<div>${escapedLine}</div>`;
+	});
+	return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#111827;white-space:normal;">${lines.join("")}</div>`;
+}
+
 function wrapText(text: string, maxChars: number): string[] {
 	const words = text.split(/\s+/).filter(Boolean);
 	const lines: string[] = [];
@@ -85,7 +106,7 @@ async function sendEmail(kind: PoliceDeliveryKind, subject: string, body: string
 		body: JSON.stringify({
 			personalizations: [{ to: toEmails.map((email) => ({ email })), ...(ccEmails.length ? { cc: ccEmails.map((email) => ({ email })) } : {}), subject }],
 			from: { email: fromEmail, name: fromName },
-			content: [{ type: "text/plain", value: body }],
+			content: [{ type: "text/plain", value: body }, { type: "text/html", value: buildEmailHtml(body) }],
 		}),
 	});
 
