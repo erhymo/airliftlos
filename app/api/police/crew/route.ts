@@ -144,7 +144,7 @@ export async function POST(req: Request) {
 		helicopterContactLine(payload.helicopter),
 		"",
 		"Andre relevante nummer:",
-		"Driftssjef Airlift: Erlend Haugsbø - 90129863",
+		"Kommersiell direktør Airlift: Erlend Haugsbø - 90129863",
 		"Sjefsflyger AW169: Tom A. Østrem - 98623414",
 		"",
 		"Oppnås ikke kontakt på vakttelefon kan direkte telefonnummer til crew benyttes. Flyr helikopteret, ring direkte til helikopteret på GSM eller Iridium.",
