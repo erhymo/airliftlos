@@ -14,7 +14,12 @@ const addDaysISO = (days: number) => {
 	return date.toISOString().slice(0, 10);
 };
 const nowTime = () => new Date().toTimeString().slice(0, 5);
-const WATCH_PHONE = "Tromsø: 479 04 276 / Hammerfest: 902 06 902";
+const WATCH_PHONE_OPTIONS = {
+	Tromsø: "Tromsø: 479 04 276",
+	Hammerfest: "Hammerfest: 902 06 902",
+} as const;
+type WatchPhoneBase = keyof typeof WATCH_PHONE_OPTIONS;
+const DEFAULT_WATCH_PHONE = WATCH_PHONE_OPTIONS.Tromsø;
 
 const UTMELDING_REASONS = ["Teknisk", "Vær", "Crew", "Operativ begrensning", "Annet"];
 const MITIGATING_ACTIONS = ["Tekniker varslet", "Reservecrew vurderes", "Alternativ maskin vurderes", "Operativ begrensning meldt", "Annet"];
@@ -201,7 +206,9 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [firstOfficer, setFirstOfficer] = useState("");
 	const [technician, setTechnician] = useState("");
 	const [helicopter, setHelicopter] = useState<Maskin | "">(DEFAULT_MASKIN);
+	const [watchPhoneBase, setWatchPhoneBase] = useState<WatchPhoneBase>("Tromsø");
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
+	const watchPhone = WATCH_PHONE_OPTIONS[watchPhoneBase];
 
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
@@ -211,7 +218,7 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		}
 		setStatus({ type: "sending", message: "Sender crew-skjema..." });
 		try {
-			await submitJson("/api/police/crew", { base: "Tromsø", periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone: WATCH_PHONE, captain, firstOfficer, technician, helicopter });
+			await submitJson("/api/police/crew", { base: watchPhoneBase, periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone, captain, firstOfficer, technician, helicopter });
 			setStatus({ type: "success", message: "Crew-skjema er lagret. E-post/SharePoint kobles på når mottakere og mapper er satt." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
@@ -228,7 +235,15 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 						<div className="min-w-0"><FieldLabel>Til tid</FieldLabel><input type="time" value={periodToTime} onChange={(e) => setPeriodToTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
 				</div>
 			</Section>
-			<Section title="Vakttelefon"><div className="rounded-xl border bg-gray-50 p-3 text-gray-900">{WATCH_PHONE}</div></Section>
+			<Section title="Vakttelefon">
+				<div>
+					<FieldLabel>Velg base for vakttelefon</FieldLabel>
+					<select value={watchPhoneBase} onChange={(e) => setWatchPhoneBase(e.target.value as WatchPhoneBase)} className={FIELD_CONTROL_CLASS}>
+						{Object.keys(WATCH_PHONE_OPTIONS).map((base) => <option key={base} value={base}>{base}</option>)}
+					</select>
+				</div>
+				<div className="rounded-xl border bg-gray-50 p-3 text-gray-900">{watchPhone}</div>
+			</Section>
 			<Section title="Helikopter crew">
 				<SelectField label="Fartøysjef" value={captain} onChange={setCaptain} options={crewOptions.captains} placeholder="Velg fartøysjef" />
 				<SelectField label="Co-pilot" value={firstOfficer} onChange={setFirstOfficer} options={crewOptions.firstOfficers} placeholder="Velg co-pilot" />
@@ -259,7 +274,7 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		event.preventDefault();
 		setStatus({ type: "sending", message: "Sender utmelding..." });
 		try {
-			await submitJson("/api/police/utmelding", { base: "Tromsø", reason, reasonDetails, date, time, durationHours, durationText, mitigatingAction, mitigatingActionDetails, sender, watchPhone: WATCH_PHONE });
+			await submitJson("/api/police/utmelding", { base: "Tromsø", reason, reasonDetails, date, time, durationHours, durationText, mitigatingAction, mitigatingActionDetails, sender, watchPhone: DEFAULT_WATCH_PHONE });
 			setStatus({ type: "success", message: "Utmelding er lagret. E-post/SharePoint kobles på når mottakere og mapper er satt." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
@@ -287,7 +302,7 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			</Section>
 			<Section title="Avsender">
 				<SelectField label="Sendt av (fartøysjef)" value={sender} onChange={setSender} options={crewOptions.captains} placeholder="Velg avsender" />
-				<div className="rounded-xl border bg-gray-50 p-3 text-gray-900">☎ {WATCH_PHONE}</div>
+					<div className="rounded-xl border bg-gray-50 p-3 text-gray-900">☎ {DEFAULT_WATCH_PHONE}</div>
 			</Section>
 			<StatusMessage status={status} />
 			<button disabled={status.type === "sending"} className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white disabled:opacity-60">Send utmelding</button>

@@ -69,7 +69,7 @@ export async function createPolicePdf(title: string, body: string): Promise<Uint
 	return pdf.save();
 }
 
-async function sendEmail(kind: PoliceDeliveryKind, subject: string, body: string, fileName: string, pdfBytes: Uint8Array): Promise<DeliveryStatus> {
+async function sendEmail(kind: PoliceDeliveryKind, subject: string, body: string): Promise<DeliveryStatus> {
 	const toEmails = parseEmails(process.env[EMAIL_ENV[kind]]);
 	if (toEmails.length === 0) return { ok: true, skipped: true, error: `${EMAIL_ENV[kind]} er ikke konfigurert` };
 	const apiKey = process.env.SENDGRID_API_KEY;
@@ -85,7 +85,6 @@ async function sendEmail(kind: PoliceDeliveryKind, subject: string, body: string
 			personalizations: [{ to: toEmails.map((email) => ({ email })), ...(ccEmails.length ? { cc: ccEmails.map((email) => ({ email })) } : {}), subject }],
 			from: { email: fromEmail, name: fromName },
 			content: [{ type: "text/plain", value: body }],
-			attachments: [{ content: Buffer.from(pdfBytes).toString("base64"), type: "application/pdf", filename: fileName, disposition: "attachment" }],
 		}),
 	});
 
@@ -141,7 +140,7 @@ async function uploadSharePoint(kind: PoliceDeliveryKind, fileName: string, pdfB
 export async function deliverPoliceSubmission(kind: PoliceDeliveryKind, title: string, body: string, fileName: string, year: number) {
 	const pdfBytes = await createPolicePdf(title, body);
 	const [email, sharepoint] = await Promise.all([
-		sendEmail(kind, title, body, fileName, pdfBytes),
+		sendEmail(kind, title, body),
 		uploadSharePoint(kind, fileName, pdfBytes, year),
 	]);
 	return { email, sharepoint };

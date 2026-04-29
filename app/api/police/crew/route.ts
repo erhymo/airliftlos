@@ -15,7 +15,7 @@ import { deliverPoliceSubmission } from "../../../../lib/policeDelivery";
 
 export const runtime = "nodejs";
 const CREW_SUBMISSION_ENABLED = process.env.POLICE_CREW_SUBMISSION_ENABLED === "true";
-const DEFAULT_WATCH_PHONE = "Tromsø: 479 04 276 / Hammerfest: 902 06 902";
+const DEFAULT_WATCH_PHONE = "Tromsø: 479 04 276";
 
 type CrewPayload = {
 	base?: string;
