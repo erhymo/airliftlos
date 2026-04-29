@@ -82,14 +82,15 @@ async function getCrewDirectoryEntries() {
 	return Array.from(entries.values());
 }
 
-function findCrewEntry(value: string | undefined, role: CrewRole, entries: CrewDirectoryEntry[]) {
+function findCrewEntry(value: string | undefined, role: CrewRole | CrewRole[], entries: CrewDirectoryEntry[]) {
 	const code = extractCrewCode(value);
-	return entries.find((entry) => entry.active && entry.role === role && normalizeCrewCode(entry.code) === code);
+	const roles = Array.isArray(role) ? role : [role];
+	return entries.find((entry) => entry.active && roles.includes(entry.role) && normalizeCrewCode(entry.code) === code);
 }
 
-function crewOrDash(value: string | undefined, role: CrewRole, entries: CrewDirectoryEntry[]) {
+function crewOrDash(value: string | undefined, role: CrewRole | CrewRole[], entries: CrewDirectoryEntry[]) {
 	const entry = findCrewEntry(value, role, entries);
-	const displayName = entry ? formatCrewDirectoryEntry(entry) : formatCrewDisplayNameForRole(value, role);
+	const displayName = entry ? formatCrewDirectoryEntry(entry) : formatCrewDisplayNameForRole(value, Array.isArray(role) ? role[0] : role);
 	if (!displayName) return "-";
 	return `${displayName} - ${entry?.phone?.trim() || "Telefonnummer"}`;
 }
@@ -122,6 +123,7 @@ export async function POST(req: Request) {
 	const crewEntries = await getCrewDirectoryEntries();
 	const periodFromDate = payload.periodFromDate || payload.periodFrom;
 	const periodToDate = payload.periodToDate || payload.periodTo;
+	const base = payload.base === "Hammerfest" ? "Hammerfest" : "Tromsø";
 	const fileName = `Vaktbytte_Airlift_Politiberedskap_${periodFromDate ?? new Date().toISOString().slice(0, 10)}_${ref.id}.pdf`;
 	const title = "Vaktbytte Airlift Politiberedskap";
 	const body = [
@@ -129,13 +131,13 @@ export async function POST(req: Request) {
 		line("Fra", formatDateTime(periodFromDate, payload.periodFromTime)),
 		line("Til", formatDateTime(periodToDate, payload.periodToTime)),
 		"",
-		line("Base", "Tromsø/Hammerfest"),
+		line("Base", base),
 		"",
 		line("Vakttelefon", valueOrDash(payload.watchPhone) === "-" ? DEFAULT_WATCH_PHONE : valueOrDash(payload.watchPhone)),
 		"",
 		"Crew:",
 		line("Fartøysjef", crewOrDash(payload.captain, "captain", crewEntries)),
-		line("Co-pilot", crewOrDash(payload.firstOfficer, "firstOfficer", crewEntries)),
+		line("Co-pilot", crewOrDash(payload.firstOfficer, ["firstOfficer", "captain"], crewEntries)),
 		line("Tekniker / Task Specialist", crewOrDash(payload.technician, "technician", crewEntries)),
 		"",
 		"Helikopter:",
@@ -146,7 +148,7 @@ export async function POST(req: Request) {
 		"Sjefsflyger AW169: Tom A. Østrem - 98623414",
 	].join("\n");
 
-	await ref.set({ ...payload, base: "Tromsø", id: ref.id, fileName, createdAt, sentAt: createdAt });
+	await ref.set({ ...payload, base, id: ref.id, fileName, createdAt, sentAt: createdAt });
 	const year = Number((periodFromDate ?? "").slice(0, 4)) || new Date().getFullYear();
 	const delivery = await deliverPoliceSubmission("crew", title, body, fileName, year);
 	await ref.set({ delivery }, { merge: true });

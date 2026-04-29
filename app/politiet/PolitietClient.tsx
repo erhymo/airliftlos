@@ -39,7 +39,7 @@ function displayNamesByRole(entries: CrewDirectoryEntry[], role: CrewRole) {
 
 function buildCrewOptions(entries: CrewDirectoryEntry[]): PoliceCrewOptions {
 	const captains = displayNamesByRole(entries, "captain");
-	const firstOfficers = displayNamesByRole(entries, "firstOfficer");
+	const firstOfficers = Array.from(new Set([...displayNamesByRole(entries, "firstOfficer"), ...captains]));
 	const technicians = displayNamesByRole(entries, "technician");
 	return {
 		captains,
