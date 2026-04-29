@@ -19,8 +19,10 @@ const DEFAULT_WATCH_PHONE = "Tromsø: 479 04 276";
 
 type CrewPayload = {
 	base?: string;
+	periodFrom?: string;
 	periodFromDate?: string;
 	periodFromTime?: string;
+	periodTo?: string;
 	periodToDate?: string;
 	periodToTime?: string;
 	watchPhone?: string;
@@ -117,12 +119,14 @@ export async function POST(req: Request) {
 	const db = getDb();
 	const ref = db.collection("policeCrewForms").doc();
 	const crewEntries = await getCrewDirectoryEntries();
-	const fileName = `Vaktbytte_Airlift_Politiberedskap_${payload.periodFromDate ?? new Date().toISOString().slice(0, 10)}_${ref.id}.pdf`;
+	const periodFromDate = payload.periodFromDate || payload.periodFrom;
+	const periodToDate = payload.periodToDate || payload.periodTo;
+	const fileName = `Vaktbytte_Airlift_Politiberedskap_${periodFromDate ?? new Date().toISOString().slice(0, 10)}_${ref.id}.pdf`;
 	const title = "Vaktbytte Airlift Politiberedskap";
 	const body = [
 		"Periode:",
-		line("Fra", formatDateTime(payload.periodFromDate, payload.periodFromTime)),
-		line("Til", formatDateTime(payload.periodToDate, payload.periodToTime)),
+		line("Fra", formatDateTime(periodFromDate, payload.periodFromTime)),
+		line("Til", formatDateTime(periodToDate, payload.periodToTime)),
 		"",
 		line("Base", "Tromsø/Hammerfest"),
 		"",
@@ -142,7 +146,7 @@ export async function POST(req: Request) {
 	].join("\n");
 
 	await ref.set({ ...payload, base: "Tromsø", id: ref.id, fileName, createdAt, sentAt: createdAt });
-	const year = Number((payload.periodFromDate ?? "").slice(0, 4)) || new Date().getFullYear();
+	const year = Number((periodFromDate ?? "").slice(0, 4)) || new Date().getFullYear();
 	const delivery = await deliverPoliceSubmission("crew", title, body, fileName, year);
 	await ref.set({ delivery }, { merge: true });
 
