@@ -3,7 +3,6 @@ import { requireApiAccess } from "../../../../lib/apiAccess";
 import { HELICOPTER_CONTACTS, type Maskin } from "../../../../lib/aviationOptions";
 import {
 	DEFAULT_CREW_DIRECTORY,
-	formatCrewDirectoryEntry,
 	formatCrewDisplayNameForRole,
 	isCrewRole,
 	isRetiredCrewDirectoryEntry,
@@ -88,9 +87,13 @@ function findCrewEntry(value: string | undefined, role: CrewRole | CrewRole[], e
 	return entries.find((entry) => entry.active && roles.includes(entry.role) && normalizeCrewCode(entry.code) === code);
 }
 
+function stripCrewCode(displayName: string) {
+	return displayName.replace(/\s*\([^()]+\)\s*$/, "").trim();
+}
+
 function crewOrDash(value: string | undefined, role: CrewRole | CrewRole[], entries: CrewDirectoryEntry[]) {
 	const entry = findCrewEntry(value, role, entries);
-	const displayName = entry ? formatCrewDirectoryEntry(entry) : formatCrewDisplayNameForRole(value, Array.isArray(role) ? role[0] : role);
+	const displayName = stripCrewCode(entry?.fullName?.trim() || formatCrewDisplayNameForRole(value, Array.isArray(role) ? role[0] : role));
 	if (!displayName) return "-";
 	return `${displayName} - ${entry?.phone?.trim() || "Telefonnummer"}`;
 }
