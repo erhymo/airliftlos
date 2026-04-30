@@ -364,7 +364,6 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<SelectField label="Tekniker / Task Specialist" value={technician} onChange={setTechnician} options={crewOptions.technicians} placeholder="Velg tekniker" />
 				<HelicopterSelect value={helicopter} onChange={setHelicopter} />
 			</Section>
-			<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Oppnås ikke kontakt på vakttelefon kan vakttelefon til tekniker eller direkte telefon til crewet brukes. Flyr helikopteret, ring direkte på GSM eller Iridium.</div>
 			{!CREW_FORM_SEND_ENABLED && <div className="rounded-xl border border-gray-200 bg-gray-100 p-3 text-sm text-gray-700">Innsending av crew-skjema er midlertidig deaktivert. Skjemaet kan fortsatt fylles ut og klargjøres.</div>}
 			<StatusMessage status={status} />
 			<button disabled={!CREW_FORM_SEND_ENABLED || status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-not-allowed disabled:opacity-60">{CREW_FORM_SEND_ENABLED ? "Send crew-skjema" : "Crew-skjema deaktivert"}</button>
