@@ -33,6 +33,11 @@ const CREW_FORM_SEND_ENABLED = true;
 
 type PoliceCrewOptions = { captains: string[]; firstOfficers: string[]; technicians: string[]; all: string[] };
 
+type UtmeldingMonthStat = { month: number; label: string; total: number; tromso: number; hammerfest: number };
+type UtmeldingReasonStat = { reason: string; count: number };
+type UtmeldingRecentItem = { id: string; dateTime: string; base: string; reason: string; duration: string; sender: string };
+type UtmeldingArchiveData = { ok?: boolean; year: number; total: number; months: UtmeldingMonthStat[]; byReason: UtmeldingReasonStat[]; recent: UtmeldingRecentItem[]; error?: string };
+
 function displayNamesByRole(entries: CrewDirectoryEntry[], role: CrewRole) {
 	return entries.filter((entry) => entry.active && entry.role === role).map(formatCrewDirectoryEntry).filter(Boolean);
 }
@@ -172,6 +177,103 @@ function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirec
 	);
 }
 
+function PoliceArchiveModal({ onClose }: { onClose: () => void }) {
+	const currentYear = new Date().getFullYear();
+	const [year, setYear] = useState(currentYear);
+	const [data, setData] = useState<UtmeldingArchiveData | null>(null);
+	const [status, setStatus] = useState<SubmitStatus>({ type: "sending", message: "Henter arkiv..." });
+
+	useEffect(() => {
+		let cancelled = false;
+		fetch(`/api/police/utmelding/archive?year=${year}`)
+			.then((res) => res.json().then((json) => ({ ok: res.ok, json })))
+			.then(({ ok, json }: { ok: boolean; json: UtmeldingArchiveData }) => {
+				if (cancelled) return;
+				if (!ok || !json.ok) throw new Error(json.error || "Klarte ikke å hente arkiv.");
+				setData(json);
+				setStatus({ type: "idle" });
+			})
+			.catch((error) => {
+				if (!cancelled) setStatus({ type: "error", message: (error as Error).message });
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [year]);
+
+	const maxMonthTotal = Math.max(1, ...(data?.months.map((month) => month.total) ?? [1]));
+
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+			<div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-lg">
+				<div className="flex items-start justify-between gap-3">
+					<div>
+						<h2 className="text-lg font-semibold text-gray-900">Arkiv</h2>
+						<p className="text-sm text-gray-600">Statistikk for Politiet-modulen. Flere oversikter kan legges til senere.</p>
+					</div>
+					<button type="button" onClick={onClose} className="rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-700">Lukk</button>
+				</div>
+
+				<div className="mt-4 flex gap-2">
+					{[currentYear, currentYear - 1, currentYear - 2].map((option) => (
+						<button key={option} type="button" onClick={() => { if (option !== year) setStatus({ type: "sending", message: "Henter arkiv..." }); setYear(option); }} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${year === option ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-300 bg-white text-gray-700"}`}>{option}</button>
+					))}
+				</div>
+
+				<div className="mt-4 space-y-4">
+					<StatusMessage status={status} />
+					{data && (
+						<>
+							<section className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+								<div className="text-sm text-gray-600">Utmeldinger i {data.year}</div>
+								<div className="mt-1 text-4xl font-semibold text-gray-950">{data.total}</div>
+								<div className="mt-1 text-xs text-gray-500">Totalt registrert hittil i valgt år</div>
+							</section>
+
+							<section className="rounded-2xl border border-gray-200 bg-white p-4">
+								<h3 className="text-sm font-semibold text-gray-900">Per måned</h3>
+								<div className="mt-3 space-y-2">
+									{data.months.map((month) => (
+										<div key={month.month} className="grid grid-cols-[2.5rem_1fr_2rem] items-center gap-2 text-sm">
+											<div className="text-gray-600">{month.label}</div>
+											<div className="h-3 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-blue-500" style={{ width: `${(month.total / maxMonthTotal) * 100}%` }} /></div>
+											<div className="text-right font-medium text-gray-900">{month.total}</div>
+											<div />
+											<div className="col-span-2 text-xs text-gray-500">Tromsø {month.tromso} · Hammerfest {month.hammerfest}</div>
+										</div>
+									))}
+								</div>
+							</section>
+
+							<section className="rounded-2xl border border-gray-200 bg-white p-4">
+								<h3 className="text-sm font-semibold text-gray-900">Årsaker</h3>
+								<div className="mt-3 space-y-2 text-sm">
+									{data.byReason.length === 0 && <div className="text-gray-500">Ingen utmeldinger registrert.</div>}
+									{data.byReason.map((item) => <div key={item.reason} className="flex justify-between gap-3"><span className="text-gray-700">{item.reason}</span><span className="font-medium text-gray-900">{item.count}</span></div>)}
+								</div>
+							</section>
+
+							<section className="rounded-2xl border border-gray-200 bg-white p-4">
+								<h3 className="text-sm font-semibold text-gray-900">Siste utmeldinger</h3>
+								<div className="mt-3 space-y-2">
+									{data.recent.length === 0 && <div className="text-sm text-gray-500">Ingen utmeldinger i valgt år.</div>}
+									{data.recent.map((item) => (
+										<div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
+											<div className="font-medium text-gray-900">{item.dateTime} · {item.base}</div>
+											<div className="text-gray-700">{item.reason} · {item.duration}</div>
+											<div className="text-xs text-gray-500">Avsender: {item.sender}</div>
+										</div>
+									))}
+								</div>
+							</section>
+						</>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function SelectField({ label, value, onChange, options, placeholder }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[]; placeholder: string }) {
 	return (
 		<div>
@@ -287,7 +389,7 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		setStatus({ type: "sending", message: "Sender utmelding..." });
 		try {
 			await submitJson("/api/police/utmelding", { base: "Tromsø", reason, reasonDetails, date, time, durationHours, durationText, mitigatingAction, mitigatingActionDetails, sender, watchPhone: DEFAULT_WATCH_PHONE });
-			setStatus({ type: "success", message: "Utmelding er lagret. E-post/SharePoint kobles på når mottakere og mapper er satt." });
+			setStatus({ type: "success", message: "Utmelding er sendt og lagret." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
 		}
@@ -402,6 +504,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 export default function PolitietClient() {
 	const [tab, setTab] = useState<PoliceTab>("crew");
 	const [showCrewEditor, setShowCrewEditor] = useState(false);
+	const [showArchive, setShowArchive] = useState(false);
 	const [crewDirectory, setCrewDirectory] = useState<CrewDirectoryEntry[]>(() => sortCrewDirectoryEntries(DEFAULT_CREW_DIRECTORY));
 	const crewOptions = useMemo(() => buildCrewOptions(crewDirectory), [crewDirectory]);
 
@@ -428,6 +531,7 @@ export default function PolitietClient() {
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900">
+			{showArchive && <PoliceArchiveModal onClose={() => setShowArchive(false)} />}
 			{showCrewEditor && <CrewDirectoryEditor entries={crewDirectory} onClose={() => setShowCrewEditor(false)} onSaved={handleCrewDirectorySaved} />}
 			<header className="sticky top-0 z-10 border-b border-gray-200 bg-white/95 backdrop-blur">
 				<div className="mx-auto flex max-w-md items-center justify-between gap-3 p-4">
@@ -436,7 +540,10 @@ export default function PolitietClient() {
 						<h1 className="text-xl font-semibold">Airlift Politiberedskap</h1>
 						<p className="text-xs uppercase tracking-wide text-gray-500">Politiberedskap // Tromsø base</p>
 					</div>
-					<button type="button" onClick={() => setShowCrewEditor(true)} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Rediger</button>
+					<div className="flex gap-2">
+						<button type="button" onClick={() => setShowArchive(true)} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Arkiv</button>
+						<button type="button" onClick={() => setShowCrewEditor(true)} className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Rediger</button>
+					</div>
 				</div>
 				<nav className="mx-auto grid max-w-md grid-cols-3 gap-2 px-4 pb-4">
 					{([{ key: "crew", label: "Crew-skjema" }, { key: "utmelding", label: "Utmelding" }, { key: "rapport", label: "Rapport" }] as { key: PoliceTab; label: string }[]).map((item) => (
