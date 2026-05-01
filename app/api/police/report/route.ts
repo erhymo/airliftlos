@@ -55,8 +55,26 @@ function validDate(value: string) {
 	return /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value);
 }
 
-function safeFilePart(value: string) {
-	return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48) || "Ukjent";
+function formatFileDate(value: string) {
+	const match = value.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/);
+	return match ? `${match[3]}.${match[2]}.${match[1].slice(2)}` : value;
+}
+
+function cleanFileNamePart(value: string) {
+	return value.replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+}
+
+function buildReportFileName(reportType: "training" | "mission", date: string, base: string, helicopter: string, missionNumber: string) {
+	const parts = [
+		reportType === "mission" ? "Mission Report" : "Training Report",
+		formatFileDate(date),
+		base,
+		...(reportType === "mission" && missionNumber ? [`Oppdrag ${missionNumber}`] : []),
+		helicopter || "Helikopter ikke valgt",
+	]
+		.map(cleanFileNamePart)
+		.filter(Boolean);
+	return `${parts.join(" ")}.pdf`;
 }
 
 function normalizePins(value: ReportPayload["pins"]): Pin[] {
@@ -123,15 +141,7 @@ export async function POST(req: Request) {
 	const year = Number(date.slice(0, 4)) || new Date().getFullYear();
 	const helicopter = asString(payload.helicopter);
 	const trainingTypes = asStringArray(payload.trainingTypes);
-	const fileName = [
-		"Airlift_Politiet",
-		`${typeLabel}_Report`,
-		date,
-		safeFilePart(base),
-		...(reportType === "mission" ? [safeFilePart(missionNumber)] : []),
-		helicopter ? safeFilePart(helicopter) : "Helikopter",
-		ref.id,
-	].join("_") + ".pdf";
+	const fileName = buildReportFileName(reportType, date, base, helicopter, missionNumber);
 	const title = `Airlift Politiberedskap - ${typeLabel} Report ${base} ${date}`.trim();
 	const staticMap = await fetchStaticMap(pins);
 	const body = [
