@@ -36,7 +36,50 @@ type PoliceCrewOptions = { captains: string[]; firstOfficers: string[]; technici
 type UtmeldingMonthStat = { month: number; label: string; total: number; tromso: number; hammerfest: number };
 type UtmeldingReasonStat = { reason: string; count: number };
 type UtmeldingRecentItem = { id: string; dateTime: string; base: string; reason: string; duration: string; sender: string };
-type UtmeldingArchiveData = { ok?: boolean; year: number; total: number; months: UtmeldingMonthStat[]; byReason: UtmeldingReasonStat[]; recent: UtmeldingRecentItem[]; error?: string };
+type PoliceLiveArchiveSettings = { isLive: boolean; liveFrom: number | null; liveFromIso: string | null };
+type UtmeldingArchiveData = { ok?: boolean; year: number; live?: PoliceLiveArchiveSettings; total: number; months: UtmeldingMonthStat[]; byReason: UtmeldingReasonStat[]; recent: UtmeldingRecentItem[]; error?: string };
+type ArchiveSection = "utmelding" | "reports";
+type CountStat = { label: string; count: number };
+type ReportMonthStat = { month: number; label: string; total: number; training: number; mission: number };
+type ReportArchiveItem = {
+	id: string;
+	reportType: PoliceReportType;
+	date: string;
+	base: string;
+	reporter: string;
+	missionNumber: string;
+	durationText: string;
+	conditions: string;
+	crew: string[];
+	helicopter: string;
+	pins: PolicePin[];
+	trainingTypes: string[];
+	involvedAgencies: string;
+	result: string;
+	description: string;
+	lessonsLearned: string;
+	followUp: string;
+	safetyNotes: string;
+	fileName: string;
+};
+type ReportArchiveData = { ok?: boolean; year: number; live?: PoliceLiveArchiveSettings; total: number; trainingTotal: number; missionTotal: number; months: ReportMonthStat[]; byBase: CountStat[]; byHelicopter: CountStat[]; byTrainingType: CountStat[]; reports: ReportArchiveItem[]; error?: string };
+
+const PIN_TYPE_LABELS: Record<string, string> = {
+	trainingArea: "Treningsområde",
+	landingPoint: "Landingspunkt",
+	other: "Annet",
+};
+
+function reportTypeLabel(type: PoliceReportType) {
+	return type === "mission" ? "Mission Report" : "Training Report";
+}
+
+function formatLiveFrom(value: string | null | undefined) {
+	if (!value) return "";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "";
+	return date.toLocaleString("nb-NO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 function displayNamesByRole(entries: CrewDirectoryEntry[], role: CrewRole) {
 	return entries.filter((entry) => entry.active && entry.role === role).map(formatCrewDirectoryEntry).filter(Boolean);
@@ -177,11 +220,51 @@ function CrewDirectoryEditor({ entries, onClose, onSaved }: { entries: CrewDirec
 	);
 }
 
+function CountList({ items, emptyText }: { items: CountStat[]; emptyText: string }) {
+	return (
+		<div className="mt-3 space-y-2 text-sm">
+			{items.length === 0 && <div className="text-gray-500">{emptyText}</div>}
+			{items.map((item) => <div key={item.label} className="flex justify-between gap-3"><span className="text-gray-700">{item.label}</span><span className="font-medium text-gray-900">{item.count}</span></div>)}
+		</div>
+	);
+}
+
+function ReportDetail({ report, onBack }: { report: ReportArchiveItem; onBack: () => void }) {
+	return (
+		<section className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+			<button type="button" onClick={onBack} className="mb-3 rounded-full border border-blue-200 bg-white px-3 py-1 text-sm text-blue-900">Tilbake til rapportliste</button>
+			<h3 className="text-base font-semibold text-gray-950">{reportTypeLabel(report.reportType)} · {report.date}</h3>
+			<div className="mt-3 space-y-2 text-sm text-gray-800">
+				<div><strong>Base:</strong> {report.base || "-"}</div>
+				<div><strong>Helikopter:</strong> {report.helicopter || "-"}</div>
+				<div><strong>Rapportskriver:</strong> {report.reporter || "-"}</div>
+				<div><strong>Crew:</strong> {report.crew.length ? report.crew.join(", ") : "-"}</div>
+				{report.reportType === "mission" && <div><strong>Oppdragsnummer:</strong> {report.missionNumber || "-"}</div>}
+				{report.reportType === "training" && <div><strong>Treningstyper:</strong> {report.trainingTypes.length ? report.trainingTypes.join(", ") : "-"}</div>}
+				<div><strong>Varighet:</strong> {report.durationText || "-"}</div>
+				<div><strong>Vær/forhold:</strong> {report.conditions || "-"}</div>
+				{report.reportType === "mission" && <div><strong>Involverte etater:</strong> {report.involvedAgencies || "-"}</div>}
+				{report.reportType === "mission" && <div><strong>Resultat/utfall:</strong> {report.result || "-"}</div>}
+				{report.reportType === "mission" && <div><strong>Sikkerhetsmomenter:</strong> {report.safetyNotes || "-"}</div>}
+				<div><strong>Beskrivelse:</strong><br />{report.description || "-"}</div>
+				<div><strong>Lessons learned:</strong><br />{report.lessonsLearned || "-"}</div>
+				<div><strong>Tiltak/oppfølging:</strong><br />{report.followUp || "-"}</div>
+				<div><strong>Kartpunkter:</strong> {report.pins.length}</div>
+				{report.pins.map((pin, index) => <div key={`${pin.lat}-${pin.lng}-${index}`} className="rounded-xl bg-white/80 p-2 text-xs">{index + 1}. {PIN_TYPE_LABELS[pin.type || "trainingArea"] || "Kartpunkt"}{pin.label ? ` - ${pin.label}` : ""}: {pin.lat.toFixed(5)}, {pin.lng.toFixed(5)}</div>)}
+			</div>
+		</section>
+	);
+}
+
 function PoliceArchiveModal({ onClose }: { onClose: () => void }) {
 	const currentYear = new Date().getFullYear();
 	const [year, setYear] = useState(currentYear);
-	const [data, setData] = useState<UtmeldingArchiveData | null>(null);
-	const [status, setStatus] = useState<SubmitStatus>({ type: "sending", message: "Henter arkiv..." });
+	const [section, setSection] = useState<ArchiveSection>("utmelding");
+	const [utmeldingData, setUtmeldingData] = useState<UtmeldingArchiveData | null>(null);
+	const [reportData, setReportData] = useState<ReportArchiveData | null>(null);
+	const [utmeldingStatus, setUtmeldingStatus] = useState<SubmitStatus>({ type: "sending", message: "Henter arkiv..." });
+	const [reportStatus, setReportStatus] = useState<SubmitStatus>({ type: "sending", message: "Henter rapportarkiv..." });
+	const [selectedReport, setSelectedReport] = useState<ReportArchiveItem | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -190,18 +273,32 @@ function PoliceArchiveModal({ onClose }: { onClose: () => void }) {
 			.then(({ ok, json }: { ok: boolean; json: UtmeldingArchiveData }) => {
 				if (cancelled) return;
 				if (!ok || !json.ok) throw new Error(json.error || "Klarte ikke å hente arkiv.");
-				setData(json);
-				setStatus({ type: "idle" });
+				setUtmeldingData(json);
+				setUtmeldingStatus({ type: "idle" });
 			})
 			.catch((error) => {
-				if (!cancelled) setStatus({ type: "error", message: (error as Error).message });
+				if (!cancelled) setUtmeldingStatus({ type: "error", message: (error as Error).message });
+			});
+		fetch(`/api/police/report/archive?year=${year}`)
+			.then((res) => res.json().then((json) => ({ ok: res.ok, json })))
+			.then(({ ok, json }: { ok: boolean; json: ReportArchiveData }) => {
+				if (cancelled) return;
+				if (!ok || !json.ok) throw new Error(json.error || "Klarte ikke å hente rapportarkiv.");
+				setReportData(json);
+				setReportStatus({ type: "idle" });
+			})
+			.catch((error) => {
+				if (!cancelled) setReportStatus({ type: "error", message: (error as Error).message });
 			});
 		return () => {
 			cancelled = true;
 		};
 	}, [year]);
 
-	const maxMonthTotal = Math.max(1, ...(data?.months.map((month) => month.total) ?? [1]));
+	const maxUtmeldingMonthTotal = Math.max(1, ...(utmeldingData?.months.map((month) => month.total) ?? [1]));
+	const maxReportMonthTotal = Math.max(1, ...(reportData?.months.map((month) => month.total) ?? [1]));
+	const activeLiveSettings = section === "utmelding" ? utmeldingData?.live : reportData?.live;
+	const activeLiveFrom = formatLiveFrom(activeLiveSettings?.liveFromIso);
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -209,34 +306,41 @@ function PoliceArchiveModal({ onClose }: { onClose: () => void }) {
 				<div className="flex items-start justify-between gap-3">
 					<div>
 						<h2 className="text-lg font-semibold text-gray-900">Arkiv</h2>
-						<p className="text-sm text-gray-600">Statistikk for Politiet-modulen. Flere oversikter kan legges til senere.</p>
+						<p className="text-sm text-gray-600">Statistikk og interne rapporter for Politiet-modulen.</p>
 					</div>
 					<button type="button" onClick={onClose} className="rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-700">Lukk</button>
 				</div>
 
 				<div className="mt-4 flex gap-2">
 					{[currentYear, currentYear - 1, currentYear - 2].map((option) => (
-						<button key={option} type="button" onClick={() => { if (option !== year) setStatus({ type: "sending", message: "Henter arkiv..." }); setYear(option); }} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${year === option ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-300 bg-white text-gray-700"}`}>{option}</button>
+						<button key={option} type="button" onClick={() => { if (option !== year) { setUtmeldingStatus({ type: "sending", message: "Henter arkiv..." }); setReportStatus({ type: "sending", message: "Henter rapportarkiv..." }); setSelectedReport(null); } setYear(option); }} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${year === option ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-300 bg-white text-gray-700"}`}>{option}</button>
+					))}
+				</div>
+				<div className="mt-3 grid grid-cols-2 gap-2">
+					{([{ key: "utmelding", label: "Utmelding" }, { key: "reports", label: "Rapporter" }] as { key: ArchiveSection; label: string }[]).map((item) => (
+						<button key={item.key} type="button" onClick={() => { setSection(item.key); setSelectedReport(null); }} className={`rounded-xl border px-3 py-2 text-sm font-medium ${section === item.key ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-200 bg-white text-gray-700"}`}>{item.label}</button>
 					))}
 				</div>
 
 				<div className="mt-4 space-y-4">
-					<StatusMessage status={status} />
-					{data && (
+					{section === "utmelding" && <StatusMessage status={utmeldingStatus} />}
+					{section === "reports" && <StatusMessage status={reportStatus} />}
+					{activeLiveFrom && <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">Live-checkpoint aktivt: statistikken viser kun data fra {activeLiveFrom}.</div>}
+					{section === "utmelding" && utmeldingData && (
 						<>
 							<section className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-								<div className="text-sm text-gray-600">Utmeldinger i {data.year}</div>
-								<div className="mt-1 text-4xl font-semibold text-gray-950">{data.total}</div>
+								<div className="text-sm text-gray-600">Utmeldinger i {utmeldingData.year}</div>
+								<div className="mt-1 text-4xl font-semibold text-gray-950">{utmeldingData.total}</div>
 								<div className="mt-1 text-xs text-gray-500">Totalt registrert hittil i valgt år</div>
 							</section>
 
 							<section className="rounded-2xl border border-gray-200 bg-white p-4">
 								<h3 className="text-sm font-semibold text-gray-900">Per måned</h3>
 								<div className="mt-3 space-y-2">
-									{data.months.map((month) => (
+									{utmeldingData.months.map((month) => (
 										<div key={month.month} className="grid grid-cols-[2.5rem_1fr_2rem] items-center gap-2 text-sm">
 											<div className="text-gray-600">{month.label}</div>
-											<div className="h-3 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-blue-500" style={{ width: `${(month.total / maxMonthTotal) * 100}%` }} /></div>
+											<div className="h-3 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-blue-500" style={{ width: `${(month.total / maxUtmeldingMonthTotal) * 100}%` }} /></div>
 											<div className="text-right font-medium text-gray-900">{month.total}</div>
 											<div />
 											<div className="col-span-2 text-xs text-gray-500">Tromsø {month.tromso} · Hammerfest {month.hammerfest}</div>
@@ -247,22 +351,60 @@ function PoliceArchiveModal({ onClose }: { onClose: () => void }) {
 
 							<section className="rounded-2xl border border-gray-200 bg-white p-4">
 								<h3 className="text-sm font-semibold text-gray-900">Årsaker</h3>
-								<div className="mt-3 space-y-2 text-sm">
-									{data.byReason.length === 0 && <div className="text-gray-500">Ingen utmeldinger registrert.</div>}
-									{data.byReason.map((item) => <div key={item.reason} className="flex justify-between gap-3"><span className="text-gray-700">{item.reason}</span><span className="font-medium text-gray-900">{item.count}</span></div>)}
-								</div>
+								<CountList items={utmeldingData.byReason.map((item) => ({ label: item.reason, count: item.count }))} emptyText="Ingen utmeldinger registrert." />
 							</section>
 
 							<section className="rounded-2xl border border-gray-200 bg-white p-4">
 								<h3 className="text-sm font-semibold text-gray-900">Siste utmeldinger</h3>
 								<div className="mt-3 space-y-2">
-									{data.recent.length === 0 && <div className="text-sm text-gray-500">Ingen utmeldinger i valgt år.</div>}
-									{data.recent.map((item) => (
+									{utmeldingData.recent.length === 0 && <div className="text-sm text-gray-500">Ingen utmeldinger i valgt år.</div>}
+									{utmeldingData.recent.map((item) => (
 										<div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
 											<div className="font-medium text-gray-900">{item.dateTime} · {item.base}</div>
 											<div className="text-gray-700">{item.reason} · {item.duration}</div>
 											<div className="text-xs text-gray-500">Avsender: {item.sender}</div>
 										</div>
+									))}
+								</div>
+							</section>
+						</>
+					)}
+
+					{section === "reports" && reportData && (
+						<>
+							<section className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+								<div className="text-sm text-gray-600">Rapporter i {reportData.year}</div>
+								<div className="mt-1 text-4xl font-semibold text-gray-950">{reportData.total}</div>
+								<div className="mt-1 text-xs text-gray-500">Training {reportData.trainingTotal} · Mission {reportData.missionTotal}</div>
+							</section>
+							{selectedReport && <ReportDetail report={selectedReport} onBack={() => setSelectedReport(null)} />}
+							<section className="rounded-2xl border border-gray-200 bg-white p-4">
+								<h3 className="text-sm font-semibold text-gray-900">Per måned</h3>
+								<div className="mt-3 space-y-2">
+									{reportData.months.map((month) => (
+										<div key={month.month} className="grid grid-cols-[2.5rem_1fr_2rem] items-center gap-2 text-sm">
+											<div className="text-gray-600">{month.label}</div>
+											<div className="h-3 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-amber-500" style={{ width: `${(month.total / maxReportMonthTotal) * 100}%` }} /></div>
+											<div className="text-right font-medium text-gray-900">{month.total}</div>
+											<div />
+											<div className="col-span-2 text-xs text-gray-500">Training {month.training} · Mission {month.mission}</div>
+										</div>
+									))}
+								</div>
+							</section>
+							<section className="rounded-2xl border border-gray-200 bg-white p-4"><h3 className="text-sm font-semibold text-gray-900">Base</h3><CountList items={reportData.byBase} emptyText="Ingen rapporter registrert." /></section>
+							<section className="rounded-2xl border border-gray-200 bg-white p-4"><h3 className="text-sm font-semibold text-gray-900">Helikopter</h3><CountList items={reportData.byHelicopter} emptyText="Ingen helikopterdata." /></section>
+							<section className="rounded-2xl border border-gray-200 bg-white p-4"><h3 className="text-sm font-semibold text-gray-900">Treningstyper</h3><CountList items={reportData.byTrainingType} emptyText="Ingen treningstyper registrert." /></section>
+							<section className="rounded-2xl border border-gray-200 bg-white p-4">
+								<h3 className="text-sm font-semibold text-gray-900">Rapportliste</h3>
+								<div className="mt-3 space-y-2">
+									{reportData.reports.length === 0 && <div className="text-sm text-gray-500">Ingen rapporter i valgt år.</div>}
+									{reportData.reports.map((item) => (
+										<button key={item.id} type="button" onClick={() => setSelectedReport(item)} className="w-full rounded-xl border border-gray-100 bg-gray-50 p-3 text-left text-sm hover:border-blue-200 hover:bg-blue-50">
+											<div className="font-medium text-gray-900">{reportTypeLabel(item.reportType)} · {item.date}</div>
+											<div className="text-gray-700">{item.base} · {item.helicopter || "Helikopter ikke valgt"}</div>
+											<div className="text-xs text-gray-500">{item.reportType === "mission" ? `Oppdrag ${item.missionNumber || "-"}` : item.trainingTypes.join(", ") || "Training"} · {item.pins.length} kartpunkt</div>
+										</button>
 									))}
 								</div>
 							</section>
@@ -425,17 +567,26 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [reportType, setReportType] = useState<PoliceReportType>("training");
+	const [base, setBase] = useState<WatchPhoneBase>("Tromsø");
 	const [missionNumber, setMissionNumber] = useState("");
 	const [date, setDate] = useState(todayISO());
+	const [reporter, setReporter] = useState("");
+	const [durationText, setDurationText] = useState("");
+	const [conditions, setConditions] = useState("");
 	const [crew, setCrew] = useState(["", "", "", ""]);
 	const [helicopter, setHelicopter] = useState<Maskin | "">(DEFAULT_MASKIN);
 	const [pinsByType, setPinsByType] = useState<Record<PoliceReportType, PolicePin[]>>({
 		training: [],
 		mission: [],
 	});
+	const [showMap, setShowMap] = useState(false);
 	const [trainingTypes, setTrainingTypes] = useState<string[]>([]);
+	const [involvedAgencies, setInvolvedAgencies] = useState("");
+	const [result, setResult] = useState("");
 	const [description, setDescription] = useState("");
 	const [lessonsLearned, setLessonsLearned] = useState("");
+	const [followUp, setFollowUp] = useState("");
+	const [safetyNotes, setSafetyNotes] = useState("");
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
 	const selectedCrew = useMemo(() => crew.filter(Boolean), [crew]);
 	const pins = pinsByType[reportType];
@@ -446,10 +597,15 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
+		if (reportType === "mission" && !missionNumber.trim()) {
+			setStatus({ type: "error", message: "Oppdragsnummer må fylles ut for Mission Report." });
+			return;
+		}
 		setStatus({ type: "sending", message: "Lagrer rapport..." });
 		try {
-			await submitJson("/api/police/report", { base: "Tromsø", reportType, missionNumber, date, crew: selectedCrew, helicopter, pins, trainingTypes, description, lessonsLearned });
-			setStatus({ type: "success", message: "Rapporten er lagret. E-post/SharePoint kobles på når mottakere og mapper er satt." });
+			const response = await submitJson("/api/police/report", { base, reportType, missionNumber, date, reporter, durationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes });
+			const sharepoint = response.delivery?.sharepoint;
+			setStatus(sharepoint?.ok === false ? { type: "error", message: `Rapporten er lagret i Firestore, men SharePoint-opplasting feilet: ${sharepoint.error || "ukjent feil"}` } : { type: "success", message: "Rapporten er lagret i Firestore og SharePoint. Ingen e-post er sendt." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
 		}
@@ -457,23 +613,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
-			<Section title="Rapporttype">
-				<div className="grid grid-cols-2 gap-2">
-					{(["training", "mission"] as PoliceReportType[]).map((type) => (
-						<button key={type} type="button" onClick={() => setReportType(type)} className={`rounded-xl border px-3 py-3 text-sm font-medium ${reportType === type ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-200 bg-white text-gray-800"}`}>{type === "training" ? "Training Report" : "Mission Report"}</button>
-					))}
-				</div>
-				{reportType === "mission" && <div><FieldLabel>Oppdragsnummer</FieldLabel><input value={missionNumber} onChange={(e) => setMissionNumber(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Oppdragsnummer" /></div>}
-				<div><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_CONTROL_CLASS} /></div>
-			</Section>
-			<Section title="Crew">
-				{crew.map((value, index) => (
-					<SelectField key={index} label={`Crew ${index + 1}${index > 0 ? " (valgfritt)" : ""}`} value={value} onChange={(next) => setCrew((current) => current.map((item, i) => i === index ? next : item))} options={crewOptions.all.filter((option) => !selectedCrew.includes(option) || option === value)} placeholder="Velg crew" />
-				))}
-				<HelicopterSelect value={helicopter} onChange={setHelicopter} />
-			</Section>
-			<Section title="Trenings-/oppdragsområde">
-				<p className="text-sm text-gray-600">Trykk i kartet for å markere områder. Pins lagres strukturert for senere heatmap/statistikk.</p>
+			{showMap && (
 				<PoliceMapPicker
 					pins={pins}
 					onChangePins={(nextPins) =>
@@ -483,16 +623,43 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 						}))
 					}
 					reportType={reportType}
+					onClose={() => setShowMap(false)}
 				/>
+			)}
+			<Section title="Rapporttype">
+				<div className="grid grid-cols-2 gap-2">
+					{(["training", "mission"] as PoliceReportType[]).map((type) => (
+						<button key={type} type="button" onClick={() => setReportType(type)} className={`rounded-xl border px-3 py-3 text-sm font-medium ${reportType === type ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-200 bg-white text-gray-800"}`}>{type === "training" ? "Training Report" : "Mission Report"}</button>
+					))}
+				</div>
+				{reportType === "mission" && <div><FieldLabel>Oppdragsnummer</FieldLabel><input value={missionNumber} onChange={(e) => setMissionNumber(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Oppdragsnummer" /></div>}
+				<div><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_CONTROL_CLASS} /></div>
+				<SelectField label="Base" value={base} onChange={(next) => setBase((next || "Tromsø") as WatchPhoneBase)} options={WATCH_PHONE_BASES} placeholder="Velg base" />
+				<SelectField label="Rapportskriver" value={reporter} onChange={setReporter} options={crewOptions.all} placeholder="Velg rapportskriver" />
+				<div><FieldLabel>Varighet</FieldLabel><input value={durationText} onChange={(e) => setDurationText(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 2 timer 30 min" /></div>
+				<div><FieldLabel>Vær/forhold</FieldLabel><textarea value={conditions} onChange={(e) => setConditions(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Kort om vær, lysforhold, sikt eller andre relevante forhold..." /></div>
+			</Section>
+			<Section title="Crew">
+				{crew.map((value, index) => (
+					<SelectField key={index} label={`Crew ${index + 1}${index > 0 ? " (valgfritt)" : ""}`} value={value} onChange={(next) => setCrew((current) => current.map((item, i) => i === index ? next : item))} options={crewOptions.all.filter((option) => !selectedCrew.includes(option) || option === value)} placeholder="Velg crew" />
+				))}
+				<HelicopterSelect value={helicopter} onChange={setHelicopter} />
+			</Section>
+			<Section title="Trenings-/oppdragsområde">
+				<p className="text-sm text-gray-600">Kartet åpnes i fullskjerm for enklere bruk på mobil. Pins lagres strukturert for senere heatmap/statistikk.</p>
+				<button type="button" onClick={() => setShowMap(true)} className="w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">{pins.length ? `Rediger kart (${pins.length} punkt)` : "Åpne kart / marker område"}</button>
+				{pins.length > 0 && <div className="space-y-2 text-sm text-gray-700">{pins.map((pin, index) => <div key={`${pin.lat}-${pin.lng}-${index}`} className="rounded-xl border border-gray-100 bg-gray-50 p-2">{index + 1}. {PIN_TYPE_LABELS[pin.type || "trainingArea"] || "Kartpunkt"}{pin.label ? ` - ${pin.label}` : ""}<br /><span className="text-xs text-gray-500">{pin.lat.toFixed(5)}, {pin.lng.toFixed(5)}</span></div>)}</div>}
 			</Section>
 			<Section title="Beskrivelse">
-				<div className="flex flex-wrap gap-2">
-					{TRAINING_TYPES.map((type) => <button key={type} type="button" onClick={() => toggleTrainingType(type)} className={`rounded-full border px-3 py-1.5 text-sm ${trainingTypes.includes(type) ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-300 bg-white text-gray-700"}`}>{type}</button>)}
-				</div>
+				{reportType === "training" && <div className="flex flex-wrap gap-2">{TRAINING_TYPES.map((type) => <button key={type} type="button" onClick={() => toggleTrainingType(type)} className={`rounded-full border px-3 py-1.5 text-sm ${trainingTypes.includes(type) ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-300 bg-white text-gray-700"}`}>{type}</button>)}</div>}
+				{reportType === "mission" && <div><FieldLabel>Involverte etater</FieldLabel><input value={involvedAgencies} onChange={(e) => setInvolvedAgencies(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. Politiet, AMK, brann" /></div>}
+				{reportType === "mission" && <div><FieldLabel>Resultat/utfall</FieldLabel><textarea value={result} onChange={(e) => setResult(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Kort oppsummering av utfallet..." /></div>}
+				{reportType === "mission" && <div><FieldLabel>Sikkerhetsmomenter / observasjoner</FieldLabel><textarea value={safetyNotes} onChange={(e) => setSafetyNotes(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Eventuelle sikkerhetspunkter eller observasjoner..." /></div>}
 				<div><FieldLabel>Beskrivelse</FieldLabel><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Detaljert beskrivelse..." /></div>
 			</Section>
-			<Section title="Lessons learned">
-				<textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Hva fungerte bra? Hva kan forbedres?" />
+			<Section title="Lessons learned og oppfølging">
+				<div><FieldLabel>Lessons learned</FieldLabel><textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Hva fungerte bra? Hva kan forbedres?" /></div>
+				<div><FieldLabel>Tiltak/oppfølging</FieldLabel><textarea value={followUp} onChange={(e) => setFollowUp(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Tiltak, oppfølging eller punkter til senere bruk..." /></div>
 			</Section>
 			<StatusMessage status={status} />
 			<button disabled={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:opacity-60">Lagre rapport</button>

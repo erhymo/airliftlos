@@ -1,11 +1,20 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export type PoliceDeliveryKind = "crew" | "utmelding" | "report";
+export type PoliceDeliveryReportType = "training" | "mission";
 
 export type DeliveryStatus = {
 	ok: boolean;
 	skipped?: boolean;
 	error?: string;
+	webUrl?: string;
+	id?: string;
+};
+
+export type PolicePdfOptions = {
+	mapImageBytes?: Uint8Array;
+	mapImageContentType?: string;
+	mapTitle?: string;
 };
 
 const EMAIL_ENV: Record<PoliceDeliveryKind, string> = {
@@ -26,6 +35,14 @@ const POLICE_CREW_TO_EMAILS = ["ops211@politiet.no"];
 const POLICE_CREW_CC_EMAILS = ["tom.ostrem@airlift.no"];
 const POLICE_UTMELDING_TO_EMAILS = ["ops211@politiet.no"];
 const POLICE_UTMELDING_CC_EMAILS = ["tom.ostrem@airlift.no", "erlend.haugsbo@airlift.no"];
+const REPORT_SHAREPOINT_ENV: Record<PoliceDeliveryReportType, string> = {
+	training: "POLICE_TRAINING_REPORT_SHAREPOINT_FOLDER_PATH",
+	mission: "POLICE_MISSION_REPORT_SHAREPOINT_FOLDER_PATH",
+};
+const DEFAULT_REPORT_SHAREPOINT_FOLDERS: Record<PoliceDeliveryReportType, string> = {
+	training: "Politiet/Politiberedskap/Lagring av treningsrapport",
+	mission: "Politiet/Politiberedskap/Lagring av Mission Report",
+};
 
 function parseEmails(value: string | undefined): string[] {
 	return (value ?? "")
@@ -72,14 +89,30 @@ function wrapText(text: string, maxChars: number): string[] {
 	return lines;
 }
 
-export async function createPolicePdf(title: string, body: string): Promise<Uint8Array> {
+export async function createPolicePdf(title: string, body: string, options: PolicePdfOptions = {}): Promise<Uint8Array> {
 	const pdf = await PDFDocument.create();
 	let page = pdf.addPage([595, 842]);
 	const font = await pdf.embedFont(StandardFonts.Helvetica);
 	const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	let y = 790;
 	page.drawText(title, { x: 50, y, size: 18, font: bold, color: rgb(0, 0, 0) });
-	y -= 30;
+	y -= 26;
+	if (options.mapImageBytes) {
+		try {
+			const image = options.mapImageContentType?.includes("png") ? await pdf.embedPng(options.mapImageBytes) : await pdf.embedJpg(options.mapImageBytes);
+			const scaled = image.scale(Math.min(495 / image.width, 220 / image.height));
+			if (options.mapTitle) {
+				page.drawText(options.mapTitle, { x: 50, y, size: 12, font: bold, color: rgb(0, 0, 0) });
+				y -= 16;
+			}
+			page.drawImage(image, { x: 50, y: y - scaled.height, width: scaled.width, height: scaled.height });
+			y -= scaled.height + 22;
+		} catch {
+			y -= 4;
+		}
+	} else {
+		y -= 4;
+	}
 	for (const rawLine of body.split("\n")) {
 		const lines = rawLine.trim() ? wrapText(rawLine, 86) : [""];
 		for (const line of lines) {
@@ -145,27 +178,37 @@ function withYearFolder(folderPath: string, year: number): string {
 async function uploadSharePoint(kind: PoliceDeliveryKind, fileName: string, pdfBytes: Uint8Array, year: number): Promise<DeliveryStatus> {
 	const folderPath = process.env[SHAREPOINT_ENV[kind]];
 	if (!folderPath) return { ok: true, skipped: true, error: `${SHAREPOINT_ENV[kind]} er ikke konfigurert` };
+	return uploadSharePointFolder(folderPath, fileName, pdfBytes, year);
+}
+
+function getReportSharePointFolder(reportType: PoliceDeliveryReportType): string {
+	return process.env[REPORT_SHAREPOINT_ENV[reportType]] || DEFAULT_REPORT_SHAREPOINT_FOLDERS[reportType];
+}
+
+async function uploadSharePointFolder(folderPath: string, fileName: string, pdfBytes: Uint8Array, year: number): Promise<DeliveryStatus> {
 	const siteId = process.env.SHAREPOINT_SITE_ID;
 	const token = await getGraphToken();
 	if (!siteId || !token) return { ok: false, error: "SharePoint/Graph er ikke konfigurert komplett" };
 	const itemPath = buildSharePointItemPath(withYearFolder(folderPath, year), fileName);
-	const body = pdfBytes.buffer.slice(
-		pdfBytes.byteOffset,
-		pdfBytes.byteOffset + pdfBytes.byteLength,
-	) as ArrayBuffer;
 	const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}:/content`, {
 		method: "PUT",
 		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/pdf" },
-		body,
+		body: Buffer.from(pdfBytes),
 	});
 	if (!res.ok) return { ok: false, error: await res.text().catch(() => "SharePoint-feil") };
-	return { ok: true };
+	const data = (await res.json().catch(() => ({}))) as { webUrl?: string; id?: string };
+	return { ok: true, webUrl: data.webUrl, id: data.id };
 }
 
 export async function deliverPoliceSubmission(kind: PoliceDeliveryKind, title: string, body: string, fileName: string, year: number) {
 	if (kind === "utmelding") {
 		const email = await sendEmail(kind, title, body);
 		return { email, sharepoint: { ok: true, skipped: true, error: "SharePoint er deaktivert for utmelding" } };
+	}
+	if (kind === "report") {
+		const pdfBytes = await createPolicePdf(title, body);
+		const sharepoint = await uploadSharePoint(kind, fileName, pdfBytes, year);
+		return { email: { ok: true, skipped: true, error: "E-post er deaktivert for rapport" }, sharepoint };
 	}
 
 	const pdfBytes = await createPolicePdf(title, body);
@@ -174,4 +217,14 @@ export async function deliverPoliceSubmission(kind: PoliceDeliveryKind, title: s
 		uploadSharePoint(kind, fileName, pdfBytes, year),
 	]);
 	return { email, sharepoint };
+}
+
+export async function deliverPoliceReportSubmission(reportType: PoliceDeliveryReportType, title: string, body: string, fileName: string, year: number, options: PolicePdfOptions & { map?: DeliveryStatus } = {}) {
+	const pdfBytes = await createPolicePdf(title, body, { mapImageBytes: options.mapImageBytes, mapImageContentType: options.mapImageContentType, mapTitle: options.mapTitle });
+	const sharepoint = await uploadSharePointFolder(getReportSharePointFolder(reportType), fileName, pdfBytes, year);
+	return {
+		email: { ok: true, skipped: true, error: "E-post er deaktivert for rapport" },
+		sharepoint,
+		map: options.map ?? { ok: true, skipped: true, error: "Ingen kartmarkeringer" },
+	};
 }

@@ -1,9 +1,12 @@
 export type PoliceTab = "crew" | "utmelding" | "rapport";
 export type PoliceReportType = "training" | "mission";
+export type PolicePinType = "trainingArea" | "landingPoint" | "other";
 
 export type PolicePin = {
 	lat: number;
 	lng: number;
+	type?: PolicePinType;
+	label?: string;
 };
 
 export type SubmitStatus = {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../../../lib/apiAccess";
 import { getDb } from "../../../../../lib/firebaseAdmin";
+import { getPoliceLiveSettings, recordIsAfterPoliceLiveStart } from "../../../../../lib/policeLiveSettings";
 
 export const runtime = "nodejs";
 
@@ -47,6 +48,7 @@ export async function GET(req: Request) {
 	if (accessError) return accessError;
 
 	const year = cleanYear(new URL(req.url).searchParams.get("year"));
+	const liveSettings = await getPoliceLiveSettings();
 	const months = MONTH_LABELS.map((label, index) => ({ month: index + 1, label, total: 0, tromso: 0, hammerfest: 0 }));
 	const byReason: Record<string, number> = {};
 	const recent: Array<{ id: string; dateTime: string; base: string; reason: string; duration: string; sender: string; sortKey: number }> = [];
@@ -57,6 +59,7 @@ export async function GET(req: Request) {
 			const data = doc.data() as UtmeldingArchiveDoc;
 			const date = asString(data.date);
 			if (!date.startsWith(`${year}-`)) return;
+				if (!recordIsAfterPoliceLiveStart(liveSettings, { createdAt: data.createdAt, date, time: asString(data.time) })) return;
 
 			const month = Number(date.slice(5, 7));
 			const monthStat = months[month - 1];
@@ -89,6 +92,7 @@ export async function GET(req: Request) {
 		return NextResponse.json({
 			ok: true,
 			year,
+				live: liveSettings,
 			total: months.reduce((sum, month) => sum + month.total, 0),
 			months,
 			byReason: Object.entries(byReason).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason, "nb-NO")),
