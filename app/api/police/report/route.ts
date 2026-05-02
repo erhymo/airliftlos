@@ -55,6 +55,12 @@ function validDate(value: string) {
 	return /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value);
 }
 
+function fallbackReportFileName(reportType: "training" | "mission", date: string) {
+	const match = date.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/);
+	const formattedDate = match ? `${match[3]}.${match[2]}.${match[1]}` : date;
+	return `${reportType === "mission" ? "Mission Report" : "Training Report"} ${formattedDate}.pdf`;
+}
+
 function normalizePins(value: ReportPayload["pins"]): Pin[] {
 	if (!Array.isArray(value)) return [];
 	return value.flatMap((pin) => {
@@ -119,7 +125,7 @@ export async function POST(req: Request) {
 	const year = Number(date.slice(0, 4)) || new Date().getFullYear();
 	const helicopter = asString(payload.helicopter);
 	const trainingTypes = asStringArray(payload.trainingTypes);
-	const fileName = await buildPoliceReportPdfFileName(reportType, date, year);
+	let fileName = fallbackReportFileName(reportType, date);
 	const title = `Airlift Politiberedskap - ${typeLabel} Report ${base} ${date}`.trim();
 	const staticMap = await fetchStaticMap(pins);
 	const body = [
@@ -178,8 +184,19 @@ export async function POST(req: Request) {
 		batch.set(pinRef, { ...pin, id: pinRef.id, reportId: ref.id, reportType, base, date, helicopter, order: index, createdAt });
 	});
 	await batch.commit();
-	const delivery = await deliverPoliceReportSubmission(reportType, title, body, fileName, year, { map: staticMap.status, mapImageBytes: staticMap.bytes, mapImageContentType: staticMap.contentType, mapTitle: "Kartmarkeringer" });
+	let delivery: Awaited<ReturnType<typeof deliverPoliceReportSubmission>>;
+	try {
+		fileName = await buildPoliceReportPdfFileName(reportType, date, year);
+		delivery = await deliverPoliceReportSubmission(reportType, title, body, fileName, year, { map: staticMap.status, mapImageBytes: staticMap.bytes, mapImageContentType: staticMap.contentType, mapTitle: "Kartmarkeringer" });
+	} catch (error) {
+		delivery = {
+			email: { ok: true, skipped: true, error: "E-post er deaktivert for rapport" },
+			sharepoint: { ok: false, error: (error as Error).message || "SharePoint-opplasting feilet" },
+			map: staticMap.status,
+		};
+	}
 	await ref.set({ delivery }, { merge: true });
+	if (delivery.sharepoint.ok) await ref.set({ fileName }, { merge: true });
 
 	return NextResponse.json({ ok: true, id: ref.id, delivery: { database: { ok: true }, ...delivery } });
 }

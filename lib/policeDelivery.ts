@@ -72,6 +72,16 @@ function buildEmailHtml(body: string) {
 	return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#111827;white-space:normal;">${lines.join("")}</div>`;
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 10000): Promise<Response> {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), timeoutMs);
+	try {
+		return await fetch(url, { ...init, signal: controller.signal });
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
 function wrapText(text: string, maxChars: number): string[] {
 	const words = text.split(/\s+/).filter(Boolean);
 	const lines: string[] = [];
@@ -165,7 +175,7 @@ async function getGraphToken(): Promise<string | null> {
 	const clientSecret = process.env.MS_CLIENT_SECRET;
 	if (!tenantId || !clientId || !clientSecret) return null;
 	const params = new URLSearchParams({ client_id: clientId, client_secret: clientSecret, scope: "https://graph.microsoft.com/.default", grant_type: "client_credentials" });
-	const res = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params });
+	const res = await fetchWithTimeout(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: params }, 8000);
 	if (!res.ok) return null;
 	const data = (await res.json()) as { access_token?: string };
 	return data.access_token ?? null;
@@ -201,13 +211,13 @@ function reportFileTitle(reportType: PoliceDeliveryReportType): string {
 async function listSharePointFolderFileNames(folderPath: string): Promise<string[]> {
 	const siteId = process.env.SHAREPOINT_SITE_ID;
 	const token = await getGraphToken();
-	if (!siteId || !token) return [];
+	if (!siteId || !token) throw new Error("SharePoint/Graph er ikke konfigurert komplett");
 
 	const names: string[] = [];
 	let url: string | null = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${buildSharePointFolderPath(folderPath)}:/children?$select=name&$top=200`;
 	while (url) {
-		const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-		if (!res.ok) return names;
+		const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${token}` } }, 8000);
+		if (!res.ok) throw new Error(`Klarte ikke å lese SharePoint-mappen: HTTP ${res.status}`);
 		const data = (await res.json().catch(() => ({}))) as { value?: Array<{ name?: string }>; "@odata.nextLink"?: string };
 		for (const item of data.value ?? []) {
 			if (item.name) names.push(item.name);
@@ -234,11 +244,11 @@ async function uploadSharePointFolder(folderPath: string, fileName: string, pdfB
 	const token = await getGraphToken();
 	if (!siteId || !token) return { ok: false, error: "SharePoint/Graph er ikke konfigurert komplett" };
 	const itemPath = buildSharePointItemPath(withYearFolder(folderPath, year), fileName);
-	const res = await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}:/content`, {
+	const res = await fetchWithTimeout(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${itemPath}:/content`, {
 		method: "PUT",
 		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/pdf" },
 		body: Buffer.from(pdfBytes),
-	});
+	}, 20000);
 	if (!res.ok) return { ok: false, error: await res.text().catch(() => "SharePoint-feil") };
 	const data = (await res.json().catch(() => ({}))) as { webUrl?: string; id?: string };
 	return { ok: true, webUrl: data.webUrl, id: data.id };

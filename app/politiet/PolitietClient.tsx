@@ -601,7 +601,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			setStatus({ type: "error", message: "Oppdragsnummer må fylles ut for Mission Report." });
 			return;
 		}
-		setStatus({ type: "sending", message: "Lagrer rapport..." });
+		setStatus({ type: "sending", message: "Lagrer rapport og laster opp PDF til SharePoint..." });
 		try {
 			const response = await submitJson("/api/police/report", { base, reportType, missionNumber, date, reporter, durationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes });
 			const sharepoint = response.delivery?.sharepoint;
@@ -662,7 +662,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div><FieldLabel>Tiltak/oppfølging</FieldLabel><textarea value={followUp} onChange={(e) => setFollowUp(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Tiltak, oppfølging eller punkter til senere bruk..." /></div>
 			</Section>
 			<StatusMessage status={status} />
-			<button disabled={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:opacity-60">Lagre rapport</button>
+			<button type="submit" disabled={status.type === "sending"} aria-busy={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-wait disabled:opacity-60">{status.type === "sending" ? "Lagrer rapport..." : "Lagre rapport"}</button>
 		</form>
 	);
 }
