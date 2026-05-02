@@ -155,6 +155,10 @@ function buildSharePointItemPath(folderPath: string, fileName: string): string {
 	return `${encodedFolder}/${encodeURIComponent(fileName)}`;
 }
 
+function buildSharePointFolderPath(folderPath: string): string {
+	return folderPath.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+}
+
 async function getGraphToken(): Promise<string | null> {
 	const tenantId = process.env.MS_TENANT_ID;
 	const clientId = process.env.MS_CLIENT_ID;
@@ -183,6 +187,46 @@ async function uploadSharePoint(kind: PoliceDeliveryKind, fileName: string, pdfB
 
 function getReportSharePointFolder(reportType: PoliceDeliveryReportType): string {
 	return process.env[REPORT_SHAREPOINT_ENV[reportType]] || DEFAULT_REPORT_SHAREPOINT_FOLDERS[reportType];
+}
+
+function formatReportFileDate(date: string): string {
+	const match = date.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/);
+	return match ? `${match[3]}.${match[2]}.${match[1]}` : date;
+}
+
+function reportFileTitle(reportType: PoliceDeliveryReportType): string {
+	return reportType === "mission" ? "Mission Report" : "Training Report";
+}
+
+async function listSharePointFolderFileNames(folderPath: string): Promise<string[]> {
+	const siteId = process.env.SHAREPOINT_SITE_ID;
+	const token = await getGraphToken();
+	if (!siteId || !token) return [];
+
+	const names: string[] = [];
+	let url: string | null = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${buildSharePointFolderPath(folderPath)}:/children?$select=name&$top=200`;
+	while (url) {
+		const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+		if (!res.ok) return names;
+		const data = (await res.json().catch(() => ({}))) as { value?: Array<{ name?: string }>; "@odata.nextLink"?: string };
+		for (const item of data.value ?? []) {
+			if (item.name) names.push(item.name);
+		}
+		url = data["@odata.nextLink"] ?? null;
+	}
+	return names;
+}
+
+export async function buildPoliceReportPdfFileName(reportType: PoliceDeliveryReportType, date: string, year: number): Promise<string> {
+	const folderPath = withYearFolder(getReportSharePointFolder(reportType), year);
+	const existingNames = await listSharePointFolderFileNames(folderPath);
+	const maxNumber = existingNames.reduce((max, name) => {
+		const match = name.match(/^([0-9]{1,3})\s+/);
+		const number = match ? Number(match[1]) : 0;
+		return Number.isFinite(number) && number > max ? number : max;
+	}, 0);
+	const nextNumber = String(maxNumber + 1).padStart(2, "0");
+	return `${nextNumber} ${reportFileTitle(reportType)} ${formatReportFileDate(date)}.pdf`;
 }
 
 async function uploadSharePointFolder(folderPath: string, fileName: string, pdfBytes: Uint8Array, year: number): Promise<DeliveryStatus> {
