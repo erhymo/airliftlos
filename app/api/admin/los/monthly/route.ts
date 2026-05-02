@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
+import { requireAdminAccess } from "../../../../../lib/adminAccess";
 import { getDb } from "../../../../../lib/firebaseAdmin";
 
 const MONTH_NAMES: Record<string, string> = {
@@ -57,16 +57,10 @@ type MonthMeta = {
 };
 
 export async function GET() {
-  try {
-    const accessCode = process.env.ACCESS_CODE;
-    if (accessCode) {
-      const cookieStore = await cookies();
-      const accessCookie = cookieStore.get("airliftlos_access");
-      if (!accessCookie || accessCookie.value !== "ok") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-      }
-    }
+	const accessError = await requireAdminAccess();
+	if (accessError) return accessError;
 
+  try {
     const db = getDb();
     const snapshot = await db.collection("losBookings").where("status", "==", "closed").get();
 

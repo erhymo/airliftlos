@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState, FormEvent } from "react";
 
 const ADMIN_STORAGE_KEY = "airliftlos_admin";
-const ADMIN_PASSWORD = "annegrethe";
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -12,36 +11,68 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-	  if (typeof window === "undefined") return;
-	  const stored = window.localStorage.getItem(ADMIN_STORAGE_KEY);
-	  // Oppdater state asynkront for å unngå kaskaderende renders (lint-regel)
-	  Promise.resolve().then(() => {
-	    setUnlocked(stored === "ok");
-	  });
+		if (typeof window === "undefined") return;
+		let cancelled = false;
+		const stored = window.localStorage.getItem(ADMIN_STORAGE_KEY);
+		if (stored !== "ok") {
+			const timeout = window.setTimeout(() => setUnlocked(false), 0);
+			return () => window.clearTimeout(timeout);
+		}
+
+		fetch("/api/admin/access", { cache: "no-store" })
+			.then((res) => {
+				if (cancelled) return;
+				if (res.ok) {
+					setUnlocked(true);
+				} else {
+					window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+					setUnlocked(false);
+				}
+			})
+			.catch(() => {
+				if (cancelled) return;
+				setUnlocked(false);
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(ADMIN_STORAGE_KEY, "ok");
-      }
-      setUnlocked(true);
-      setError(null);
-      setPassword("");
-    } else {
-      setError("Feil passord. Prøv igjen.");
-    }
-  };
+	const handleSubmit = async (event: FormEvent) => {
+		event.preventDefault();
+		setError(null);
+		try {
+			const res = await fetch("/api/admin/access", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ password }),
+			});
 
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(ADMIN_STORAGE_KEY);
-    }
-    setUnlocked(false);
-    setPassword("");
-    setError(null);
-  };
+			if (!res.ok) {
+				setError("Feil passord. Prøv igjen.");
+				return;
+			}
+
+			if (typeof window !== "undefined") {
+				window.localStorage.setItem(ADMIN_STORAGE_KEY, "ok");
+			}
+			setUnlocked(true);
+			setPassword("");
+		} catch {
+			setError("Kunne ikke logge inn. Sjekk nettverket og prøv igjen.");
+		}
+	};
+
+	const handleLogout = () => {
+		if (typeof window !== "undefined") {
+			window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+		}
+		void fetch("/api/admin/access", { method: "DELETE" });
+		setUnlocked(false);
+		setPassword("");
+		setError(null);
+	};
 
   if (unlocked === null) {
     return null;
