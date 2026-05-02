@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireApiAccess } from "../../../../lib/apiAccess";
 import { getDb } from "../../../../lib/firebaseAdmin";
 import { isOpenLosBooking } from "../../../../lib/losBookings";
 import { touchLosBookingsMeta } from "../../../../lib/losBookingsMeta";
 
 export async function POST(req: Request) {
+	const accessError = await requireApiAccess();
+	if (accessError) return accessError;
+
 	try {
 		const body = (await req.json()) as { id?: string };
 		if (!body.id) {

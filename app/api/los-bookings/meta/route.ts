@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { requireApiAccess } from "../../../../lib/apiAccess";
 import { getDb } from "../../../../lib/firebaseAdmin";
 import { getOrCreateLosBookingsMeta } from "../../../../lib/losBookingsMeta";
 
 export async function GET() {
+	const accessError = await requireApiAccess();
+	if (accessError) return accessError;
+
 	try {
 		const db = getDb();
 		const meta = await getOrCreateLosBookingsMeta(db);

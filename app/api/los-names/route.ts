@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiAccess } from "../../../lib/apiAccess";
 import { getDb } from "../../../lib/firebaseAdmin";
 
 const COLLECTION_NAME = "losNames";
@@ -8,6 +9,9 @@ type LosNameDoc = {
 };
 
 export async function GET() {
+  const accessError = await requireApiAccess();
+  if (accessError) return accessError;
+
   try {
     const db = getDb();
     const snapshot = await db.collection(COLLECTION_NAME).get();
@@ -35,6 +39,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const accessError = await requireApiAccess();
+  if (accessError) return accessError;
+
   try {
     const body = (await req.json()) as { names?: unknown } | undefined;
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiAccess } from "../../../lib/apiAccess";
 import { getDb } from "../../../lib/firebaseAdmin";
 import { getOpenLosBookingsSnapshot, isOpenLosBooking } from "../../../lib/losBookings";
 import { getGtFromLocalDatabase } from "../../../lib/vesselGt";
@@ -9,6 +10,9 @@ type FirestoreLosBooking = {
 };
 
 export async function GET(req: Request) {
+  const accessError = await requireApiAccess();
+  if (accessError) return accessError;
+
   try {
 	    const url = new URL(req.url);
 	    const id = url.searchParams.get("id");
