@@ -70,7 +70,7 @@ function requiresWeatherComment(dateIso: string) {
 
 function getCrewChangeExcelPath(excelYear: number) {
 	if (excelYear >= 2026 && process.env.CREW_CHANGE_EXCEL_PATH_2026) return process.env.CREW_CHANGE_EXCEL_PATH_2026;
-	return process.env.CREW_CHANGE_EXCEL_PATH || "Documents/LOS/LOS Rapporter/Logg Crew Change 2026.xlsx";
+	return process.env.CREW_CHANGE_EXCEL_PATH || "LOS/LOS rapporter/Logg Crew Change 2026.xlsx";
 }
 
 async function getGraphAccessToken(): Promise<string | null> {
@@ -91,6 +91,22 @@ function workbookBaseUrl(siteId: string, excelPath: string) {
 	return `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/workbook`;
 }
 
+function normalizeSheetName(value: string) {
+	return value.trim().toLowerCase().replace(/[.\-_ ]+/g, "");
+}
+
+async function resolveWorksheetName(baseUrl: string, token: string, requestedSheetName: string) {
+	const sheetsRes = await fetch(`${baseUrl}/worksheets?$select=name`, {
+		headers: { Authorization: `Bearer ${token}` },
+	});
+	if (!sheetsRes.ok) return requestedSheetName;
+
+	const data = (await sheetsRes.json().catch(() => ({}))) as { value?: Array<{ name?: string }> };
+	const sheets = (data.value ?? []).map((sheet) => sheet.name).filter((name): name is string => !!name);
+	const normalizedRequested = normalizeSheetName(requestedSheetName);
+	return sheets.find((name) => normalizeSheetName(name) === normalizedRequested) ?? requestedSheetName;
+}
+
 async function appendCrewChangeRow(row: (string | number | null)[], sheetName: string, excelYear: number) {
 	const siteId = process.env.SHAREPOINT_SITE_ID;
 	const excelPath = getCrewChangeExcelPath(excelYear);
@@ -99,8 +115,9 @@ async function appendCrewChangeRow(row: (string | number | null)[], sheetName: s
 	if (!token) throw new Error("Mangler Graph-token for å skrive Crew change til Excel.");
 
 	const baseUrl = workbookBaseUrl(siteId, excelPath);
-	const rangeRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='A1:X500')`, { headers: { Authorization: `Bearer ${token}` } });
-	if (!rangeRes.ok) throw new Error(`Klarte ikke å lese Crew change-arket ${sheetName} (status ${rangeRes.status}).`);
+	const worksheetName = await resolveWorksheetName(baseUrl, token, sheetName);
+	const rangeRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(worksheetName)}')/range(address='A1:X500')`, { headers: { Authorization: `Bearer ${token}` } });
+	if (!rangeRes.ok) throw new Error(`Klarte ikke å lese Crew change-arket ${worksheetName} (status ${rangeRes.status}).`);
 
 	const rangeData = (await rangeRes.json()) as { values?: unknown[][] };
 	const values = (rangeData.values ?? []) as (string | number | null)[][];
@@ -123,7 +140,7 @@ async function appendCrewChangeRow(row: (string | number | null)[], sheetName: s
 		}
 	}
 
-	const patchRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='A${nextRow}:X${nextRow}')`, {
+	const patchRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(worksheetName)}')/range(address='A${nextRow}:X${nextRow}')`, {
 		method: "PATCH",
 		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
 		body: JSON.stringify({ values: [row] }),
