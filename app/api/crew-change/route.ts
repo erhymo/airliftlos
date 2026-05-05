@@ -185,9 +185,19 @@ export async function POST(req: Request) {
 	const sign = cleanText(payload.sign).toUpperCase();
 	const vesselName = cleanText(payload.vesselName);
 	const techlogNumber = cleanInteger(payload.techlogNumber);
-	if (!date || sign.length !== 3 || !vesselName || !techlogNumber || !isPlaceType(payload.placeType)) {
-		return NextResponse.json({ error: "Dato, Sign, TechLogNr, fartøy og sted/type må fylles ut." }, { status: 400 });
-	}
+	const totalFlightDistance = cleanInteger(payload.totalFlightDistance);
+	const pax = cleanInteger(payload.pax);
+	const helideckIdleTime = cleanInteger(payload.helideckIdleTime);
+	const comment = cleanText(payload.comment);
+	if (!date) return NextResponse.json({ error: "Husk å fylle inn Dato." }, { status: 400 });
+	if (sign.length !== 3) return NextResponse.json({ error: "Husk å fylle inn Sign." }, { status: 400 });
+	if (techlogNumber === null) return NextResponse.json({ error: "Husk å fylle inn TechLogNr." }, { status: 400 });
+	if (!vesselName) return NextResponse.json({ error: "Husk å fylle inn Navn på fartøy." }, { status: 400 });
+	if (!isPlaceType(payload.placeType)) return NextResponse.json({ error: "Husk å fylle inn Sted/type." }, { status: 400 });
+	if (totalFlightDistance === null) return NextResponse.json({ error: "Husk å fylle inn Total flight distance in NM." }, { status: 400 });
+	if (pax === null) return NextResponse.json({ error: "Husk å fylle inn PAX." }, { status: 400 });
+	if (helideckIdleTime === null) return NextResponse.json({ error: "Husk å fylle inn Helideck idle time." }, { status: 400 });
+	if (!comment) return NextResponse.json({ error: "Husk å fylle inn Kommentarer." }, { status: 400 });
 	const weatherComment = cleanText(payload.weatherComment);
 	if (requiresWeatherComment(date) && !weatherComment) {
 		return NextResponse.json({ error: "Kommentarer om værforhold må fylles ut mellom 1. september og 1. mai." }, { status: 400 });
@@ -203,11 +213,11 @@ export async function POST(req: Request) {
 	row[6] = vesselName;
 	row[7] = payload.placeType;
 	row[16] = payload.isCrewChange ? 1 : "";
-	row[17] = cleanInteger(payload.totalFlightDistance) ?? "";
-	row[18] = cleanInteger(payload.pax) ?? "";
-	row[19] = cleanInteger(payload.helideckIdleTime) ?? "";
+	row[17] = totalFlightDistance;
+	row[18] = pax;
+	row[19] = helideckIdleTime;
 	row[20] = cleanInteger(payload.reposMinutes) ?? "";
-	row[21] = cleanText(payload.comment);
+	row[21] = comment;
 	row[22] = weatherComment;
 	row[23] = cleanText(payload.weatherDelayComment);
 

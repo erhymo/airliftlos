@@ -80,15 +80,26 @@ export default function CrewChangePage() {
 	const weatherRequired = useMemo(() => requiresWeatherComment(date), [date]);
 	const signers = useMemo(() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")), []);
 
+	function getMissingFieldMessage() {
+		if (!date) return "Husk å fylle inn Dato.";
+		if (!sign.trim()) return "Husk å fylle inn Sign.";
+		if (!techlogNumber) return "Husk å fylle inn TechLogNr.";
+		if (!vesselName.trim()) return "Husk å fylle inn Navn på fartøy.";
+		if (!placeType) return "Husk å fylle inn Sted/type.";
+		if (!totalFlightDistance) return "Husk å fylle inn Total flight distance in NM.";
+		if (!pax) return "Husk å fylle inn PAX.";
+		if (!helideckIdleTime) return "Husk å fylle inn Helideck idle time.";
+		if (!comment.trim()) return "Husk å fylle inn Kommentarer.";
+		if (weatherRequired && !weatherComment.trim()) return "Kommentarer om værforhold må fylles ut mellom 1. september og 1. mai.";
+		return null;
+	}
+
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
 		setError(null);
-		if (!date || !techlogNumber || !vesselName.trim() || !placeType || !sign.trim()) {
-			setError("Dato, TechLogNr, fartøy, sted/type og sign må fylles ut.");
-			return;
-		}
-		if (weatherRequired && !weatherComment.trim()) {
-			setError("Kommentarer om værforhold må fylles ut mellom 1. september og 1. mai.");
+		const missingFieldMessage = getMissingFieldMessage();
+		if (missingFieldMessage) {
+			setError(missingFieldMessage);
 			return;
 		}
 
