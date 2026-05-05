@@ -128,7 +128,7 @@ export default function CrewChangePage() {
 					</section>
 				) : (
 					<form onSubmit={handleSubmit} className="space-y-4">
-						<div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+						<div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
 							<Field label="Dato"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={textInput} /></Field>
 							<Field label="Sign"><select value={sign} onChange={(e) => setSign(e.target.value)} className={textInput}><option value="">Velg sign</option>{signers.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
 						</div>
