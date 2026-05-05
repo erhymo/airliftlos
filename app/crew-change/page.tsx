@@ -110,8 +110,9 @@ export default function CrewChangePage() {
 		}
 	}
 
-	const numberInput = "w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900";
-	const textInput = "w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900";
+	const numberInput = "block w-full max-w-full min-w-0 box-border rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900";
+	const textInput = "block w-full max-w-full min-w-0 box-border rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900";
+	const dateInput = `${textInput} appearance-none overflow-hidden text-ellipsis whitespace-nowrap`;
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-3 sm:p-4">
@@ -129,7 +130,7 @@ export default function CrewChangePage() {
 				) : (
 					<form onSubmit={handleSubmit} className="space-y-4">
 						<div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
-							<Field label="Dato"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={textInput} /></Field>
+							<Field label="Dato"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={dateInput} /></Field>
 							<Field label="Sign"><select value={sign} onChange={(e) => setSign(e.target.value)} className={textInput}><option value="">Velg sign</option>{signers.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
 						</div>
 						<Field label="TechLogNr"><input type="number" inputMode="numeric" value={techlogNumber} onChange={(e) => setTechlogNumber(parseIntValue(e.target.value))} className={numberInput} /></Field>
