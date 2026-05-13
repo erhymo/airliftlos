@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CAPTAINS, FIRST_OFFICERS } from "../vaktapp/components/CrewPicker";
+import { activeCrewCodesByRoles, DEFAULT_CREW_DIRECTORY, type CrewDirectoryEntry } from "../../lib/crewDirectory";
 
 const LAST_TECHLOG_STORAGE_KEY = "loslogg_last_techlog_number";
 const PLACE_TYPES = ["Crew Change Bergen", "Crew Change Hammerfest", "Other Bergen", "Other Hammerfest"] as const;
 type PlaceType = (typeof PLACE_TYPES)[number];
+type CrewDirectoryResponse = { ok?: boolean; entries?: CrewDirectoryEntry[] };
 
 function todayISO() {
 	return new Date().toISOString().slice(0, 10);
@@ -57,6 +58,7 @@ export default function CrewChangePage() {
 	const [weatherComment, setWeatherComment] = useState("");
 	const [weatherDelayComment, setWeatherDelayComment] = useState("");
 	const [sign, setSign] = useState("");
+	const [signers, setSigners] = useState(() => activeCrewCodesByRoles(DEFAULT_CREW_DIRECTORY, ["captain", "firstOfficer"]));
 	const [sending, setSending] = useState(false);
 	const [sent, setSent] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -75,10 +77,18 @@ export default function CrewChangePage() {
 				}
 			})
 			.catch(() => {});
+
+		fetch("/api/crew-directory", { cache: "no-store" })
+			.then((res) => (res.ok ? res.json() : null))
+			.then((data: CrewDirectoryResponse | null) => {
+				if (data?.ok && Array.isArray(data.entries)) {
+					setSigners(activeCrewCodesByRoles(data.entries, ["captain", "firstOfficer"]));
+				}
+			})
+			.catch(() => {});
 	}, []);
 
 	const weatherRequired = useMemo(() => requiresWeatherComment(date), [date]);
-	const signers = useMemo(() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")), []);
 
 	function getMissingFieldMessage() {
 		if (!date) return "Husk å fylle inn Dato.";

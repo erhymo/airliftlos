@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { CAPTAINS, FIRST_OFFICERS } from "../../vaktapp/components/CrewPicker";
+import { activeCrewCodesByRoles, DEFAULT_CREW_DIRECTORY, type CrewDirectoryEntry } from "../../../lib/crewDirectory";
 
 const LAST_TECHLOG_STORAGE_KEY = "loslogg_last_techlog_number";
 
@@ -190,6 +190,7 @@ const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("nb
 
 type Location = "Mongstad" | "Sture" | "Melkøya" | "Kårstø" | "Los øvrig" | "Nyhamna";
 type LosType = "Båt" | "Rigg";
+type CrewDirectoryResponse = { ok?: boolean; entries?: CrewDirectoryEntry[] };
 
 		export default function LosLoggBookingPage() {
 				const params = useParams<{ id: string }>();
@@ -212,6 +213,7 @@ type LosType = "Båt" | "Rigg";
 			const [extraLosNames, setExtraLosNames] = useState<string[]>([]);
 			const [comment, setComment] = useState("");
 			const [sign, setSign] = useState("");
+				const [signers, setSigners] = useState(() => activeCrewCodesByRoles(DEFAULT_CREW_DIRECTORY, ["captain", "firstOfficer"]));
 					const [hasSent, setHasSent] = useState(false);
 					const [sending, setSending] = useState(false);
 					const [sendError, setSendError] = useState<string | null>(null);
@@ -331,11 +333,23 @@ type LosType = "Båt" | "Rigg";
 
 					loadExtraLosNames();
 				}, []);
-			
-			const signers = useMemo(
-				() => [...CAPTAINS, ...FIRST_OFFICERS].sort((a, b) => a.localeCompare(b, "nb-NO")),
-				[],
-			);
+
+					useEffect(() => {
+						async function loadSigners() {
+							try {
+								const res = await fetch("/api/crew-directory", { cache: "no-store" });
+								if (!res.ok) return;
+								const data = (await res.json()) as CrewDirectoryResponse;
+								if (data.ok && Array.isArray(data.entries)) {
+									setSigners(activeCrewCodesByRoles(data.entries, ["captain", "firstOfficer"]));
+								}
+							} catch (error) {
+								console.error("Klarte ikke å hente sign-liste", error);
+							}
+						}
+
+						loadSigners();
+					}, []);
 		
 				const allLosNames = useMemo(
 					() => {
