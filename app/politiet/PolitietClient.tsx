@@ -466,7 +466,7 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		setStatus({ type: "sending", message: "Sender crew-skjema..." });
 		try {
 			await submitJson("/api/police/crew", { base: watchPhoneBase, periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone, captain, firstOfficer, technician, helicopter });
-			setStatus({ type: "success", message: "Crew-skjema er lagret. E-post/SharePoint kobles på når mottakere og mapper er satt." });
+			setStatus({ type: "success", message: "Crew epost sendt." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
 		}
@@ -508,7 +508,7 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			</Section>
 			{!CREW_FORM_SEND_ENABLED && <div className="rounded-xl border border-gray-200 bg-gray-100 p-3 text-sm text-gray-700">Innsending av crew-skjema er midlertidig deaktivert. Skjemaet kan fortsatt fylles ut og klargjøres.</div>}
 			<StatusMessage status={status} />
-			<button disabled={!CREW_FORM_SEND_ENABLED || status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-not-allowed disabled:opacity-60">{CREW_FORM_SEND_ENABLED ? "Send crew-skjema" : "Crew-skjema deaktivert"}</button>
+			<button disabled={!CREW_FORM_SEND_ENABLED || status.type === "sending" || status.type === "success"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-not-allowed disabled:opacity-60">{!CREW_FORM_SEND_ENABLED ? "Crew-skjema deaktivert" : status.type === "success" ? "Crew epost sendt" : status.type === "sending" ? "Sender crew-skjema..." : "Send crew-skjema"}</button>
 		</form>
 	);
 }
