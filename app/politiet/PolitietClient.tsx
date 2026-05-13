@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_MASKIN, MASKINER, type Maskin } from "../../lib/aviationOptions";
-import { CREW_ROLE_LABELS, DEFAULT_CREW_DIRECTORY, formatCrewDirectoryEntry, sortCrewDirectoryEntries, type CrewDirectoryEntry, type CrewRole } from "../../lib/crewDirectory";
+import { CREW_ROLE_LABELS, DEFAULT_CREW_DIRECTORY, formatCrewDirectoryEntry, mergeCrewDirectoryEntries, sortCrewDirectoryEntries, type CrewDirectoryEntry, type CrewRole } from "../../lib/crewDirectory";
 import PoliceMapPicker from "./PoliceMapPicker";
 import type { ApiSubmitResponse, PolicePin, PoliceReportType, PoliceTab, SubmitStatus } from "./types";
 
@@ -692,7 +692,7 @@ export default function PolitietClient() {
 	}, []);
 
 	function handleCrewDirectorySaved(entry: CrewDirectoryEntry) {
-		setCrewDirectory((current) => sortCrewDirectoryEntries([...current.filter((item) => item.id !== entry.id), entry]));
+		setCrewDirectory((current) => mergeCrewDirectoryEntries([...current.filter((item) => item.id !== entry.id), entry]));
 	}
 
 	return (

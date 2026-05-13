@@ -6,6 +6,7 @@ import {
 	formatCrewDisplayNameForRole,
 	isCrewRole,
 	isRetiredCrewDirectoryEntry,
+	mergeCrewDirectoryEntries,
 	normalizeCrewCode,
 	type CrewDirectoryEntry,
 	type CrewRole,
@@ -68,17 +69,17 @@ function cleanCrewEntry(id: string, data: Partial<CrewDirectoryEntry>): CrewDire
 }
 
 async function getCrewDirectoryEntries() {
-	const entries = new Map(DEFAULT_CREW_DIRECTORY.map((entry) => [entry.id, entry]));
+	const entries = DEFAULT_CREW_DIRECTORY.filter((entry) => !isRetiredCrewDirectoryEntry(entry));
 	try {
 		const snapshot = await getDb().collection("crewDirectory").get();
 		snapshot.forEach((doc) => {
 			const entry = cleanCrewEntry(doc.id, doc.data() as Partial<CrewDirectoryEntry>);
-			if (entry && !isRetiredCrewDirectoryEntry(entry)) entries.set(doc.id, { ...entry, phone: entry.phone || entries.get(doc.id)?.phone });
+			if (entry && !isRetiredCrewDirectoryEntry(entry)) entries.push(entry);
 		});
 	} catch (error) {
 		console.error("Politiet crew: bruker fallback for crew-directory", error);
 	}
-	return Array.from(entries.values());
+	return mergeCrewDirectoryEntries(entries);
 }
 
 function findCrewEntry(value: string | undefined, role: CrewRole | CrewRole[], entries: CrewDirectoryEntry[]) {

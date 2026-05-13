@@ -96,6 +96,33 @@ export function sortCrewDirectoryEntries(entries: CrewDirectoryEntry[]) {
 	});
 }
 
+function crewDirectoryKey(entry: Pick<CrewDirectoryEntry, "code" | "role">) {
+	return `${entry.role}:${normalizeCrewCode(entry.code)}`;
+}
+
+export function mergeCrewDirectoryEntries(entries: CrewDirectoryEntry[]) {
+	const merged = new Map<string, CrewDirectoryEntry>();
+	for (const entry of entries) {
+		const key = crewDirectoryKey(entry);
+		const existing = merged.get(key);
+		const normalizedEntry = { ...entry, code: normalizeCrewCode(entry.code) };
+		if (!existing) {
+			merged.set(key, normalizedEntry);
+			continue;
+		}
+
+		merged.set(key, {
+			...existing,
+			...normalizedEntry,
+			fullName: normalizedEntry.fullName.trim() || existing.fullName,
+			phone: normalizedEntry.phone || existing.phone,
+			updatedAt: normalizedEntry.updatedAt ?? existing.updatedAt,
+		});
+	}
+
+	return sortCrewDirectoryEntries(Array.from(merged.values()));
+}
+
 const defaultDisplayByRoleAndCode = new Map<string, string>();
 const defaultDisplayByCode = new Map<string, string>();
 const defaultCodeCounts = new Map<string, number>();

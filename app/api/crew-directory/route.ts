@@ -4,6 +4,7 @@ import {
 	DEFAULT_CREW_DIRECTORY,
 	isRetiredCrewDirectoryEntry,
 	isCrewRole,
+	mergeCrewDirectoryEntries,
 	normalizeCrewCode,
 	sortCrewDirectoryEntries,
 	type CrewDirectoryEntry,
@@ -26,14 +27,14 @@ function cleanEntry(id: string, data: CrewDirectoryPayload, updatedAt = Date.now
 }
 
 async function getDirectoryEntries() {
-	const defaults = new Map(DEFAULT_CREW_DIRECTORY.map((entry) => [entry.id, entry]));
+	const entries = DEFAULT_CREW_DIRECTORY.filter((entry) => !isRetiredCrewDirectoryEntry(entry));
 	const snapshot = await getDb().collection(COLLECTION_NAME).get();
 	snapshot.forEach((doc) => {
 		const data = doc.data() as CrewDirectoryPayload & { updatedAt?: number };
 		const entry = cleanEntry(doc.id, data, typeof data.updatedAt === "number" ? data.updatedAt : undefined);
-		if (entry && !isRetiredCrewDirectoryEntry(entry)) defaults.set(doc.id, { ...entry, phone: entry.phone || defaults.get(doc.id)?.phone });
+		if (entry && !isRetiredCrewDirectoryEntry(entry)) entries.push(entry);
 	});
-	return sortCrewDirectoryEntries(Array.from(defaults.values()));
+	return mergeCrewDirectoryEntries(entries);
 }
 
 export async function GET() {
