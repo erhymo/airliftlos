@@ -20,6 +20,12 @@ const MONTH_SHEETS = [
 	"Desember",
 ];
 
+type LosLogSendLockResult =
+	| { status: "acquired"; wasOpen: boolean }
+	| { status: "already-sent" }
+	| { status: "in-progress" }
+	| { status: "missing-booking" };
+
 type LosLoggPayload = {
 	bookingId?: string;
 	date?: string | null;
@@ -242,6 +248,61 @@ async function appendRowToExcel(
 		}
 }
 
+async function acquireLosLogSendLock(
+	bookingId: string,
+	sign: string,
+): Promise<LosLogSendLockResult> {
+	const db = getDb();
+	const ref = db.collection("losBookings").doc(bookingId);
+	const now = Date.now();
+
+	return db.runTransaction(async (transaction) => {
+		const snap = await transaction.get(ref);
+		if (!snap.exists) {
+			return { status: "missing-booking" };
+		}
+
+		const data = snap.data() as {
+			status?: string | null;
+			losLogSentAt?: number | null;
+			losLogSendLockAt?: number | null;
+		};
+
+		if (typeof data.losLogSentAt === "number" && data.losLogSentAt > 0) {
+			return { status: "already-sent" };
+		}
+
+		if (typeof data.losLogSendLockAt === "number" && data.losLogSendLockAt > 0) {
+			return { status: "in-progress" };
+		}
+
+		transaction.set(
+			ref,
+			{
+				losLogSendLockAt: now,
+				losLogSendLockSign: sign.toUpperCase(),
+			},
+			{ merge: true },
+		);
+
+		return {
+			status: "acquired",
+			wasOpen: isOpenLosBooking(data),
+		};
+	});
+}
+
+async function releaseLosLogSendLock(bookingId: string) {
+	const db = getDb();
+	await db.collection("losBookings").doc(bookingId).set(
+		{
+			losLogSendLockAt: null,
+			losLogSendLockSign: null,
+		},
+		{ merge: true },
+	);
+}
+
 export async function POST(req: Request) {
 	const accessError = await requireApiAccess();
 	if (accessError) return accessError;
@@ -274,131 +335,167 @@ export async function POST(req: Request) {
 			);
 		}
 
-			const { excelDate, sheetName } = getExcelDateAndSheet(body.date);
-			// Finn aret vi skal bruke for valg av Excel-fil (2025 vs 2026+), basert p e5
-			// selve logg-datoen, ikke serverklokken.
-			let excelYear: number;
-			if (body.date) {
-				const d = new Date(body.date);
-				excelYear = Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
-			} else {
-				excelYear = new Date().getFullYear();
+		const bookingId = body.bookingId?.trim();
+		let lockResult: LosLogSendLockResult | null = null;
+		if (bookingId) {
+			lockResult = await acquireLosLogSendLock(bookingId, body.sign);
+			if (lockResult.status === "already-sent") {
+				return NextResponse.json({ ok: true, duplicate: true });
 			}
-			const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
-			const vesselForExcel = getExcelVesselName(body.vesselName ?? "");
+			if (lockResult.status === "in-progress") {
+				return NextResponse.json({ ok: true, inProgress: true });
+			}
+			if (lockResult.status === "missing-booking") {
+				console.warn(
+					"LOS-logg: bookingId finnes ikke i losBookings, fortsetter uten sendelås",
+					bookingId,
+				);
+			}
+		}
 
-			const row: (string | number | null)[] = [
-				null, // A Fakt.
-				null, // B Løpenummer
-				body.sign.toUpperCase(), // C Sign
-				excelDate, // D Dato (DD.MM.ÅÅÅÅ)
-				body.orderNumber ?? "", // E Ordrenummer
-				body.techlogNumber ?? "", // F Techlognummer
-				vesselForExcel, // G Navn på fartøy (uten registreringskode i parentes)
-				body.gt ?? "", // H GT
-				body.location ?? "", // I Sted
-				body.losType ?? "", // J Type
-				hasLos ? 1 : "", // K Skriv 1 hvis LOS
-				hasLos ? body.pilots?.[0] ?? "" : "", // L Los 1
-				hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "", // M Los 2
-				body.shipLanding ? 1 : "", // N Ship landing
-				body.tokeBomtur ? 1 : "", // O Ekstra flagg (1/blank)
-				body.losToAirportCount ?? "", // P Antall los til flyplass
-				body.enfjLandings ?? "", // Q Antall landinger ENFJ
-				body.hoistCount ?? "", // R Hoists
-				body.comment ?? "", // S Kommentar
-			];
+		const { excelDate, sheetName } = getExcelDateAndSheet(body.date);
+		// Finn året vi skal bruke for valg av Excel-fil (2025 vs 2026+), basert på
+		// selve logg-datoen, ikke serverklokken.
+		let excelYear: number;
+		if (body.date) {
+			const d = new Date(body.date);
+			excelYear = Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+		} else {
+			excelYear = new Date().getFullYear();
+		}
+		const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
+		const vesselForExcel = getExcelVesselName(body.vesselName ?? "");
+
+		const row: (string | number | null)[] = [
+			null, // A Fakt.
+			null, // B Løpenummer
+			body.sign.toUpperCase(), // C Sign
+			excelDate, // D Dato (DD.MM.ÅÅÅÅ)
+			body.orderNumber ?? "", // E Ordrenummer
+			body.techlogNumber ?? "", // F Techlognummer
+			vesselForExcel, // G Navn på fartøy (uten registreringskode i parentes)
+			body.gt ?? "", // H GT
+			body.location ?? "", // I Sted
+			body.losType ?? "", // J Type
+			hasLos ? 1 : "", // K Skriv 1 hvis LOS
+			hasLos ? body.pilots?.[0] ?? "" : "", // L Los 1
+			hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "", // M Los 2
+			body.shipLanding ? 1 : "", // N Ship landing
+			body.tokeBomtur ? 1 : "", // O Ekstra flagg (1/blank)
+			body.losToAirportCount ?? "", // P Antall los til flyplass
+			body.enfjLandings ?? "", // Q Antall landinger ENFJ
+			body.hoistCount ?? "", // R Hoists
+			body.comment ?? "", // S Kommentar
+		];
 			
+		try {
 			await appendRowToExcel(row, sheetName, excelYear);
-
-			// Lagre GT mot fartøynavnet slik at neste bestilling for samme båt
-			// kan få GT forhåndsutfylt automatisk.
-			if (typeof body.gt === "number" && body.vesselName) {
+		} catch (err) {
+			if (bookingId && lockResult?.status === "acquired") {
 				try {
-					await saveGtForVessel(body.vesselName, body.gt, "manual");
-				} catch (err) {
-					console.warn(
-						"LOS-logg: klarte ikke å oppdatere vesselGt med manuell GT-verdi",
-						err,
+					await releaseLosLogSendLock(bookingId);
+				} catch (unlockError) {
+					console.error(
+						"LOS-logg: klarte ikke å frigjøre sendelås etter Excel-feil",
+						unlockError,
 					);
 				}
 			}
+			throw err;
+		}
 
-			// Hvis denne LOS-loggen hører til en importert bestilling, marker den som lukket
-			// i Firestore slik at den ikke lenger vises som åpen i LOS-logg-listen.
-				if (body.bookingId) {
-					try {
-						const db = getDb();
-						const ref = db.collection("losBookings").doc(body.bookingId);
-						const snap = await ref.get();
-						if (snap.exists) {
-							const wasOpen = isOpenLosBooking(snap.data() as { status?: string | null });
-								const now = Date.now();
-								const updateData: Record<string, unknown> = {
-								status: "closed",
-								losLogSentAt: now,
-								losLogSign: body.sign?.toUpperCase() ?? null,
-								// Felter for admin-/statistikkområde
-								adminExcelDate: excelDate,
-								adminSheetName: sheetName,
-								adminRowData: {
-									factNumber: null,
-									serialNumber: null,
-									sign: body.sign?.toUpperCase() ?? "",
-									date: excelDate,
-									orderNumber: body.orderNumber ?? "",
-									techlogNumber: body.techlogNumber ?? "",
-									vesselName: vesselForExcel,
-									gt: body.gt ?? "",
-									location: body.location ?? "",
-									losType: body.losType ?? "",
-									hasLos,
-									los1: hasLos ? body.pilots?.[0] ?? "" : "",
-									los2: hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "",
-									shipLanding: !!body.shipLanding,
-									tokeBomtur: !!body.tokeBomtur,
-									losToAirportCount: body.losToAirportCount ?? "",
-									enfjLandings: body.enfjLandings ?? "",
-									hoistCount: body.hoistCount ?? "",
-									comment: body.comment ?? "",
-								},
-								adminVerified: false,
-								adminVerifiedAt: null,
-								adminUpdatedAt: now,
-							};
-								if (typeof body.techlogNumber === "number") {
-									updateData.techlogNumber = body.techlogNumber;
-								}
-									if (typeof body.gt === "number") {
-										updateData.gt = body.gt;
-									}
-						
-								await ref.set(updateData, { merge: true });
-							if (wasOpen) {
-								try {
-									await touchLosBookingsMeta(db, { openCountDelta: -1, bumpVersion: true });
-								} catch (metaError) {
-									console.error(
-										"LOS-logg: klarte ikke å oppdatere losBookings-meta etter lukking",
-										metaError,
-									);
-								}
-							}
-						} else {
-							console.warn(
-								"LOS-logg: bookingId finnes ikke i losBookings, hopper over status-oppdatering",
-								body.bookingId,
+		// Lagre GT mot fartøynavnet slik at neste bestilling for samme båt
+		// kan få GT forhåndsutfylt automatisk.
+		if (typeof body.gt === "number" && body.vesselName) {
+			try {
+				await saveGtForVessel(body.vesselName, body.gt, "manual");
+			} catch (err) {
+				console.warn(
+					"LOS-logg: klarte ikke å oppdatere vesselGt med manuell GT-verdi",
+					err,
+				);
+			}
+		}
+
+		// Hvis denne LOS-loggen hører til en importert bestilling, marker den som lukket
+		// i Firestore slik at den ikke lenger vises som åpen i LOS-logg-listen.
+		if (bookingId) {
+			try {
+				const db = getDb();
+				const ref = db.collection("losBookings").doc(bookingId);
+				const snap = await ref.get();
+				if (snap.exists) {
+					const wasOpen = lockResult?.status === "acquired"
+						? lockResult.wasOpen
+						: isOpenLosBooking(snap.data() as { status?: string | null });
+					const now = Date.now();
+					const updateData: Record<string, unknown> = {
+						status: "closed",
+						losLogSentAt: now,
+						losLogSign: body.sign?.toUpperCase() ?? null,
+						losLogSendLockAt: null,
+						losLogSendLockSign: null,
+						// Felter for admin-/statistikkområde
+						adminExcelDate: excelDate,
+						adminSheetName: sheetName,
+						adminRowData: {
+							factNumber: null,
+							serialNumber: null,
+							sign: body.sign?.toUpperCase() ?? "",
+							date: excelDate,
+							orderNumber: body.orderNumber ?? "",
+							techlogNumber: body.techlogNumber ?? "",
+							vesselName: vesselForExcel,
+							gt: body.gt ?? "",
+							location: body.location ?? "",
+							losType: body.losType ?? "",
+							hasLos,
+							los1: hasLos ? body.pilots?.[0] ?? "" : "",
+							los2: hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "",
+							shipLanding: !!body.shipLanding,
+							tokeBomtur: !!body.tokeBomtur,
+							losToAirportCount: body.losToAirportCount ?? "",
+							enfjLandings: body.enfjLandings ?? "",
+							hoistCount: body.hoistCount ?? "",
+							comment: body.comment ?? "",
+						},
+						adminVerified: false,
+						adminVerifiedAt: null,
+						adminUpdatedAt: now,
+					};
+					if (typeof body.techlogNumber === "number") {
+						updateData.techlogNumber = body.techlogNumber;
+					}
+					if (typeof body.gt === "number") {
+						updateData.gt = body.gt;
+					}
+
+					await ref.set(updateData, { merge: true });
+					if (wasOpen) {
+						try {
+							await touchLosBookingsMeta(db, { openCountDelta: -1, bumpVersion: true });
+						} catch (metaError) {
+							console.error(
+								"LOS-logg: klarte ikke å oppdatere losBookings-meta etter lukking",
+								metaError,
 							);
 						}
-					} catch (err) {
-						console.error(
-							"LOS-logg: klarte ikke å markere losBookings-dokument som lukket etter sending til Excel",
-							err,
-						);
 					}
+				} else {
+					console.warn(
+						"LOS-logg: bookingId finnes ikke i losBookings, hopper over status-oppdatering",
+						bookingId,
+					);
 				}
-		
-			return NextResponse.json({ ok: true });
+			} catch (err) {
+				console.error(
+					"LOS-logg: klarte ikke å markere losBookings-dokument som lukket etter sending til Excel",
+					err,
+				);
+			}
+		}
+
+		return NextResponse.json({ ok: true });
 	} catch (error) {
 		console.error("Feil i LOS-logg POST", error);
 		const message =
