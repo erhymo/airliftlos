@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { activeCrewCodesByRoles, DEFAULT_CREW_DIRECTORY, type CrewDirectoryEntry } from "../../../lib/crewDirectory";
+import { resolveLosName } from "../../../lib/losNames";
 
 const LAST_TECHLOG_STORAGE_KEY = "loslogg_last_techlog_number";
 
@@ -97,6 +98,7 @@ const LOS_NAMES: string[] = [
   "Knut Steffensen",
 	"Kristoffer Eidissen",
   "Kristian Bratthammer",
+	"Kristen Østhus",
   "Kristian Valberg",
   "Lars Engvik",
   "Laurits Sund",
@@ -142,6 +144,7 @@ const LOS_NAMES: string[] = [
   "Terje Mjølsvik",
   "Terje Sudmann",
   "Torbjørn Vinnes",
+	"Tor-Steve Bendiksen",
   "Tore Anton Årvik",
   "Tore Espeland",
   "Tore Hella",
@@ -355,7 +358,10 @@ type CrewDirectoryResponse = { ok?: boolean; entries?: CrewDirectoryEntry[] };
 					() => {
 						const namesSet = new Set<string>();
 						LOS_NAMES.forEach((name) => namesSet.add(name));
-						extraLosNames.forEach((name) => namesSet.add(name));
+							extraLosNames.forEach((name) => {
+								const resolved = resolveLosName(name);
+								if (resolved.method !== "raw") namesSet.add(resolved.name);
+							});
 						return Array.from(namesSet).sort((a, b) => a.localeCompare(b, "nb-NO"));
 					},
 					[extraLosNames],

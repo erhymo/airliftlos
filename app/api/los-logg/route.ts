@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../lib/apiAccess";
 import { getDb } from "../../../lib/firebaseAdmin";
+import { resolveLosNames } from "../../../lib/losNames";
 import { isOpenLosBooking } from "../../../lib/losBookings";
 import { touchLosBookingsMeta } from "../../../lib/losBookingsMeta";
 import { saveGtForVessel } from "../../../lib/vesselGt";
@@ -363,7 +364,12 @@ export async function POST(req: Request) {
 		} else {
 			excelYear = new Date().getFullYear();
 		}
-		const hasLos = Array.isArray(body.pilots) && body.pilots.length > 0;
+		const rawPilots = Array.isArray(body.pilots)
+			? body.pilots.filter((name): name is string => typeof name === "string")
+			: [];
+		const pilotNameMatches = resolveLosNames(rawPilots);
+		const pilotsForExcel = pilotNameMatches.map((match) => match.name);
+		const hasLos = pilotsForExcel.length > 0;
 		const vesselForExcel = getExcelVesselName(body.vesselName ?? "");
 
 		const row: (string | number | null)[] = [
@@ -378,8 +384,8 @@ export async function POST(req: Request) {
 			body.location ?? "", // I Sted
 			body.losType ?? "", // J Type
 			hasLos ? 1 : "", // K Skriv 1 hvis LOS
-			hasLos ? body.pilots?.[0] ?? "" : "", // L Los 1
-			hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "", // M Los 2
+			hasLos ? pilotsForExcel[0] ?? "" : "", // L Los 1
+			hasLos && pilotsForExcel.length > 1 ? pilotsForExcel[1] : "", // M Los 2
 			body.shipLanding ? 1 : "", // N Ship landing
 			body.tokeBomtur ? 1 : "", // O Ekstra flagg (1/blank)
 			body.losToAirportCount ?? "", // P Antall los til flyplass
@@ -433,6 +439,8 @@ export async function POST(req: Request) {
 						status: "closed",
 						losLogSentAt: now,
 						losLogSign: body.sign?.toUpperCase() ?? null,
+						pilots: pilotsForExcel,
+						pilotNameMatches,
 						losLogSendLockAt: null,
 						losLogSendLockSign: null,
 						// Felter for admin-/statistikkområde
@@ -450,8 +458,8 @@ export async function POST(req: Request) {
 							location: body.location ?? "",
 							losType: body.losType ?? "",
 							hasLos,
-							los1: hasLos ? body.pilots?.[0] ?? "" : "",
-							los2: hasLos && body.pilots && body.pilots.length > 1 ? body.pilots[1] : "",
+							los1: hasLos ? pilotsForExcel[0] ?? "" : "",
+							los2: hasLos && pilotsForExcel.length > 1 ? pilotsForExcel[1] : "",
 							shipLanding: !!body.shipLanding,
 							tokeBomtur: !!body.tokeBomtur,
 							losToAirportCount: body.losToAirportCount ?? "",
