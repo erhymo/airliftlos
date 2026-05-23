@@ -30,6 +30,7 @@ const COMPACT_DATE_TIME_CLASS = "min-w-0 w-full appearance-none rounded-lg borde
 const TEXTAREA_CLASS = `${FIELD_CONTROL_CLASS} resize-y`;
 const COMPACT_TWO_COLUMN_GRID = "grid grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] gap-1.5";
 const CREW_FORM_SEND_ENABLED = true;
+const POLICE_LAST_TECHLOG_STORAGE_KEY = "police_mission_last_techlog_number";
 
 type PoliceCrewOptions = { captains: string[]; firstOfficers: string[]; technicians: string[]; all: string[] };
 
@@ -72,6 +73,38 @@ const PIN_TYPE_LABELS: Record<string, string> = {
 
 function reportTypeLabel(type: PoliceReportType) {
 	return type === "mission" ? "Mission Report" : "Training Report";
+}
+
+function createClientSubmissionId() {
+	return `police_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function extractCrewCode(value: string) {
+	const match = value.match(/\(([^)]+)\)\s*$/);
+	return (match?.[1] || value).trim().toLocaleUpperCase("nb-NO");
+}
+
+function minutesBetweenTimes(start: string, end: string) {
+	const startMatch = start.match(/^([0-9]{2}):([0-9]{2})$/);
+	const endMatch = end.match(/^([0-9]{2}):([0-9]{2})$/);
+	if (!startMatch || !endMatch) return null;
+	const startMinutes = Number(startMatch[1]) * 60 + Number(startMatch[2]);
+	let endMinutes = Number(endMatch[1]) * 60 + Number(endMatch[2]);
+	if (endMinutes < startMinutes) endMinutes += 24 * 60;
+	return endMinutes - startMinutes;
+}
+
+function formatDurationMinutes(minutes: number | null) {
+	if (minutes === null || !Number.isFinite(minutes) || minutes < 0) return "";
+	const hours = Math.floor(minutes / 60);
+	const rest = minutes % 60;
+	return `${hours}:${String(rest).padStart(2, "0")}`;
+}
+
+function parseDurationMinutes(value: string) {
+	const match = value.trim().match(/^([0-9]+):([0-9]{2})$/);
+	if (!match) return null;
+	return Number(match[1]) * 60 + Number(match[2]);
 }
 
 function formatLiveFrom(value: string | null | undefined) {
@@ -587,9 +620,44 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [lessonsLearned, setLessonsLearned] = useState("");
 	const [followUp, setFollowUp] = useState("");
 	const [safetyNotes, setSafetyNotes] = useState("");
+	const [clientSubmissionId] = useState(createClientSubmissionId);
+	const [missionSign, setMissionSign] = useState("");
+	const [missionRef, setMissionRef] = useState("");
+	const [missionPoId, setMissionPoId] = useState("");
+	const [missionBid, setMissionBid] = useState("");
+	const [missionPax, setMissionPax] = useState("");
+	const [missionAlertTime, setMissionAlertTime] = useState("");
+	const [missionReadyTime, setMissionReadyTime] = useState("");
+	const [missionReadinessDeviation, setMissionReadinessDeviation] = useState("");
+	const [missionReadinessDeviationReason, setMissionReadinessDeviationReason] = useState("");
+	const [missionCancelled, setMissionCancelled] = useState(false);
+	const [missionTechlogNumber, setMissionTechlogNumber] = useState(() => {
+		try {
+			return typeof window !== "undefined" ? window.localStorage.getItem(POLICE_LAST_TECHLOG_STORAGE_KEY) ?? "" : "";
+		} catch {
+			return "";
+		}
+	});
+	const [missionBlockOff1, setMissionBlockOff1] = useState("");
+	const [missionBlockOn1, setMissionBlockOn1] = useState("");
+	const [missionBlockTime1, setMissionBlockTime1] = useState("");
+	const [missionBlockTime1Manual, setMissionBlockTime1Manual] = useState(false);
+	const [missionWaitTime, setMissionWaitTime] = useState("");
+	const [missionBlockOff2, setMissionBlockOff2] = useState("");
+	const [missionBlockOn2, setMissionBlockOn2] = useState("");
+	const [missionBlockTime2, setMissionBlockTime2] = useState("");
+	const [missionBlockTime2Manual, setMissionBlockTime2Manual] = useState(false);
+	const [missionTotalBlock, setMissionTotalBlock] = useState("");
+	const [missionTotalBlockManual, setMissionTotalBlockManual] = useState(false);
+	const [missionFlightRoute, setMissionFlightRoute] = useState("");
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
 	const selectedCrew = useMemo(() => crew.filter(Boolean), [crew]);
+	const signOptions = Array.from(new Set(crewOptions.all.map((option) => extractCrewCode(option)).filter(Boolean))).sort((a, b) => a.localeCompare(b, "nb-NO"));
 	const pins = pinsByType[reportType];
+	const effectiveBlockTime1 = missionBlockTime1Manual ? missionBlockTime1 : formatDurationMinutes(minutesBetweenTimes(missionBlockOff1, missionBlockOn1));
+	const effectiveBlockTime2 = missionBlockTime2Manual ? missionBlockTime2 : formatDurationMinutes(minutesBetweenTimes(missionBlockOff2, missionBlockOn2));
+	const calculatedTotalBlockMinutes = [effectiveBlockTime1, effectiveBlockTime2].map(parseDurationMinutes).filter((value): value is number => value !== null).reduce((sum, value) => sum + value, 0);
+	const effectiveTotalBlock = missionTotalBlockManual ? missionTotalBlock : calculatedTotalBlockMinutes > 0 ? formatDurationMinutes(calculatedTotalBlockMinutes) : "";
 
 	function toggleTrainingType(value: string) {
 		setTrainingTypes((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
@@ -601,11 +669,28 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			setStatus({ type: "error", message: "Oppdragsnummer må fylles ut for Mission Report." });
 			return;
 		}
+		if (reportType === "mission" && !missionSign.trim()) {
+			setStatus({ type: "error", message: "Sign må fylles ut for Mission Report." });
+			return;
+		}
 		setStatus({ type: "sending", message: "Lagrer rapport og laster opp PDF til SharePoint..." });
 		try {
-			const response = await submitJson("/api/police/report", { base, reportType, missionNumber, date, reporter, durationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes });
+			const missionLog = reportType === "mission" ? { sign: missionSign, alertTime: missionAlertTime, readyTime: missionReadyTime, readinessDeviation: missionReadinessDeviation, ref: missionRef, poId: missionPoId, bid: missionBid, cancelled: missionCancelled, techlogNumber: missionTechlogNumber, blockOff1: missionBlockOff1, blockOn1: missionBlockOn1, blockTime1: effectiveBlockTime1, waitTime: missionWaitTime, blockOff2: missionBlockOff2, blockOn2: missionBlockOn2, blockTime2: effectiveBlockTime2, totalBlock: effectiveTotalBlock, flightRoute: missionFlightRoute, pax: missionPax, description, readinessDeviationReason: missionReadinessDeviationReason } : undefined;
+			const response = await submitJson("/api/police/report", { clientSubmissionId, base, reportType, missionNumber, date, reporter, durationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes, missionLog });
 			const sharepoint = response.delivery?.sharepoint;
-			setStatus(sharepoint?.ok === false ? { type: "error", message: `Rapporten er lagret i Firestore, men SharePoint-opplasting feilet: ${sharepoint.error || "ukjent feil"}` } : { type: "success", message: "Rapporten er lagret i Firestore og SharePoint. Ingen e-post er sendt." });
+			const excel = response.delivery?.excel;
+			if (reportType === "mission" && missionTechlogNumber.trim() && excel?.ok !== false) {
+				try {
+					window.localStorage.setItem(POLICE_LAST_TECHLOG_STORAGE_KEY, missionTechlogNumber.trim());
+				} catch {
+					// Ignorer localStorage-feil.
+				}
+			}
+			setStatus(sharepoint?.ok === false
+				? { type: "error", message: `Rapporten er lagret i Firestore, men SharePoint-opplasting feilet: ${sharepoint.error || "ukjent feil"}` }
+				: excel?.ok === false
+					? { type: "error", message: `Rapporten er lagret i Firestore og SharePoint, men Excel-logg feilet: ${excel.error || "ukjent feil"}` }
+					: { type: "success", message: reportType === "mission" ? "Mission Report er lagret i Firestore, SharePoint og Excel. Ingen e-post er sendt." : "Rapporten er lagret i Firestore og SharePoint. Ingen e-post er sendt." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
 		}
@@ -639,6 +724,52 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div><FieldLabel>Varighet</FieldLabel><input value={durationText} onChange={(e) => setDurationText(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 2 timer 30 min" /></div>
 				<div><FieldLabel>Vær/forhold</FieldLabel><textarea value={conditions} onChange={(e) => setConditions(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Kort om vær, lysforhold, sikt eller andre relevante forhold..." /></div>
 			</Section>
+				{reportType === "mission" && (
+					<Section title="Bestilling fra Politiet">
+						<div className={COMPACT_TWO_COLUMN_GRID}>
+							<div><FieldLabel>PO ID</FieldLabel><input value={missionPoId} onChange={(e) => setMissionPoId(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 44" /></div>
+							<div><FieldLabel>BID</FieldLabel><input value={missionBid} onChange={(e) => setMissionBid(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. RNI006" /></div>
+						</div>
+						<div><FieldLabel>Ref./rekvirent</FieldLabel><input value={missionRef} onChange={(e) => setMissionRef(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Navn / telefon / operasjonsleder" /></div>
+						<div><FieldLabel>Pax</FieldLabel><input value={missionPax} onChange={(e) => setMissionPax(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 2 + 2 hunder (ca 180 kg)" /></div>
+						<div><FieldLabel>Flyrute</FieldLabel><input value={missionFlightRoute} onChange={(e) => setMissionFlightRoute(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. Tromsø - område - Tromsø" /></div>
+					</Section>
+				)}
+				{reportType === "mission" && (
+					<Section title="Operativ logg til Excel">
+						<SelectField label="Sign" value={missionSign} onChange={setMissionSign} options={signOptions} placeholder="Velg sign" />
+						<div className={COMPACT_TWO_COLUMN_GRID}>
+							<div><FieldLabel>Varslingstidspunkt</FieldLabel><input type="time" value={missionAlertTime} onChange={(e) => setMissionAlertTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+							<div><FieldLabel>Klar for oppdrag</FieldLabel><input type="time" value={missionReadyTime} onChange={(e) => setMissionReadyTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+						</div>
+						<div className={COMPACT_TWO_COLUMN_GRID}>
+							<div><FieldLabel>Avvik beredskapstid</FieldLabel><input value={missionReadinessDeviation} onChange={(e) => setMissionReadinessDeviation(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 0:15" /></div>
+							<label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800"><input type="checkbox" checked={missionCancelled} onChange={(e) => setMissionCancelled(e.target.checked)} /> Kansellert</label>
+						</div>
+						<div><FieldLabel>Årsak avvik fra beredskapstid</FieldLabel><input value={missionReadinessDeviationReason} onChange={(e) => setMissionReadinessDeviationReason(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Fylles kun ved avvik" /></div>
+						<div>
+							<FieldLabel>TechLog Nr.</FieldLabel>
+							<div className="flex items-center gap-2">
+								<button type="button" onClick={() => setMissionTechlogNumber(String(Math.max(0, Number.parseInt(missionTechlogNumber || "0", 10) - 1)))} className="h-11 w-11 rounded-xl border border-gray-300 bg-gray-50 text-lg font-semibold">-</button>
+								<input inputMode="numeric" value={missionTechlogNumber} onChange={(e) => setMissionTechlogNumber(e.target.value)} className={`${FIELD_CONTROL_CLASS} text-center font-semibold`} placeholder="TechLog" />
+								<button type="button" onClick={() => setMissionTechlogNumber(String((Number.parseInt(missionTechlogNumber || "0", 10) || 0) + 1))} className="h-11 w-11 rounded-xl border border-gray-300 bg-gray-50 text-lg font-semibold">+</button>
+							</div>
+							<p className="mt-1 text-xs text-gray-500">Siste brukte nummer huskes på denne enheten etter vellykket innsending.</p>
+						</div>
+						<div className="grid grid-cols-3 gap-1.5">
+							<div><FieldLabel>Block Off 1</FieldLabel><input type="time" value={missionBlockOff1} onChange={(e) => setMissionBlockOff1(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+							<div><FieldLabel>Block On 1</FieldLabel><input type="time" value={missionBlockOn1} onChange={(e) => setMissionBlockOn1(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+							<div><FieldLabel>Block tid 1</FieldLabel><input value={effectiveBlockTime1} onChange={(e) => { setMissionBlockTime1Manual(true); setMissionBlockTime1(e.target.value); }} className={COMPACT_DATE_TIME_CLASS} placeholder="0:00" /></div>
+						</div>
+						<div><FieldLabel>Vente tid</FieldLabel><input value={missionWaitTime} onChange={(e) => setMissionWaitTime(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 0:30" /></div>
+						<div className="grid grid-cols-3 gap-1.5">
+							<div><FieldLabel>Block Off 2</FieldLabel><input type="time" value={missionBlockOff2} onChange={(e) => setMissionBlockOff2(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+							<div><FieldLabel>Block On 2</FieldLabel><input type="time" value={missionBlockOn2} onChange={(e) => setMissionBlockOn2(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+							<div><FieldLabel>Block tid 2</FieldLabel><input value={effectiveBlockTime2} onChange={(e) => { setMissionBlockTime2Manual(true); setMissionBlockTime2(e.target.value); }} className={COMPACT_DATE_TIME_CLASS} placeholder="0:00" /></div>
+						</div>
+						<div><FieldLabel>Total Block</FieldLabel><input value={effectiveTotalBlock} onChange={(e) => { setMissionTotalBlockManual(true); setMissionTotalBlock(e.target.value); }} className={FIELD_CONTROL_CLASS} placeholder="Beregnes automatisk" /></div>
+					</Section>
+				)}
 			<Section title="Crew">
 				{crew.map((value, index) => (
 					<SelectField key={index} label={`Crew ${index + 1}${index > 0 ? " (valgfritt)" : ""}`} value={value} onChange={(next) => setCrew((current) => current.map((item, i) => i === index ? next : item))} options={crewOptions.all.filter((option) => !selectedCrew.includes(option) || option === value)} placeholder="Velg crew" />
@@ -661,8 +792,8 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div><FieldLabel>Lessons learned</FieldLabel><textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Hva fungerte bra? Hva kan forbedres?" /></div>
 				<div><FieldLabel>Tiltak/oppfølging</FieldLabel><textarea value={followUp} onChange={(e) => setFollowUp(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Tiltak, oppfølging eller punkter til senere bruk..." /></div>
 			</Section>
-			<StatusMessage status={status} />
-			<button type="submit" disabled={status.type === "sending"} aria-busy={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-wait disabled:opacity-60">{status.type === "sending" ? "Lagrer rapport..." : "Lagre rapport"}</button>
+				<StatusMessage status={status} />
+				<button type="submit" disabled={status.type === "sending" || status.type === "success"} aria-busy={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-wait disabled:opacity-60">{status.type === "sending" ? "Lagrer rapport..." : status.type === "success" ? "Rapport lagret" : "Lagre rapport"}</button>
 		</form>
 	);
 }

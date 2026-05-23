@@ -22,5 +22,6 @@ export type ApiSubmitResponse = {
 		database?: { ok: boolean; error?: string };
 		email?: { ok: boolean; skipped?: boolean; error?: string };
 		sharepoint?: { ok: boolean; skipped?: boolean; error?: string };
+		excel?: { ok: boolean; skipped?: boolean; error?: string; row?: number };
 	};
 };

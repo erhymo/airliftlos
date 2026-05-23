@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../../lib/apiAccess";
 import { getDb } from "../../../../lib/firebaseAdmin";
+import { appendPoliceMissionLogToExcel, type PoliceMissionExcelLog, type PoliceMissionExcelStatus } from "../../../../lib/policeMissionExcel";
 import { buildPoliceReportPdfFileName, deliverPoliceReportSubmission, type DeliveryStatus } from "../../../../lib/policeDelivery";
 
 export const runtime = "nodejs";
 
 type PinType = "trainingArea" | "landingPoint" | "other";
 type Pin = { lat: number; lng: number; type: PinType; label?: string };
+type MissionLogPayload = Partial<Omit<PoliceMissionExcelLog, "date" | "crew" | "cancelled">> & { cancelled?: boolean };
 type ReportPayload = {
+	clientSubmissionId?: string;
 	base?: string;
 	reportType?: "training" | "mission";
 	missionNumber?: string;
@@ -25,6 +28,7 @@ type ReportPayload = {
 	lessonsLearned?: string;
 	followUp?: string;
 	safetyNotes?: string;
+	missionLog?: MissionLogPayload;
 };
 
 const PIN_TYPE_LABELS: Record<PinType, string> = {
@@ -46,6 +50,15 @@ function asStringArray(value: unknown) {
 	return Array.isArray(value) ? value.map(asString).filter(Boolean) : [];
 }
 
+function asBoolean(value: unknown) {
+	return value === true;
+}
+
+function cleanClientSubmissionId(value: unknown) {
+	const text = asString(value);
+	return /^[A-Za-z0-9_-]{8,80}$/.test(text) ? text : "";
+}
+
 function line(label: string, value: unknown) {
 	const text = Array.isArray(value) ? value.join(", ") : String(value ?? "").trim();
 	return `${label}: ${text || "-"}`;
@@ -53,6 +66,35 @@ function line(label: string, value: unknown) {
 
 function validDate(value: string) {
 	return /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value);
+}
+
+function buildMissionExcelLog(payload: ReportPayload, date: string, crew: string[]): PoliceMissionExcelLog {
+	const missionLog = payload.missionLog ?? {};
+	return {
+		sign: asString(missionLog.sign),
+		date,
+		alertTime: asString(missionLog.alertTime),
+		readyTime: asString(missionLog.readyTime),
+		readinessDeviation: asString(missionLog.readinessDeviation),
+		ref: asString(missionLog.ref),
+		poId: asString(missionLog.poId),
+		bid: asString(missionLog.bid),
+		cancelled: asBoolean(missionLog.cancelled),
+		techlogNumber: asString(missionLog.techlogNumber),
+		crew,
+		blockOff1: asString(missionLog.blockOff1),
+		blockOn1: asString(missionLog.blockOn1),
+		blockTime1: asString(missionLog.blockTime1),
+		waitTime: asString(missionLog.waitTime),
+		blockOff2: asString(missionLog.blockOff2),
+		blockOn2: asString(missionLog.blockOn2),
+		blockTime2: asString(missionLog.blockTime2),
+		totalBlock: asString(missionLog.totalBlock),
+		flightRoute: asString(missionLog.flightRoute),
+		pax: asString(missionLog.pax),
+		description: asString(missionLog.description) || asString(payload.description),
+		readinessDeviationReason: asString(missionLog.readinessDeviationReason),
+	};
 }
 
 function fallbackReportFileName(reportType: "training" | "mission", date: string) {
@@ -116,10 +158,26 @@ export async function POST(req: Request) {
 	const reporter = asString(payload.reporter);
 	const missionNumber = asString(payload.missionNumber);
 	if (reportType === "mission" && !missionNumber) return NextResponse.json({ error: "Oppdragsnummer må fylles ut for Mission Report" }, { status: 400 });
+	const crew = asStringArray(payload.crew);
+	const missionExcelLog = reportType === "mission" ? buildMissionExcelLog(payload, date, crew) : null;
+	if (reportType === "mission" && !missionExcelLog?.sign) return NextResponse.json({ error: "Sign må fylles ut for Mission Report" }, { status: 400 });
 
 	const createdAt = Date.now();
 	const db = getDb();
-	const ref = db.collection("policeReports").doc();
+	const clientSubmissionId = cleanClientSubmissionId(payload.clientSubmissionId);
+	const ref = clientSubmissionId ? db.collection("policeReports").doc(clientSubmissionId) : db.collection("policeReports").doc();
+	if (clientSubmissionId) {
+		const claim = await db.runTransaction(async (transaction) => {
+			const snapshot = await transaction.get(ref);
+			if (snapshot.exists) return { exists: true, data: snapshot.data() as { delivery?: unknown } | undefined };
+			transaction.set(ref, { id: ref.id, reportType, date, createdAt, processingStartedAt: createdAt });
+			return { exists: false, data: null };
+		});
+		if (claim.exists) {
+			const delivery = claim.data?.delivery && typeof claim.data.delivery === "object" ? claim.data.delivery : {};
+			return NextResponse.json({ ok: true, id: ref.id, duplicate: true, delivery: { database: { ok: true }, ...delivery } });
+		}
+	}
 	const typeLabel = reportType === "mission" ? "Mission" : "Training";
 	const pins = normalizePins(payload.pins);
 	const year = Number(date.slice(0, 4)) || new Date().getFullYear();
@@ -138,9 +196,31 @@ export async function POST(req: Request) {
 		line("Vær/forhold", asString(payload.conditions)),
 		...(reportType === "mission" ? [line("Oppdragsnummer", payload.missionNumber)] : []),
 		line("Helikopter", helicopter),
-		line("Crew", asStringArray(payload.crew)),
+		line("Crew", crew),
 		...(reportType === "training" ? [line("Treningstyper", trainingTypes)] : []),
-		...(reportType === "mission" ? [line("Involverte etater", asString(payload.involvedAgencies)), line("Resultat/utfall", asString(payload.result)), line("Sikkerhetsmomenter", asString(payload.safetyNotes))] : []),
+		...(reportType === "mission" && missionExcelLog ? [
+			line("Sign", missionExcelLog.sign),
+			line("Varslingstidspunkt", missionExcelLog.alertTime),
+			line("Klar for oppdrag", missionExcelLog.readyTime),
+			line("Ref./rekvirent", missionExcelLog.ref),
+			line("PO ID", missionExcelLog.poId),
+			line("BID", missionExcelLog.bid),
+			line("Pax", missionExcelLog.pax),
+			line("Flyrute", missionExcelLog.flightRoute),
+			line("TechLog Nr.", missionExcelLog.techlogNumber),
+			line("Block Off/On 1", [missionExcelLog.blockOff1, missionExcelLog.blockOn1].filter(Boolean).join(" - ")),
+			line("Block tid 1", missionExcelLog.blockTime1),
+			line("Vente tid", missionExcelLog.waitTime),
+			line("Block Off/On 2", [missionExcelLog.blockOff2, missionExcelLog.blockOn2].filter(Boolean).join(" - ")),
+			line("Block tid 2", missionExcelLog.blockTime2),
+			line("Total Block", missionExcelLog.totalBlock),
+			line("Avvik fra beredskapstid", missionExcelLog.readinessDeviation),
+			line("Årsak avvik fra beredskapstid", missionExcelLog.readinessDeviationReason),
+			line("Kansellert", missionExcelLog.cancelled ? "JA" : "Nei"),
+			line("Involverte etater", asString(payload.involvedAgencies)),
+			line("Resultat/utfall", asString(payload.result)),
+			line("Sikkerhetsmomenter", asString(payload.safetyNotes)),
+		] : []),
 		"",
 		"KARTMARKERINGER",
 		...formatPins(pins),
@@ -162,7 +242,7 @@ export async function POST(req: Request) {
 		reporter,
 		durationText: asString(payload.durationText),
 		conditions: asString(payload.conditions),
-		crew: asStringArray(payload.crew),
+		crew,
 		helicopter,
 		pins,
 		trainingTypes,
@@ -172,12 +252,13 @@ export async function POST(req: Request) {
 		lessonsLearned: asString(payload.lessonsLearned),
 		followUp: asString(payload.followUp),
 		safetyNotes: asString(payload.safetyNotes),
+		missionLog: missionExcelLog,
 		id: ref.id,
 		fileName,
 		createdAt,
 		savedAt: createdAt,
 	};
-	await ref.set(reportDoc);
+	await ref.set(reportDoc, { merge: true });
 	const batch = db.batch();
 	pins.forEach((pin, index) => {
 		const pinRef = db.collection("policePins").doc();
@@ -195,8 +276,16 @@ export async function POST(req: Request) {
 			map: staticMap.status,
 		};
 	}
-	await ref.set({ delivery }, { merge: true });
+	let excel: PoliceMissionExcelStatus = { ok: true, skipped: true, error: "Excel-logg gjelder kun Mission Report" };
+	if (reportType === "mission" && missionExcelLog) {
+		try {
+			excel = await appendPoliceMissionLogToExcel(missionExcelLog);
+		} catch (error) {
+			excel = { ok: false, error: (error as Error).message || "Excel-skriving feilet" };
+		}
+	}
+	await ref.set({ delivery: { ...delivery, excel }, ...(excel.ok && !excel.skipped ? { missionExcelLoggedAt: Date.now(), missionExcelRow: excel.row ?? null } : {}) }, { merge: true });
 	if (delivery.sharepoint.ok) await ref.set({ fileName }, { merge: true });
 
-	return NextResponse.json({ ok: true, id: ref.id, delivery: { database: { ok: true }, ...delivery } });
+	return NextResponse.json({ ok: true, id: ref.id, delivery: { database: { ok: true }, ...delivery, excel } });
 }
