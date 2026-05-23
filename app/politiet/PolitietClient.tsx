@@ -739,8 +739,14 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 					<Section title="Operativ logg til Excel">
 						<SelectField label="Sign" value={missionSign} onChange={setMissionSign} options={signOptions} placeholder="Velg sign" />
 						<div className={COMPACT_TWO_COLUMN_GRID}>
-							<div><FieldLabel>Varslingstidspunkt</FieldLabel><input type="time" value={missionAlertTime} onChange={(e) => setMissionAlertTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
-							<div><FieldLabel>Klar for oppdrag</FieldLabel><input type="time" value={missionReadyTime} onChange={(e) => setMissionReadyTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
+							<div><FieldLabel>Varslingstidspunkt</FieldLabel><input value={missionAlertTime} onChange={(e) => setMissionAlertTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} placeholder="F.eks. 12:30 / tekst" /></div>
+							<div>
+								<FieldLabel>Klar for oppdrag</FieldLabel>
+								<input value={missionReadyTime} onChange={(e) => setMissionReadyTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} placeholder="Tid eller tekst" />
+								<button type="button" onClick={() => setMissionReadyTime("Til planlagt tidspunkt")} className="mt-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-900">
+									Til planlagt tidspunkt
+								</button>
+							</div>
 						</div>
 						<div className={COMPACT_TWO_COLUMN_GRID}>
 							<div><FieldLabel>Avvik beredskapstid</FieldLabel><input value={missionReadinessDeviation} onChange={(e) => setMissionReadinessDeviation(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 0:15" /></div>
@@ -792,7 +798,18 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div><FieldLabel>Lessons learned</FieldLabel><textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Hva fungerte bra? Hva kan forbedres?" /></div>
 				<div><FieldLabel>Tiltak/oppfølging</FieldLabel><textarea value={followUp} onChange={(e) => setFollowUp(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Tiltak, oppfølging eller punkter til senere bruk..." /></div>
 			</Section>
-				<StatusMessage status={status} />
+				{reportType === "mission" && status.type === "success" && (
+					<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+						<div className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-lg">
+							<h2 className="text-lg font-semibold text-gray-900">Mission Report lagret</h2>
+							<p className="mt-3 text-sm text-gray-700">{status.message}</p>
+							<Link href="/" className="mt-5 block w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700">
+								Tilbake
+							</Link>
+						</div>
+					</div>
+				)}
+				{!(reportType === "mission" && status.type === "success") && <StatusMessage status={status} />}
 				<button type="submit" disabled={status.type === "sending" || status.type === "success"} aria-busy={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-wait disabled:opacity-60">{status.type === "sending" ? "Lagrer rapport..." : status.type === "success" ? "Rapport lagret" : "Lagre rapport"}</button>
 		</form>
 	);
