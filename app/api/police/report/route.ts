@@ -220,7 +220,7 @@ export async function POST(req: Request) {
 		...formatPins(pins),
 		"",
 		"BESKRIVELSE",
-		line("Beskrivelse", payload.description),
+		line(reportType === "mission" ? "Beskrivelse av oppdrag" : "Beskrivelse", payload.description),
 		"",
 		"LESSONS LEARNED / OPPFØLGING",
 		line("Lessons learned", payload.lessonsLearned),

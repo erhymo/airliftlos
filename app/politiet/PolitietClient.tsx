@@ -107,6 +107,10 @@ function parseDurationMinutes(value: string) {
 	return Number(match[1]) * 60 + Number(match[2]);
 }
 
+function hasText(value: string) {
+	return value.trim().length > 0;
+}
+
 function formatLiveFrom(value: string | null | undefined) {
 	if (!value) return "";
 	const date = new Date(value);
@@ -663,13 +667,39 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 	async function handleSubmit(event: React.FormEvent) {
 		event.preventDefault();
-		if (reportType === "mission" && !missionNumber.trim()) {
-			setStatus({ type: "error", message: "Oppdragsnummer må fylles ut for Mission Report." });
-			return;
-		}
-		if (reportType === "mission" && !reporter.trim()) {
-			setStatus({ type: "error", message: "Rapportskriver må velges for Mission Report." });
-			return;
+		if (reportType === "mission") {
+			const completeBlock1 = hasText(missionBlockOff1) && hasText(missionBlockOn1);
+			const completeBlock2 = hasText(missionBlockOff2) && hasText(missionBlockOn2);
+			const missing: string[] = [];
+			if (!hasText(missionNumber)) missing.push("Oppdragsnummer");
+			if (!hasText(date)) missing.push("Dato");
+			if (!hasText(base)) missing.push("Base");
+			if (!hasText(reporter)) missing.push("Rapportskriver");
+			if (!hasText(conditions)) missing.push("Vær/forhold");
+			if (!hasText(missionPoId)) missing.push("PO ID");
+			if (!hasText(missionRef)) missing.push("Ref./rekvirent");
+			if (!hasText(missionPax)) missing.push("Pax");
+			if (!hasText(missionFlightRoute)) missing.push("Flyrute");
+			if (!hasText(missionAlertTime)) missing.push("Varslingstidspunkt");
+			if (!hasText(missionReadyTime)) missing.push("Klar for oppdrag");
+			if (!hasText(missionTechlogNumber)) missing.push("TechLog Nr.");
+			if (!completeBlock1 && !completeBlock2) missing.push("minst ett komplett Block Off/On-par");
+			if (hasText(missionBlockOff1) && !hasText(missionBlockOn1)) missing.push("Block On 1");
+			if (!hasText(missionBlockOff1) && hasText(missionBlockOn1)) missing.push("Block Off 1");
+			if (hasText(missionBlockOff2) && !hasText(missionBlockOn2)) missing.push("Block On 2");
+			if (!hasText(missionBlockOff2) && hasText(missionBlockOn2)) missing.push("Block Off 2");
+			if (!hasText(effectiveTotalBlock)) missing.push("Total Block");
+			if (!hasText(missionWaitTime)) missing.push("Vente tid");
+			if (selectedCrew.length === 0) missing.push("Crew");
+			if (!hasText(helicopter)) missing.push("Helikopter");
+			if (pins.length === 0) missing.push("Trenings-/oppdragsområde");
+			if (!hasText(description)) missing.push("Beskrivelse av oppdrag");
+
+			if (missing.length > 0) {
+				setStatus({ type: "error", message: `Kan ikke sende Mission Report. Følgende mangler: ${missing.join(", ")}.` });
+				return;
+			}
+			if (!hasText(missionBid) && !window.confirm("BID mangler. Vil du sende Mission Report uten BID?")) return;
 		}
 		setStatus({ type: "sending", message: "Lagrer rapport og laster opp PDF til SharePoint..." });
 		try {
@@ -790,7 +820,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				{reportType === "mission" && <div><FieldLabel>Involverte etater</FieldLabel><input value={involvedAgencies} onChange={(e) => setInvolvedAgencies(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. Politiet, AMK, brann" /></div>}
 				{reportType === "mission" && <div><FieldLabel>Resultat/utfall</FieldLabel><textarea value={result} onChange={(e) => setResult(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Kort oppsummering av utfallet..." /></div>}
 				{reportType === "mission" && <div><FieldLabel>Sikkerhetsmomenter / observasjoner</FieldLabel><textarea value={safetyNotes} onChange={(e) => setSafetyNotes(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Eventuelle sikkerhetspunkter eller observasjoner..." /></div>}
-				<div><FieldLabel>Beskrivelse</FieldLabel><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Detaljert beskrivelse..." /></div>
+					<div><FieldLabel>{reportType === "mission" ? "Beskrivelse av oppdrag" : "Beskrivelse"}</FieldLabel><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder={reportType === "mission" ? "Beskriv oppdraget..." : "Detaljert beskrivelse..."} /></div>
 			</Section>
 			<Section title="Lessons learned og oppfølging">
 				<div><FieldLabel>Lessons learned</FieldLabel><textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Hva fungerte bra? Hva kan forbedres?" /></div>
