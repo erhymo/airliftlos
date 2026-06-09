@@ -692,7 +692,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			if (!hasText(missionWaitTime)) missing.push("Vente tid");
 			if (selectedCrew.length === 0) missing.push("Crew");
 			if (!hasText(helicopter)) missing.push("Helikopter");
-			if (pins.length === 0) missing.push("Trenings-/oppdragsområde");
 			if (!hasText(description)) missing.push("Beskrivelse av oppdrag");
 
 			if (missing.length > 0) {
