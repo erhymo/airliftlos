@@ -645,7 +645,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [missionBlockOn1, setMissionBlockOn1] = useState("");
 	const [missionBlockTime1, setMissionBlockTime1] = useState("");
 	const [missionBlockTime1Manual, setMissionBlockTime1Manual] = useState(false);
-	const [missionWaitTime, setMissionWaitTime] = useState("");
 	const [missionBlockOff2, setMissionBlockOff2] = useState("");
 	const [missionBlockOn2, setMissionBlockOn2] = useState("");
 	const [missionBlockTime2, setMissionBlockTime2] = useState("");
@@ -688,7 +687,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			if (hasText(missionBlockOff2) && !hasText(missionBlockOn2)) missing.push("Block On 2");
 			if (!hasText(missionBlockOff2) && hasText(missionBlockOn2)) missing.push("Block Off 2");
 			if (!hasText(effectiveTotalBlock)) missing.push("Total Block");
-			if (!hasText(missionWaitTime)) missing.push("Vente tid");
 			if (selectedCrew.length === 0) missing.push("Crew");
 			if (!hasText(helicopter)) missing.push("Helikopter");
 			if (!hasText(description)) missing.push("Beskrivelse av oppdrag");
@@ -702,7 +700,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		setStatus({ type: "sending", message: "Lagrer rapport og laster opp PDF til SharePoint..." });
 		try {
 			const reportDurationText = reportType === "mission" ? effectiveTotalBlock : durationText;
-			const missionLog = reportType === "mission" ? { sign: extractCrewCode(reporter), alertTime: missionAlertTime, readyTime: missionReadyTime, readinessDeviation: missionReadinessDeviation, ref: missionRef, poId: missionPoId, bid: missionBid, cancelled: missionCancelled, techlogNumber: missionTechlogNumber, blockOff1: missionBlockOff1, blockOn1: missionBlockOn1, blockTime1: effectiveBlockTime1, waitTime: missionWaitTime, blockOff2: missionBlockOff2, blockOn2: missionBlockOn2, blockTime2: effectiveBlockTime2, totalBlock: effectiveTotalBlock, flightRoute: missionFlightRoute, pax: missionPax, description, readinessDeviationReason: missionReadinessDeviationReason } : undefined;
+			const missionLog = reportType === "mission" ? { sign: extractCrewCode(reporter), alertTime: missionAlertTime, readyTime: missionReadyTime, readinessDeviation: missionReadinessDeviation, ref: missionRef, poId: missionPoId, bid: missionBid, cancelled: missionCancelled, techlogNumber: missionTechlogNumber, blockOff1: missionBlockOff1, blockOn1: missionBlockOn1, blockTime1: effectiveBlockTime1, waitTime: "", blockOff2: missionBlockOff2, blockOn2: missionBlockOn2, blockTime2: effectiveBlockTime2, totalBlock: effectiveTotalBlock, flightRoute: missionFlightRoute, pax: missionPax, description, readinessDeviationReason: missionReadinessDeviationReason } : undefined;
 			const response = await submitJson("/api/police/report", { clientSubmissionId, base, reportType, missionNumber, date, reporter, durationText: reportDurationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes, missionLog });
 			const sharepoint = response.delivery?.sharepoint;
 			const excel = response.delivery?.excel;
@@ -793,7 +791,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 							<div><FieldLabel>Block On 1</FieldLabel><input type="time" value={missionBlockOn1} onChange={(e) => setMissionBlockOn1(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
 							<div><FieldLabel>Block tid 1</FieldLabel><input value={effectiveBlockTime1} onChange={(e) => { setMissionBlockTime1Manual(true); setMissionBlockTime1(e.target.value); }} className={COMPACT_DATE_TIME_CLASS} placeholder="0:00" /></div>
 						</div>
-						<div><FieldLabel>Vente tid</FieldLabel><input value={missionWaitTime} onChange={(e) => setMissionWaitTime(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 0:30" /></div>
 						<div className="grid grid-cols-3 gap-1.5">
 							<div><FieldLabel>Block Off 2</FieldLabel><input type="time" value={missionBlockOff2} onChange={(e) => setMissionBlockOff2(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
 							<div><FieldLabel>Block On 2</FieldLabel><input type="time" value={missionBlockOn2} onChange={(e) => setMissionBlockOn2(e.target.value)} className={COMPACT_DATE_TIME_CLASS} /></div>
