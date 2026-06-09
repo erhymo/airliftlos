@@ -59,6 +59,18 @@ function cleanClientSubmissionId(value: unknown) {
 	return /^[A-Za-z0-9_-]{8,80}$/.test(text) ? text : "";
 }
 
+function extractCrewCode(value: string) {
+	const match = value.match(/\(([^)]+)\)\s*$/);
+	const code = (match?.[1] ?? "").trim().toLocaleUpperCase("nb-NO");
+	if (code) return code;
+	const trimmed = value.trim().toLocaleUpperCase("nb-NO");
+	return /^[A-ZÆØÅ]{2,4}$/.test(trimmed) ? trimmed : "";
+}
+
+function displayCrewName(value: string) {
+	return value.replace(/\s*\([^)]+\)\s*$/, "").trim();
+}
+
 function line(label: string, value: unknown) {
 	const text = Array.isArray(value) ? value.join(", ") : String(value ?? "").trim();
 	return `${label}: ${text || "-"}`;
@@ -70,8 +82,9 @@ function validDate(value: string) {
 
 function buildMissionExcelLog(payload: ReportPayload, date: string, crew: string[]): PoliceMissionExcelLog {
 	const missionLog = payload.missionLog ?? {};
+	const reporter = asString(payload.reporter);
 	return {
-		sign: asString(missionLog.sign),
+		sign: asString(missionLog.sign) || extractCrewCode(reporter),
 		date,
 		alertTime: asString(missionLog.alertTime),
 		readyTime: asString(missionLog.readyTime),
@@ -158,9 +171,11 @@ export async function POST(req: Request) {
 	const reporter = asString(payload.reporter);
 	const missionNumber = asString(payload.missionNumber);
 	if (reportType === "mission" && !missionNumber) return NextResponse.json({ error: "Oppdragsnummer må fylles ut for Mission Report" }, { status: 400 });
+	if (reportType === "mission" && !reporter) return NextResponse.json({ error: "Rapportskriver må velges for Mission Report" }, { status: 400 });
 	const crew = asStringArray(payload.crew);
 	const missionExcelLog = reportType === "mission" ? buildMissionExcelLog(payload, date, crew) : null;
-	if (reportType === "mission" && !missionExcelLog?.sign) return NextResponse.json({ error: "Sign må fylles ut for Mission Report" }, { status: 400 });
+	if (reportType === "mission" && !missionExcelLog?.sign) return NextResponse.json({ error: "Rapportskriver mangler crew-kode for Excel-sign" }, { status: 400 });
+	const reporterDisplayName = displayCrewName(reporter) || reporter;
 
 	const createdAt = Date.now();
 	const db = getDb();
@@ -183,6 +198,7 @@ export async function POST(req: Request) {
 	const year = Number(date.slice(0, 4)) || new Date().getFullYear();
 	const helicopter = asString(payload.helicopter);
 	const trainingTypes = asStringArray(payload.trainingTypes);
+	const reportDurationText = reportType === "mission" ? missionExcelLog?.totalBlock ?? "" : asString(payload.durationText);
 	let fileName = fallbackReportFileName(reportType, date);
 	const title = `Airlift Politiberedskap - ${typeLabel} Report ${base} ${date}`.trim();
 	const staticMap = await fetchStaticMap(pins);
@@ -191,8 +207,8 @@ export async function POST(req: Request) {
 		line("Rapporttype", `${typeLabel} Report`),
 		line("Base", base),
 		line("Dato", date),
-		line("Rapportskriver", reporter),
-		line("Varighet", asString(payload.durationText)),
+		line("Rapportskriver", reporterDisplayName),
+		line("Varighet", reportDurationText),
 		line("Vær/forhold", asString(payload.conditions)),
 		...(reportType === "mission" ? [line("Oppdragsnummer", payload.missionNumber)] : []),
 		line("Helikopter", helicopter),
@@ -217,8 +233,8 @@ export async function POST(req: Request) {
 		reportType,
 		missionNumber,
 		date,
-		reporter,
-		durationText: asString(payload.durationText),
+		reporter: reporterDisplayName,
+		durationText: reportDurationText,
 		conditions: asString(payload.conditions),
 		crew,
 		helicopter,

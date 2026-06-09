@@ -621,7 +621,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [followUp, setFollowUp] = useState("");
 	const [safetyNotes, setSafetyNotes] = useState("");
 	const [clientSubmissionId] = useState(createClientSubmissionId);
-	const [missionSign, setMissionSign] = useState("");
 	const [missionRef, setMissionRef] = useState("");
 	const [missionPoId, setMissionPoId] = useState("");
 	const [missionBid, setMissionBid] = useState("");
@@ -652,7 +651,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [missionFlightRoute, setMissionFlightRoute] = useState("");
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
 	const selectedCrew = useMemo(() => crew.filter(Boolean), [crew]);
-	const signOptions = Array.from(new Set(crewOptions.all.map((option) => extractCrewCode(option)).filter(Boolean))).sort((a, b) => a.localeCompare(b, "nb-NO"));
 	const pins = pinsByType[reportType];
 	const effectiveBlockTime1 = missionBlockTime1Manual ? missionBlockTime1 : formatDurationMinutes(minutesBetweenTimes(missionBlockOff1, missionBlockOn1));
 	const effectiveBlockTime2 = missionBlockTime2Manual ? missionBlockTime2 : formatDurationMinutes(minutesBetweenTimes(missionBlockOff2, missionBlockOn2));
@@ -669,14 +667,15 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			setStatus({ type: "error", message: "Oppdragsnummer må fylles ut for Mission Report." });
 			return;
 		}
-		if (reportType === "mission" && !missionSign.trim()) {
-			setStatus({ type: "error", message: "Sign må fylles ut for Mission Report." });
+		if (reportType === "mission" && !reporter.trim()) {
+			setStatus({ type: "error", message: "Rapportskriver må velges for Mission Report." });
 			return;
 		}
 		setStatus({ type: "sending", message: "Lagrer rapport og laster opp PDF til SharePoint..." });
 		try {
-			const missionLog = reportType === "mission" ? { sign: missionSign, alertTime: missionAlertTime, readyTime: missionReadyTime, readinessDeviation: missionReadinessDeviation, ref: missionRef, poId: missionPoId, bid: missionBid, cancelled: missionCancelled, techlogNumber: missionTechlogNumber, blockOff1: missionBlockOff1, blockOn1: missionBlockOn1, blockTime1: effectiveBlockTime1, waitTime: missionWaitTime, blockOff2: missionBlockOff2, blockOn2: missionBlockOn2, blockTime2: effectiveBlockTime2, totalBlock: effectiveTotalBlock, flightRoute: missionFlightRoute, pax: missionPax, description, readinessDeviationReason: missionReadinessDeviationReason } : undefined;
-			const response = await submitJson("/api/police/report", { clientSubmissionId, base, reportType, missionNumber, date, reporter, durationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes, missionLog });
+			const reportDurationText = reportType === "mission" ? effectiveTotalBlock : durationText;
+			const missionLog = reportType === "mission" ? { sign: extractCrewCode(reporter), alertTime: missionAlertTime, readyTime: missionReadyTime, readinessDeviation: missionReadinessDeviation, ref: missionRef, poId: missionPoId, bid: missionBid, cancelled: missionCancelled, techlogNumber: missionTechlogNumber, blockOff1: missionBlockOff1, blockOn1: missionBlockOn1, blockTime1: effectiveBlockTime1, waitTime: missionWaitTime, blockOff2: missionBlockOff2, blockOn2: missionBlockOn2, blockTime2: effectiveBlockTime2, totalBlock: effectiveTotalBlock, flightRoute: missionFlightRoute, pax: missionPax, description, readinessDeviationReason: missionReadinessDeviationReason } : undefined;
+			const response = await submitJson("/api/police/report", { clientSubmissionId, base, reportType, missionNumber, date, reporter, durationText: reportDurationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes, missionLog });
 			const sharepoint = response.delivery?.sharepoint;
 			const excel = response.delivery?.excel;
 			if (reportType === "mission" && missionTechlogNumber.trim() && excel?.ok !== false) {
@@ -721,7 +720,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_CONTROL_CLASS} /></div>
 				<SelectField label="Base" value={base} onChange={(next) => setBase((next || "Tromsø") as WatchPhoneBase)} options={WATCH_PHONE_BASES} placeholder="Velg base" />
 				<SelectField label="Rapportskriver" value={reporter} onChange={setReporter} options={crewOptions.all} placeholder="Velg rapportskriver" />
-				<div><FieldLabel>Varighet</FieldLabel><input value={durationText} onChange={(e) => setDurationText(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 2 timer 30 min" /></div>
+					{reportType === "training" && <div><FieldLabel>Varighet</FieldLabel><input value={durationText} onChange={(e) => setDurationText(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="F.eks. 2 timer 30 min" /></div>}
 				<div><FieldLabel>Vær/forhold</FieldLabel><textarea value={conditions} onChange={(e) => setConditions(e.target.value)} rows={3} className={TEXTAREA_CLASS} placeholder="Kort om vær, lysforhold, sikt eller andre relevante forhold..." /></div>
 			</Section>
 				{reportType === "mission" && (
@@ -737,7 +736,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				)}
 				{reportType === "mission" && (
 					<Section title="Operativ logg til Excel">
-						<SelectField label="Sign" value={missionSign} onChange={setMissionSign} options={signOptions} placeholder="Velg sign" />
 						<div className={COMPACT_TWO_COLUMN_GRID}>
 							<div><FieldLabel>Varslingstidspunkt</FieldLabel><input value={missionAlertTime} onChange={(e) => setMissionAlertTime(e.target.value)} className={COMPACT_DATE_TIME_CLASS} placeholder="F.eks. 12:30 / tekst" /></div>
 							<div>
