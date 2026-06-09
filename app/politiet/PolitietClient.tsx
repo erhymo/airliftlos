@@ -675,7 +675,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			if (!hasText(date)) missing.push("Dato");
 			if (!hasText(base)) missing.push("Base");
 			if (!hasText(reporter)) missing.push("Rapportskriver");
-			if (!hasText(conditions)) missing.push("Vær/forhold");
 			if (!hasText(missionPoId)) missing.push("PO ID");
 			if (!hasText(missionRef)) missing.push("Ref./rekvirent");
 			if (!hasText(missionPax)) missing.push("Pax");
