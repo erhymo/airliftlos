@@ -28,13 +28,15 @@ export default async function Home() {
 	          <header className="space-y-1">
 	            <div className="flex items-center justify-between gap-3">
 	              <h1 className="text-xl font-semibold">LOS Helikopter</h1>
-	              <Image
-	                src="/Airlift-logo.png"
-	                alt="Airlift-logo"
-	                width={140}
-	                height={32}
-	                className="h-8 w-auto"
-	              />
+		              <Link href="/losvaer" aria-label="Åpne LOS-vær">
+		                <Image
+		                  src="/Airlift-logo.png"
+		                  alt="Airlift-logo"
+		                  width={140}
+		                  height={32}
+		                  className="h-8 w-auto"
+		                />
+		              </Link>
 	            </div>
 	            <p className="text-sm text-gray-600">Velg hvilken rapport du vil fylle ut.</p>
 	          </header>
