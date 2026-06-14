@@ -114,6 +114,11 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 							<p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Anbefalt fart</p>
 							<p className="mt-1 text-2xl font-semibold leading-none text-gray-900">{error ? "—" : speedText}</p>
 						</div>
+						{!error && recommendation.notice && (
+							<p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium leading-5 text-amber-900">
+								{recommendation.notice}
+							</p>
+						)}
 					</div>
 
 				<dl className="mt-4 grid grid-cols-2 gap-3">

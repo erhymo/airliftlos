@@ -19,6 +19,7 @@ export type BoardingHeadingRecommendation = {
 	label: string;
 	color: string;
 	reason: string;
+	notice: string | null;
 	score: number | null;
 };
 
@@ -66,7 +67,7 @@ export function calculateBoardingHeading(point: LosvaerWeatherPoint | null): Boa
 			bestHeading = heading;
 		}
 	}
-	return { headingDeg: bestHeading, speedKt: recommendedSpeedKt(waveHeightM, meanWindKt), status: "recommended", label: "Anbefalt", color: seasprayMode ? "#facc15" : "#38bdf8", reason: reasonText({ waveHeightM, meanWindKt, preferDownwind, lowWaveWindDominant }), score: Math.round(bestScore * 100) / 100 };
+	return { headingDeg: bestHeading, speedKt: recommendedSpeedKt(waveHeightM, meanWindKt), status: "recommended", label: "Anbefalt", color: seasprayMode ? "#facc15" : "#38bdf8", reason: reasonText({ waveHeightM, meanWindKt, preferDownwind, lowWaveWindDominant }), notice: noticeText({ meanWindKt, preferDownwind }), score: Math.round(bestScore * 100) / 100 };
 }
 
 function scoreHeading(input: { heading: number; waveHeightM: number | null; waveFromDeg: number | null; meanWindKt: number | null; windFromDeg: number | null; lowWaveWindDominant: boolean; preferDownwind: boolean }) {
@@ -136,10 +137,16 @@ function reasonText(input: { waveHeightM: number | null; meanWindKt: number | nu
 	return "Prioriterer lav roll og vind på baug innen 45° når mulig.";
 }
 
+function noticeText(input: { meanWindKt: number | null; preferDownwind: boolean }) {
+	if (!input.preferDownwind) return null;
+	if (input.meanWindKt != null && input.meanWindKt >= 45) return "Anbefaler med vinden pga. sterk middelvind.";
+	return "Anbefaler med vind/svell pga. fare for sjøsprøyt.";
+}
+
 function limited(reason: string): BoardingHeadingRecommendation {
-	return { headingDeg: null, speedKt: null, status: "limited-data", label: "Mangler data", color: "#94a3b8", reason, score: null };
+	return { headingDeg: null, speedKt: null, status: "limited-data", label: "Mangler data", color: "#94a3b8", reason, notice: null, score: null };
 }
 
 function noGo(reason: string): BoardingHeadingRecommendation {
-	return { headingDeg: null, speedKt: null, status: "no-go", label: "Ikke heis", color: "#ef4444", reason, score: null };
+	return { headingDeg: null, speedKt: null, status: "no-go", label: "Ikke heis", color: "#ef4444", reason, notice: null, score: null };
 }
