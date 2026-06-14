@@ -22,9 +22,9 @@ type LosvaerApiResponse = {
 
 export default function LosvaerDashboardClient({ places }: { places: LosvaerPlace[] }) {
 	return (
-		<div className="min-h-screen bg-gray-50 px-4 py-5 text-gray-900">
+		<div className="min-h-screen bg-gray-50 px-3 py-5 text-gray-900 min-[380px]:px-4">
 			<main className="mx-auto w-full max-w-md space-y-4">
-				<header className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+				<header className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm min-[380px]:p-5">
 					<div className="flex items-start justify-between gap-3">
 						<div>
 							<p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">LOS vær</p>
@@ -79,7 +79,7 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 	const accent = error ? "#ef4444" : recommendation.color;
 	const headingText = recommendation.headingDeg == null ? "—" : `${recommendation.headingDeg.toFixed(0)}°`;
 	const headingSub = recommendation.headingDeg == null ? recommendation.label : `${compassDirection(recommendation.headingDeg)} · ${recommendation.label}`;
-		const speedText = recommendation.speedKt == null ? "—" : `${recommendation.speedKt} knop`;
+	const speedText = recommendation.speedKt == null ? "—" : `${recommendation.speedKt} knop`;
 
 	function refresh() {
 		setData(null);
@@ -89,9 +89,9 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 
 	return (
 		<article className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm" style={{ borderLeftColor: accent, borderLeftWidth: 5 }}>
-			<div className="p-5">
-				<div className="flex items-start justify-between gap-4">
-					<div>
+			<div className="p-4 min-[380px]:p-5">
+				<div className="flex items-start justify-between gap-3 min-[380px]:gap-4">
+					<div className="min-w-0">
 						<p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Losbordingsfelt</p>
 						<h2 className="mt-1 text-xl font-semibold text-gray-900">{place.name}</h2>
 						<p className="mt-1 text-sm text-gray-500">{place.coordinateLabel}</p>
@@ -101,20 +101,20 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 					</span>
 				</div>
 
-				<div className="mt-4 rounded-lg border p-4" style={{ background: `${accent}0f`, borderColor: `${accent}33` }}>
-					<div className="flex items-center justify-between gap-4">
-						<div>
-							<p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Anbefalt skipsretning</p>
-							<p className="mt-1 text-5xl font-semibold leading-none" style={{ color: accent }}>{headingText}</p>
-							<p className="mt-2 text-sm font-medium text-gray-700">{headingSub}</p>
+					<div className="mt-4 rounded-lg border p-4" style={{ background: `${accent}0f`, borderColor: `${accent}33` }}>
+						<div className="flex flex-col gap-4 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
+							<div className="min-w-0">
+								<p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Anbefalt skipsretning</p>
+								<p className="mt-1 text-5xl font-semibold leading-none" style={{ color: accent }}>{headingText}</p>
+								<p className="mt-2 text-sm font-medium text-gray-700">{headingSub}</p>
+							</div>
+							<ShipHeadingIndicator recommendation={recommendation} />
 						</div>
-						<ShipHeadingIndicator recommendation={recommendation} />
+						<div className="mt-4 w-fit max-w-full rounded-lg border border-white/70 bg-white/75 px-3 py-3 shadow-sm">
+							<p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Anbefalt fart</p>
+							<p className="mt-1 text-2xl font-semibold leading-none text-gray-900">{error ? "—" : speedText}</p>
+						</div>
 					</div>
-					<div className="mt-4 w-fit max-w-full rounded-lg border border-white/70 bg-white/75 px-3 py-3 shadow-sm">
-						<p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Anbefalt fart</p>
-						<p className="mt-1 text-2xl font-semibold leading-none text-gray-900">{error ? "—" : speedText}</p>
-					</div>
-				</div>
 
 				<dl className="mt-4 grid grid-cols-2 gap-3">
 					<Metric label="Vind" value={windText(current?.windSpeedMs, current?.windFromDeg)} />
@@ -128,7 +128,7 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 				</div>
 
 				<div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
-					<p>{loading ? "Henter MET-data…" : `Kilder: ${data?.sources.wind ?? "—"} / ${data?.sources.swell ?? "—"}`}</p>
+					<p className="min-w-0">{loading ? "Henter MET-data…" : `Kilder: ${data?.sources.wind ?? "—"} / ${data?.sources.swell ?? "—"}`}</p>
 					<button type="button" onClick={refresh} className="rounded-md border border-gray-300 bg-white px-3 py-1.5 font-medium text-gray-700 shadow-sm hover:bg-gray-50">
 						Oppdater
 					</button>
