@@ -1,6 +1,6 @@
 const MAX_WAVE_M = 6;
 const MAX_MEAN_WIND_KT = 55;
-const SEASPRAY_WAVE_M = 3;
+const SEASPRAY_WAVE_M = 4;
 const HIGH_SEASPRAY_WAVE_M = 4.5;
 
 export type LosvaerWeatherPoint = {
