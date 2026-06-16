@@ -19,9 +19,9 @@ export const losvaerPlaces: LosvaerPlace[] = [
 	{
 		id: "fruholmen",
 		name: "Fruholmen",
-		lat: 70.972259,
-		lon: 23.51031,
-		coordinateLabel: "70.972259°N 023.510310°E",
+		lat: 71.0916667,
+		lon: 23.45,
+		coordinateLabel: "71.091667°N 023.450000°E",
 		description: "Losbordingsfelt med vurdering av vind, svell og anbefalt skipsretning.",
 	},
 	{
