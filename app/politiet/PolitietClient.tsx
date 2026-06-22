@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_MASKIN, MASKINER, type Maskin } from "../../lib/aviationOptions";
 import { CREW_ROLE_LABELS, DEFAULT_CREW_DIRECTORY, formatCrewDirectoryEntry, mergeCrewDirectoryEntries, sortCrewDirectoryEntries, type CrewDirectoryEntry, type CrewRole } from "../../lib/crewDirectory";
@@ -480,6 +481,7 @@ function HelicopterSelect({ value, onChange }: { value: Maskin | ""; onChange: (
 }
 
 function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
+	const router = useRouter();
 	const [periodFromDate, setPeriodFromDate] = useState(todayISO());
 	const [periodFromTime, setPeriodFromTime] = useState("14:00");
 	const [periodToDate, setPeriodToDate] = useState(() => addDaysISO(7));
@@ -491,6 +493,7 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [watchPhoneBase, setWatchPhoneBase] = useState<WatchPhoneBase>("Tromsø");
 	const [showWatchPhoneOptions, setShowWatchPhoneOptions] = useState(false);
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
+	const [showSentReceipt, setShowSentReceipt] = useState(false);
 	const watchPhone = WATCH_PHONE_OPTIONS[watchPhoneBase];
 	const otherWatchPhoneBases = WATCH_PHONE_BASES.filter((base) => base !== watchPhoneBase);
 
@@ -503,13 +506,15 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		setStatus({ type: "sending", message: "Sender crew-skjema..." });
 		try {
 			await submitJson("/api/police/crew", { base: watchPhoneBase, periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone, captain, firstOfficer, technician, helicopter });
-			setStatus({ type: "success", message: "Crew epost sendt." });
+			setStatus({ type: "success", message: "Crewliste er sendt til Politiet." });
+			setShowSentReceipt(true);
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });
 		}
 	}
 
 	return (
+		<>
 		<form onSubmit={handleSubmit} className="space-y-4">
 			<Section title="Vaktperiode">
 				<div className={COMPACT_TWO_COLUMN_GRID}>
@@ -545,8 +550,23 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			</Section>
 			{!CREW_FORM_SEND_ENABLED && <div className="rounded-xl border border-gray-200 bg-gray-100 p-3 text-sm text-gray-700">Innsending av crew-skjema er midlertidig deaktivert. Skjemaet kan fortsatt fylles ut og klargjøres.</div>}
 			<StatusMessage status={status} />
-			<button disabled={!CREW_FORM_SEND_ENABLED || status.type === "sending" || status.type === "success"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-not-allowed disabled:opacity-60">{!CREW_FORM_SEND_ENABLED ? "Crew-skjema deaktivert" : status.type === "success" ? "Crew epost sendt" : status.type === "sending" ? "Sender crew-skjema..." : "Send crew-skjema"}</button>
+			<button disabled={!CREW_FORM_SEND_ENABLED || status.type === "sending" || status.type === "success"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-not-allowed disabled:opacity-60">{!CREW_FORM_SEND_ENABLED ? "Crew-skjema deaktivert" : status.type === "success" ? "Crewliste sendt" : status.type === "sending" ? "Sender crew-skjema..." : "Send crew-skjema"}</button>
 		</form>
+		{showSentReceipt && <CrewSentReceiptModal onOk={() => router.push("/")} />}
+		</>
+	);
+}
+
+function CrewSentReceiptModal({ onOk }: { onOk: () => void }) {
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Crewliste sendt">
+			<div className="w-full max-w-sm rounded-2xl border border-green-200 bg-white p-5 text-center shadow-2xl">
+				<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl font-bold text-green-700">✓</div>
+				<h2 className="mt-4 text-xl font-semibold text-gray-900">Crewliste er sendt</h2>
+				<p className="mt-2 text-sm leading-6 text-gray-600">Crewlisten er sendt til Politiet. Trykk OK for å gå tilbake til forsiden.</p>
+				<button type="button" onClick={onOk} className="mt-5 w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-sm hover:bg-blue-700">OK</button>
+			</div>
+		</div>
 	);
 }
 
