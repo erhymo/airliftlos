@@ -10,6 +10,8 @@ type ForecastEntry = {
 	data?: {
 		instant?: { details?: Record<string, number> };
 		next_1_hours?: { details?: Record<string, number> };
+		next_6_hours?: { details?: Record<string, number> };
+		next_12_hours?: { details?: Record<string, number> };
 	};
 };
 type MetResponse = { properties?: { meta?: { updated_at?: string }; timeseries?: ForecastEntry[] } };
@@ -21,7 +23,7 @@ export async function GET(req: Request) {
 	const place = getLosvaerPlaceById(placeId);
 	if (!place) return Response.json({ error: "Ukjent LOS-værplass" }, { status: 404 });
 
-	const locationUrl = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${place.lat}&lon=${place.lon}`;
+	const locationUrl = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${place.lat}&lon=${place.lon}`;
 	const oceanUrl = `https://api.met.no/weatherapi/oceanforecast/2.0/complete?lat=${place.lat}&lon=${place.lon}`;
 	const [locationResult, oceanResult] = await Promise.allSettled([fetchMetJson(locationUrl), fetchMetJson(oceanUrl)]);
 
@@ -38,7 +40,7 @@ export async function GET(req: Request) {
 		current: points[0] ?? null,
 		points,
 		updatedAt: location.properties?.meta?.updated_at ?? ocean?.properties?.meta?.updated_at ?? new Date().toISOString(),
-		sources: { wind: "MET Locationforecast", swell: ocean ? "MET Oceanforecast" : "Ikke tilgjengelig" },
+		sources: { wind: "MET Locationforecast", swell: ocean ? "MET Oceanforecast" : "Ikke tilgjengelig", lightning: "MET Locationforecast" },
 	});
 }
 
@@ -60,6 +62,7 @@ function combineForecasts(location: MetResponse, ocean: MetResponse | null): Los
 			windSpeedMs: windPoint?.windSpeedMs ?? null,
 			gustMs: windPoint?.gustMs ?? null,
 			windFromDeg: windPoint?.windFromDeg ?? null,
+				thunderProbabilityPercent: windPoint?.thunderProbabilityPercent ?? null,
 		};
 	});
 }
@@ -76,6 +79,7 @@ function toWindPoints(location: MetResponse, now: number): LosvaerWeatherPoint[]
 			windSpeedMs,
 			gustMs: numberOrNull(details.wind_speed_of_gust) ?? numberOrNull(nextHourDetails.wind_speed_of_gust),
 			windFromDeg: windFromDeg == null ? null : normalizeDeg(windFromDeg),
+				thunderProbabilityPercent: thunderProbability(entry),
 			seaSurfaceWaveHeightM: null,
 			waveFromDeg: null,
 		};
@@ -93,10 +97,17 @@ function toSwellPoints(ocean: MetResponse | null, now: number): LosvaerWeatherPo
 			windSpeedMs: null,
 			gustMs: null,
 			windFromDeg: null,
+			thunderProbabilityPercent: null,
 			seaSurfaceWaveHeightM: heightM,
 			waveFromDeg: waveFromDeg == null ? null : normalizeDeg(waveFromDeg),
 		};
 	});
+}
+
+function thunderProbability(entry: ForecastEntry) {
+	return numberOrNull(entry.data?.next_1_hours?.details?.probability_of_thunder)
+		?? numberOrNull(entry.data?.next_6_hours?.details?.probability_of_thunder)
+		?? numberOrNull(entry.data?.next_12_hours?.details?.probability_of_thunder);
 }
 
 function nearestPoint(points: LosvaerWeatherPoint[], isoTime: string) {

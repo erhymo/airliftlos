@@ -8,6 +8,7 @@ export type LosvaerWeatherPoint = {
 	windSpeedMs: number | null;
 	gustMs: number | null;
 	windFromDeg: number | null;
+	thunderProbabilityPercent: number | null;
 	seaSurfaceWaveHeightM: number | null;
 	waveFromDeg: number | null;
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
@@ -17,7 +18,17 @@ type LosvaerApiResponse = {
 	current: LosvaerWeatherPoint | null;
 	points: LosvaerWeatherPoint[];
 	updatedAt: string | null;
-	sources: { wind: string; swell: string };
+	sources: { wind: string; swell: string; lightning?: string };
+};
+
+type LightningApiResponse = { lightningMaps: LightningMap[] };
+
+type LightningMap = {
+	time: string;
+	url: string;
+	area: string;
+	areaLabel: string;
+	updatedAt: string | null;
 };
 
 export default function LosvaerDashboardClient({ places }: { places: LosvaerPlace[] }) {
@@ -52,6 +63,10 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 	const [data, setData] = useState<LosvaerApiResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [refreshToken, setRefreshToken] = useState(0);
+	const [lightningOpen, setLightningOpen] = useState(false);
+	const [lightningMaps, setLightningMaps] = useState<LightningMap[] | null>(null);
+	const [lightningLoading, setLightningLoading] = useState(false);
+	const [lightningError, setLightningError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let ignore = false;
@@ -80,6 +95,8 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 	const headingText = recommendation.headingDeg == null ? "—" : `${recommendation.headingDeg.toFixed(0)}°`;
 	const headingSub = recommendation.headingDeg == null ? recommendation.label : `${compassDirection(recommendation.headingDeg)} · ${recommendation.label}`;
 	const speedText = recommendation.speedKt == null ? "—" : `${recommendation.speedKt} knop`;
+	const thunderPercent = current?.thunderProbabilityPercent ?? null;
+	const lightningRisk = lightningRiskFor(thunderPercent);
 
 	function refresh() {
 		setData(null);
@@ -87,7 +104,24 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 		setRefreshToken((value) => value + 1);
 	}
 
+	function openLightningMaps() {
+		setLightningOpen(true);
+		if (lightningMaps != null || lightningLoading) return;
+		loadLightningMaps();
+	}
+
+	function loadLightningMaps() {
+		setLightningLoading(true);
+		setLightningError(null);
+		fetch(`/api/losvaer/lightning?place=${encodeURIComponent(place.id)}`)
+			.then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+			.then((payload: LightningApiResponse) => setLightningMaps(payload.lightningMaps ?? []))
+			.catch(() => setLightningError("Klarte ikke å hente lynkart"))
+			.finally(() => setLightningLoading(false));
+	}
+
 	return (
+		<>
 		<article className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm" style={{ borderLeftColor: accent, borderLeftWidth: 5 }}>
 			<div className="p-4 min-[380px]:p-5">
 				<div className="flex items-start justify-between gap-3 min-[380px]:gap-4">
@@ -122,9 +156,10 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 					</div>
 
 				<dl className="mt-4 grid grid-cols-2 gap-3">
-					<Metric label="Vind" value={windText(current?.windSpeedMs, current?.windFromDeg)} />
-					<Metric label="Kast" value={windText(current?.gustMs, current?.windFromDeg)} />
-					<Metric label="Svell" value={swellText(current)} sub={waveState?.label ?? "svelldata"} className="col-span-2" />
+						<Metric label="Vind" value={windText(current?.windSpeedMs, current?.windFromDeg)} />
+						<Metric label="Kast" value={windText(current?.gustMs, current?.windFromDeg)} />
+						<Metric label="Svell" value={swellText(current)} sub={waveState?.label ?? "svelldata"} />
+						<LightningRiskButton risk={lightningRisk} percent={thunderPercent} onClick={openLightningMaps} />
 				</dl>
 
 				<div className="mt-4 grid gap-3 sm:grid-cols-[8rem_1fr]">
@@ -141,6 +176,8 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 				<p className="mt-2 text-xs text-gray-400">Sist oppdatert: {formatTime(data?.updatedAt)}</p>
 			</div>
 		</article>
+			{lightningOpen && <LightningMapModal error={lightningError} loading={lightningLoading} maps={lightningMaps} placeName={place.name} risk={lightningRisk} percent={thunderPercent} onClose={() => setLightningOpen(false)} onRetry={loadLightningMaps} />}
+		</>
 	);
 }
 
@@ -218,6 +255,57 @@ function Bar({ color, width }: { color: string; width: number }) {
 
 function Metric({ label, value, sub, className = "" }: { label: string; value: ReactNode; sub?: string; className?: string }) {
 	return <div className={`rounded-lg bg-gray-50 p-3 ${className}`}><dt className="text-xs font-medium text-gray-500">{label}</dt><dd className="mt-1 text-base font-semibold text-gray-900">{value}</dd>{sub && <p className="mt-1 text-xs text-gray-500">{sub}</p>}</div>;
+}
+
+function LightningRiskButton({ risk, percent, onClick }: { risk: LightningRisk; percent: number | null; onClick: () => void }) {
+	return (
+		<button type="button" onClick={onClick} className="rounded-lg border p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow" style={{ background: risk.bg, borderColor: risk.border }}>
+			<span className="text-xs font-medium text-gray-600">Lynrisiko</span>
+			<span className="mt-1 block text-base font-semibold" style={{ color: risk.color }}>{risk.label} · {formatPercent(percent)}</span>
+			<span className="mt-1 block text-[11px] font-medium text-gray-500">Trykk for kart</span>
+		</button>
+	);
+}
+
+function LightningMapModal({ error, loading, maps, placeName, risk, percent, onClose, onRetry }: { error: string | null; loading: boolean; maps: LightningMap[] | null; placeName: string; risk: LightningRisk; percent: number | null; onClose: () => void; onRetry: () => void }) {
+	return (
+		<div className="fixed inset-0 z-50 bg-gray-950/70 px-3 py-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Lynkart for ${placeName}`}>
+			<div className="mx-auto flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+				<div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4">
+					<div>
+						<p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Lynrisiko · {placeName}</p>
+						<h2 className="mt-1 text-xl font-semibold text-gray-900" style={{ color: risk.color }}>{risk.label} · {formatPercent(percent)}</h2>
+						<p className="mt-1 text-xs text-gray-500">Kart: helikopterutløst lynindeks, nåtid og neste 6 timer.</p>
+					</div>
+					<button type="button" onClick={onClose} className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Lukk</button>
+				</div>
+				<div className="flex-1 overflow-y-auto p-4">
+					{loading && <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">Laster lynkart…</p>}
+					{!loading && error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900"><p>{error}</p><button type="button" onClick={onRetry} className="mt-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700">Prøv igjen</button></div>}
+					{!loading && !error && maps?.length === 0 && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Lynkart er ikke tilgjengelig akkurat nå.</p>}
+					{!loading && !error && maps && maps.length > 0 && <div className="flex snap-x gap-3 overflow-x-auto pb-3">{maps.map((map, index) => <LightningMapCard key={`${map.area}-${map.time}`} map={map} index={index} />)}</div>}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function LightningMapCard({ map, index }: { map: LightningMap; index: number }) {
+	return <figure className="w-[86vw] max-w-[38rem] shrink-0 snap-start overflow-hidden rounded-xl border border-gray-200 bg-gray-50 shadow-sm"><figcaption className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 py-2 text-xs"><span className="font-semibold text-gray-700">{index === 0 ? "Nå" : formatHour(map.time)}</span><span className="text-gray-500">{map.areaLabel}</span></figcaption><Image src={map.url} alt={`Lynkart ${map.areaLabel} ${formatTime(map.time)}`} width={900} height={700} className="h-auto w-full" unoptimized /></figure>;
+}
+
+type LightningRisk = { label: "Lav" | "Middels" | "Høy" | "Ukjent"; color: string; bg: string; border: string };
+
+function lightningRiskFor(percent: number | null): LightningRisk {
+	if (percent == null) return { label: "Ukjent", color: "#64748b", bg: "#f8fafc", border: "#e2e8f0" };
+	if (percent < 10) return { label: "Lav", color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" };
+	if (percent < 30) return { label: "Middels", color: "#d97706", bg: "#fffbeb", border: "#fde68a" };
+	return { label: "Høy", color: "#dc2626", bg: "#fef2f2", border: "#fecaca" };
+}
+
+function formatPercent(percent: number | null) {
+	if (percent == null) return "—";
+	return `${percent > 0 && percent < 10 ? percent.toFixed(1) : percent.toFixed(0)} %`;
 }
 
 function waveStateFor(heightM: number) {
