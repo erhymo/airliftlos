@@ -552,18 +552,18 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			<StatusMessage status={status} />
 			<button disabled={!CREW_FORM_SEND_ENABLED || status.type === "sending" || status.type === "success"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-not-allowed disabled:opacity-60">{!CREW_FORM_SEND_ENABLED ? "Crew-skjema deaktivert" : status.type === "success" ? "Crewliste sendt" : status.type === "sending" ? "Sender crew-skjema..." : "Send crew-skjema"}</button>
 		</form>
-		{showSentReceipt && <CrewSentReceiptModal onOk={() => router.push("/")} />}
+		{showSentReceipt && <SubmissionReceiptModal title="Crewliste er sendt" message="Crewlisten er sendt til Politiet. Trykk OK for å gå tilbake til forsiden." onOk={() => router.push("/")} />}
 		</>
 	);
 }
 
-function CrewSentReceiptModal({ onOk }: { onOk: () => void }) {
+function SubmissionReceiptModal({ title, message, onOk }: { title: string; message: string; onOk: () => void }) {
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Crewliste sendt">
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title}>
 			<div className="w-full max-w-sm rounded-2xl border border-green-200 bg-white p-5 text-center shadow-2xl">
 				<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl font-bold text-green-700">✓</div>
-				<h2 className="mt-4 text-xl font-semibold text-gray-900">Crewliste er sendt</h2>
-				<p className="mt-2 text-sm leading-6 text-gray-600">Crewlisten er sendt til Politiet. Trykk OK for å gå tilbake til forsiden.</p>
+				<h2 className="mt-4 text-xl font-semibold text-gray-900">{title}</h2>
+				<p className="mt-2 text-sm leading-6 text-gray-600">{message}</p>
 				<button type="button" onClick={onOk} className="mt-5 w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-sm hover:bg-blue-700">OK</button>
 			</div>
 		</div>
@@ -571,6 +571,7 @@ function CrewSentReceiptModal({ onOk }: { onOk: () => void }) {
 }
 
 function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
+	const router = useRouter();
 	const [reason, setReason] = useState("");
 	const [reasonDetails, setReasonDetails] = useState("");
 	const [date, setDate] = useState(todayISO());
@@ -595,6 +596,7 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
+			{status.type === "success" && <SubmissionReceiptModal title="Utmelding er sendt" message="Utmeldingen er sendt og lagret. Trykk OK for å gå tilbake til forsiden." onOk={() => router.push("/")} />}
 			<Section title="Utmelding">
 				<SelectField label="Årsak til utmelding" value={reason} onChange={setReason} options={UTMELDING_REASONS} placeholder="Velg årsak" />
 				<div><FieldLabel>Utdyping / fritekst</FieldLabel><textarea value={reasonDetails} onChange={(e) => setReasonDetails(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Beskriv årsak nærmere..." /></div>
@@ -616,13 +618,14 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<SelectField label="Sendt av (fartøysjef)" value={sender} onChange={setSender} options={crewOptions.captains} placeholder="Velg avsender" />
 					<div className="rounded-xl border bg-gray-50 p-3 text-gray-900">☎ {DEFAULT_WATCH_PHONE}</div>
 			</Section>
-			<StatusMessage status={status} />
-			<button disabled={status.type === "sending"} className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white disabled:opacity-60">Send utmelding</button>
+			{status.type !== "success" && <StatusMessage status={status} />}
+			<button disabled={status.type === "sending" || status.type === "success"} className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white disabled:opacity-60">{status.type === "success" ? "Utmelding sendt" : "Send utmelding"}</button>
 		</form>
 	);
 }
 
 function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
+	const router = useRouter();
 	const [reportType, setReportType] = useState<PoliceReportType>("training");
 	const [base, setBase] = useState<WatchPhoneBase>("Tromsø");
 	const [missionNumber, setMissionNumber] = useState("");
@@ -741,6 +744,9 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		}
 	}
 
+	const receiptTitle = reportType === "mission" ? "Mission Report lagret" : "Training Report lagret";
+	const receiptMessage = `${reportType === "mission" ? "Mission Report" : "Training Report"} er lagret. Trykk OK for å gå tilbake til forsiden.`;
+
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
 			{showMap && (
@@ -841,18 +847,8 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 				<div><FieldLabel>Lessons learned</FieldLabel><textarea value={lessonsLearned} onChange={(e) => setLessonsLearned(e.target.value)} rows={5} className={TEXTAREA_CLASS} placeholder="Hva fungerte bra? Hva kan forbedres?" /></div>
 				<div><FieldLabel>Tiltak/oppfølging</FieldLabel><textarea value={followUp} onChange={(e) => setFollowUp(e.target.value)} rows={4} className={TEXTAREA_CLASS} placeholder="Tiltak, oppfølging eller punkter til senere bruk..." /></div>
 			</Section>
-				{reportType === "mission" && status.type === "success" && (
-					<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-						<div className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-lg">
-							<h2 className="text-lg font-semibold text-gray-900">Mission Report lagret</h2>
-							<p className="mt-3 text-sm text-gray-700">{status.message}</p>
-							<Link href="/" className="mt-5 block w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700">
-								Tilbake
-							</Link>
-						</div>
-					</div>
-				)}
-				{!(reportType === "mission" && status.type === "success") && <StatusMessage status={status} />}
+				{status.type === "success" && <SubmissionReceiptModal title={receiptTitle} message={receiptMessage} onOk={() => router.push("/")} />}
+				{status.type !== "success" && <StatusMessage status={status} />}
 				<button type="submit" disabled={status.type === "sending" || status.type === "success"} aria-busy={status.type === "sending"} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-semibold text-gray-950 disabled:cursor-wait disabled:opacity-60">{status.type === "sending" ? "Lagrer rapport..." : status.type === "success" ? "Rapport lagret" : "Lagre rapport"}</button>
 		</form>
 	);

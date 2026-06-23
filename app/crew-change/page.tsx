@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { activeCrewCodesByRoles, DEFAULT_CREW_DIRECTORY, type CrewDirectoryEntry } from "../../lib/crewDirectory";
 
@@ -45,6 +46,7 @@ function CompactNumberField({ label, children }: { label: string; children: Reac
 }
 
 export default function CrewChangePage() {
+	const router = useRouter();
 	const [date, setDate] = useState(todayISO());
 	const [techlogNumber, setTechlogNumber] = useState("");
 	const [vesselName, setVesselName] = useState("");
@@ -137,6 +139,7 @@ export default function CrewChangePage() {
 
 	return (
 		<div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center p-3 sm:p-4">
+			{sent && <CrewChangeReceiptModal onOk={() => router.push("/")} />}
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-5 sm:p-6">
 				<header className="space-y-1">
 					<h1 className="text-lg font-semibold">Crew change</h1>
@@ -169,6 +172,20 @@ export default function CrewChangePage() {
 					</form>
 				)}
 			</main>
+		</div>
+	);
+}
+
+
+function CrewChangeReceiptModal({ onOk }: { onOk: () => void }) {
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Crew change sendt">
+			<div className="w-full max-w-sm rounded-2xl border border-green-200 bg-white p-5 text-center shadow-2xl">
+				<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl font-bold text-green-700">✓</div>
+				<h2 className="mt-4 text-xl font-semibold text-gray-900">Crew change er sendt</h2>
+				<p className="mt-2 text-sm leading-6 text-gray-600">Crew change er sendt til SharePoint. Trykk OK for å gå tilbake til forsiden.</p>
+				<button type="button" onClick={onOk} className="mt-5 w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-sm hover:bg-blue-700">OK</button>
+			</div>
 		</div>
 	);
 }
