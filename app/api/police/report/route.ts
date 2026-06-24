@@ -169,11 +169,10 @@ export async function POST(req: Request) {
 	const base = asString(payload.base) || "Tromsø";
 	const date = validDate(asString(payload.date)) ? asString(payload.date) : new Date().toISOString().slice(0, 10);
 	const reporter = asString(payload.reporter);
-	const missionNumber = asString(payload.missionNumber);
-	if (reportType === "mission" && !missionNumber) return NextResponse.json({ error: "Oppdragsnummer må fylles ut for Mission Report" }, { status: 400 });
 	if (reportType === "mission" && !reporter) return NextResponse.json({ error: "Rapportskriver må velges for Mission Report" }, { status: 400 });
 	const crew = asStringArray(payload.crew);
 	const missionExcelLog = reportType === "mission" ? buildMissionExcelLog(payload, date, crew) : null;
+	const missionNumber = reportType === "mission" ? asString(payload.missionNumber) || missionExcelLog?.bid || "" : asString(payload.missionNumber);
 	if (reportType === "mission" && !missionExcelLog?.sign) return NextResponse.json({ error: "Rapportskriver mangler crew-kode for Excel-sign" }, { status: 400 });
 	const reporterDisplayName = displayCrewName(reporter) || reporter;
 
@@ -210,7 +209,7 @@ export async function POST(req: Request) {
 		line("Rapportskriver", reporterDisplayName),
 		line("Varighet", reportDurationText),
 		line("Vær/forhold", asString(payload.conditions)),
-		...(reportType === "mission" ? [line("Oppdragsnummer", payload.missionNumber)] : []),
+		...(reportType === "mission" ? [line("BID", missionExcelLog?.bid ?? missionNumber)] : []),
 		line("Helikopter", helicopter),
 		line("Crew", crew),
 		...(reportType === "training" ? [line("Treningstyper", trainingTypes)] : []),

@@ -277,7 +277,7 @@ function ReportDetail({ report, onBack }: { report: ReportArchiveItem; onBack: (
 				<div><strong>Helikopter:</strong> {report.helicopter || "-"}</div>
 				<div><strong>Rapportskriver:</strong> {report.reporter || "-"}</div>
 				<div><strong>Crew:</strong> {report.crew.length ? report.crew.join(", ") : "-"}</div>
-				{report.reportType === "mission" && <div><strong>Oppdragsnummer:</strong> {report.missionNumber || "-"}</div>}
+				{report.reportType === "mission" && <div><strong>BID:</strong> {report.missionNumber || "-"}</div>}
 				{report.reportType === "training" && <div><strong>Treningstyper:</strong> {report.trainingTypes.length ? report.trainingTypes.join(", ") : "-"}</div>}
 				<div><strong>Varighet:</strong> {report.durationText || "-"}</div>
 				<div><strong>Vær/forhold:</strong> {report.conditions || "-"}</div>
@@ -440,8 +440,8 @@ function PoliceArchiveModal({ onClose }: { onClose: () => void }) {
 									{reportData.reports.map((item) => (
 										<button key={item.id} type="button" onClick={() => setSelectedReport(item)} className="w-full rounded-xl border border-gray-100 bg-gray-50 p-3 text-left text-sm hover:border-blue-200 hover:bg-blue-50">
 											<div className="font-medium text-gray-900">{reportTypeLabel(item.reportType)} · {item.date}</div>
-											<div className="text-gray-700">{item.base} · {item.helicopter || "Helikopter ikke valgt"}</div>
-											<div className="text-xs text-gray-500">{item.reportType === "mission" ? `Oppdrag ${item.missionNumber || "-"}` : item.trainingTypes.join(", ") || "Training"} · {item.pins.length} kartpunkt</div>
+									<div className="text-gray-700">{item.base} · {item.helicopter || "Helikopter ikke valgt"}</div>
+									<div className="text-xs text-gray-500">{item.reportType === "mission" ? `BID ${item.missionNumber || "-"}` : item.trainingTypes.join(", ") || "Training"} · {item.pins.length} kartpunkt</div>
 										</button>
 									))}
 								</div>
@@ -628,7 +628,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const router = useRouter();
 	const [reportType, setReportType] = useState<PoliceReportType>("training");
 	const [base, setBase] = useState<WatchPhoneBase>("Tromsø");
-	const [missionNumber, setMissionNumber] = useState("");
 	const [date, setDate] = useState(todayISO());
 	const [reporter, setReporter] = useState("");
 	const [durationText, setDurationText] = useState("");
@@ -693,7 +692,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 			const completeBlock1 = hasText(missionBlockOff1) && hasText(missionBlockOn1);
 			const completeBlock2 = hasText(missionBlockOff2) && hasText(missionBlockOn2);
 			const missing: string[] = [];
-			if (!hasText(missionNumber)) missing.push("Oppdragsnummer");
 			if (!hasText(date)) missing.push("Dato");
 			if (!hasText(base)) missing.push("Base");
 			if (!hasText(reporter)) missing.push("Rapportskriver");
@@ -724,7 +722,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		try {
 			const reportDurationText = reportType === "mission" ? effectiveTotalBlock : durationText;
 			const missionLog = reportType === "mission" ? { sign: extractCrewCode(reporter), alertTime: missionAlertTime, readyTime: missionReadyTime, readinessDeviation: missionReadinessDeviation, ref: missionRef, poId: missionPoId, bid: missionBid, cancelled: missionCancelled, techlogNumber: missionTechlogNumber, blockOff1: missionBlockOff1, blockOn1: missionBlockOn1, blockTime1: effectiveBlockTime1, waitTime: "", blockOff2: missionBlockOff2, blockOn2: missionBlockOn2, blockTime2: effectiveBlockTime2, totalBlock: effectiveTotalBlock, flightRoute: missionFlightRoute, pax: missionPax, description, readinessDeviationReason: missionReadinessDeviationReason } : undefined;
-			const response = await submitJson("/api/police/report", { clientSubmissionId, base, reportType, missionNumber, date, reporter, durationText: reportDurationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes, missionLog });
+			const response = await submitJson("/api/police/report", { clientSubmissionId, base, reportType, date, reporter, durationText: reportDurationText, conditions, crew: selectedCrew, helicopter, pins, trainingTypes: reportType === "training" ? trainingTypes : [], involvedAgencies, result, description, lessonsLearned, followUp, safetyNotes, missionLog });
 			const sharepoint = response.delivery?.sharepoint;
 			const excel = response.delivery?.excel;
 			if (reportType === "mission" && missionTechlogNumber.trim() && excel?.ok !== false) {
@@ -768,7 +766,6 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 						<button key={type} type="button" onClick={() => setReportType(type)} className={`rounded-xl border px-3 py-3 text-sm font-medium ${reportType === type ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-200 bg-white text-gray-800"}`}>{type === "training" ? "Training Report" : "Mission Report"}</button>
 					))}
 				</div>
-				{reportType === "mission" && <div><FieldLabel>Oppdragsnummer</FieldLabel><input value={missionNumber} onChange={(e) => setMissionNumber(e.target.value)} className={FIELD_CONTROL_CLASS} placeholder="Oppdragsnummer" /></div>}
 				<div><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_CONTROL_CLASS} /></div>
 				<SelectField label="Base" value={base} onChange={(next) => setBase((next || "Tromsø") as WatchPhoneBase)} options={WATCH_PHONE_BASES} placeholder="Velg base" />
 				<SelectField label="Rapportskriver" value={reporter} onChange={setReporter} options={crewOptions.all} placeholder="Velg rapportskriver" />
