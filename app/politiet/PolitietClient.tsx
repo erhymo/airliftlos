@@ -65,6 +65,16 @@ type ReportArchiveItem = {
 	fileName: string;
 };
 type ReportArchiveData = { ok?: boolean; year: number; live?: PoliceLiveArchiveSettings; total: number; trainingTotal: number; missionTotal: number; months: ReportMonthStat[]; byBase: CountStat[]; byHelicopter: CountStat[]; byTrainingType: CountStat[]; reports: ReportArchiveItem[]; error?: string };
+type PoliceOrderImport = {
+	poId: string;
+	requester: string;
+	bid: string;
+	subject: string;
+	receivedDateTime: string | null;
+	fromName: string | null;
+	fromAddress: string | null;
+	attachmentName: string | null;
+};
 
 const PIN_TYPE_LABELS: Record<string, string> = {
 	trainingArea: "Treningsområde",
@@ -624,6 +634,42 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	);
 }
 
+function PoliceOrderImportModal({ order, onCancel, onConfirm }: { order: PoliceOrderImport; onCancel: () => void; onConfirm: () => void }) {
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Bestilling fra Politiet">
+			<div className="w-full max-w-sm rounded-2xl border border-blue-200 bg-white p-5 shadow-2xl">
+				<div className="text-center">
+					<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700">↓</div>
+					<h2 className="mt-4 text-xl font-semibold text-gray-900">Fant siste bestilling</h2>
+					<p className="mt-2 text-sm leading-6 text-gray-600">Se over informasjonen før den legges inn i Mission Report.</p>
+				</div>
+
+				<div className="mt-4 space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800">
+					<ReceiptLine label="PO ID" value={order.poId} />
+					<ReceiptLine label="Rekvirent" value={order.requester} />
+					<ReceiptLine label="BID" value={order.bid} />
+				</div>
+
+				<div className="mt-3 space-y-1 rounded-xl border border-gray-100 bg-white p-3 text-xs text-gray-500">
+					<ReceiptLine label="Emne" value={order.subject} />
+					<ReceiptLine label="Mottatt" value={formatLiveFrom(order.receivedDateTime)} />
+					<ReceiptLine label="Fra" value={order.fromName || order.fromAddress || "—"} />
+					<ReceiptLine label="Vedlegg" value={order.attachmentName || "—"} />
+				</div>
+
+				<div className="mt-5 grid grid-cols-2 gap-2">
+					<button type="button" onClick={onCancel} className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50">Avbryt</button>
+					<button type="button" onClick={onConfirm} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">OK, bruk dette</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function ReceiptLine({ label, value }: { label: string; value: string }) {
+	return <div className="flex gap-2"><span className="min-w-20 font-semibold text-gray-700">{label}:</span><span className="min-w-0 break-words">{value || "—"}</span></div>;
+}
+
 function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const router = useRouter();
 	const [reportType, setReportType] = useState<PoliceReportType>("training");
@@ -675,6 +721,8 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const [missionTotalBlockManual, setMissionTotalBlockManual] = useState(false);
 	const [missionFlightRoute, setMissionFlightRoute] = useState("");
 	const [status, setStatus] = useState<SubmitStatus>({ type: "idle" });
+	const [orderImport, setOrderImport] = useState<PoliceOrderImport | null>(null);
+	const [orderImportStatus, setOrderImportStatus] = useState<SubmitStatus>({ type: "idle" });
 	const selectedCrew = useMemo(() => crew.filter(Boolean), [crew]);
 	const pins = pinsByType[reportType];
 	const effectiveBlockTime1 = missionBlockTime1Manual ? missionBlockTime1 : formatDurationMinutes(minutesBetweenTimes(missionBlockOff1, missionBlockOn1));
@@ -684,6 +732,28 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 	function toggleTrainingType(value: string) {
 		setTrainingTypes((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
+	}
+
+	async function fetchLatestPoliceOrder() {
+		setOrderImport(null);
+		setOrderImportStatus({ type: "sending", message: "Henter siste bestilling fra Politiet..." });
+		try {
+			const res = await fetch("/api/police/latest-order", { cache: "no-store" });
+			const data = (await res.json().catch(() => ({}))) as { ok?: boolean; order?: PoliceOrderImport; error?: string };
+			if (!res.ok || !data.ok || !data.order) throw new Error(data.error || "Klarte ikke å hente siste bestilling fra Politiet.");
+			setOrderImport(data.order);
+			setOrderImportStatus({ type: "idle" });
+		} catch (error) {
+			setOrderImportStatus({ type: "error", message: (error as Error).message });
+		}
+	}
+
+	function applyPoliceOrderImport(order: PoliceOrderImport) {
+		setMissionPoId(order.poId);
+		setMissionRef(order.requester);
+		setMissionBid(order.bid);
+		setOrderImport(null);
+		setOrderImportStatus({ type: "success", message: "Bestilling fra Politiet er lagt inn i skjemaet." });
 	}
 
 	async function handleSubmit(event: React.FormEvent) {
@@ -747,6 +817,7 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
+			{orderImport && <PoliceOrderImportModal order={orderImport} onCancel={() => setOrderImport(null)} onConfirm={() => applyPoliceOrderImport(orderImport)} />}
 			{showMap && (
 				<PoliceMapPicker
 					pins={pins}
@@ -766,6 +837,15 @@ function ReportForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 						<button key={type} type="button" onClick={() => setReportType(type)} className={`rounded-xl border px-3 py-3 text-sm font-medium ${reportType === type ? "border-blue-500 bg-blue-50 text-blue-900" : "border-gray-200 bg-white text-gray-800"}`}>{type === "training" ? "Training Report" : "Mission Report"}</button>
 					))}
 				</div>
+				{reportType === "mission" && (
+					<div className="rounded-xl border border-blue-100 bg-blue-50/70 p-2">
+						<button type="button" onClick={fetchLatestPoliceOrder} disabled={orderImportStatus.type === "sending"} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-900 shadow-sm hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60">
+							{orderImportStatus.type === "sending" ? "Henter bestilling..." : "Hent siste bestilling fra Politiet"}
+						</button>
+						{orderImportStatus.type === "error" && <p className="mt-2 text-xs font-medium text-red-700">{orderImportStatus.message}</p>}
+						{orderImportStatus.type === "success" && <p className="mt-2 text-xs font-medium text-green-700">{orderImportStatus.message}</p>}
+					</div>
+				)}
 				<div><FieldLabel>Dato</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_CONTROL_CLASS} /></div>
 				<SelectField label="Base" value={base} onChange={(next) => setBase((next || "Tromsø") as WatchPhoneBase)} options={WATCH_PHONE_BASES} placeholder="Velg base" />
 				<SelectField label="Rapportskriver" value={reporter} onChange={setReporter} options={crewOptions.all} placeholder="Velg rapportskriver" />
