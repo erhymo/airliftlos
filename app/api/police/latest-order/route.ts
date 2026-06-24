@@ -115,7 +115,6 @@ async function findLatestPoliceOrderMessageFromUrl(token: string, url: URL, erro
 
 async function findDocxAttachment(token: string, messageId: string) {
 	const url = new URL(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(MAILBOX)}/messages/${encodeURIComponent(messageId)}/attachments`);
-	url.search = new URLSearchParams({ $select: "id,name,contentType,contentBytes,size", $top: "20" }).toString();
 	const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
 	if (!res.ok) throw new PoliceOrderError(`Klarte ikke å hente vedlegg fra Politiet-bestilling (HTTP ${res.status}).`, 502);
 	const data = (await res.json().catch(() => ({}))) as { value?: GraphAttachment[] };
@@ -123,7 +122,6 @@ async function findDocxAttachment(token: string, messageId: string) {
 	if (!attachment || attachment.contentBytes || !attachment.id) return attachment;
 
 	const attachmentUrl = new URL(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(MAILBOX)}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`);
-	attachmentUrl.search = new URLSearchParams({ $select: "id,name,contentType,contentBytes,size" }).toString();
 	const attachmentRes = await fetch(attachmentUrl, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
 	if (!attachmentRes.ok) throw new PoliceOrderError(`Klarte ikke å hente DOCX-innhold fra Politiet-bestilling (HTTP ${attachmentRes.status}).`, 502);
 	return (await attachmentRes.json().catch(() => attachment)) as GraphAttachment;
