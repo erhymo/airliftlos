@@ -21,6 +21,9 @@ const MONTH_SHEETS = [
 	"Desember",
 ];
 
+const GRAPH_RETRY_DELAYS_MS = [1000, 2500];
+const TRANSIENT_GRAPH_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+
 type LosLogSendLockResult =
 	| { status: "acquired"; wasOpen: boolean }
 	| { status: "already-sent" }
@@ -113,6 +116,32 @@ async function getGraphAccessToken(): Promise<string | null> {
 	return data.access_token;
 }
 
+function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryAfterMs(res: Response) {
+	const header = res.headers.get("retry-after");
+	if (!header) return null;
+	const seconds = Number(header);
+	if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+	const dateMs = Date.parse(header);
+	return Number.isFinite(dateMs) ? Math.max(0, dateMs - Date.now()) : null;
+}
+
+async function fetchGraphExcelWithRetry(url: string, init: RequestInit, label: string) {
+	for (let attempt = 0; attempt <= GRAPH_RETRY_DELAYS_MS.length; attempt += 1) {
+		const res = await fetch(url, init);
+		if (!TRANSIENT_GRAPH_STATUSES.has(res.status) || attempt === GRAPH_RETRY_DELAYS_MS.length) return res;
+
+		const waitMs = retryAfterMs(res) ?? GRAPH_RETRY_DELAYS_MS[attempt];
+		console.warn(`LOS-logg: midlertidig Graph-feil ved ${label}. Status ${res.status}. Prøver igjen om ${waitMs} ms.`);
+		await sleep(waitMs);
+	}
+
+	throw new Error(`LOS-logg: uventet retry-feil ved ${label}.`);
+}
+
 async function appendRowToExcel(
 	row: (string | number | null)[],
 	sheetName: string,
@@ -165,9 +194,10 @@ async function appendRowToExcel(
 		// under header-raden (der kolonne C har teksten "Sign"). En rad regnes som
 		// tom hvis nøkkelfeltene vi fyller (Sign, Ordrenummer, Navn på fartøy) er
 		// tomme – vi ignorerer formatering og evt. formler i andre kolonner.
-			const rangeRes = await fetch(
+				const rangeRes = await fetchGraphExcelWithRetry(
 				`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='A1:S500')`,
 				{ headers: { Authorization: `Bearer ${token}` } },
+					`lesing av område A1:S500 for arket ${sheetName}`,
 			);
 		if (!rangeRes.ok) {
 			const text = await rangeRes.text().catch(() => "");
@@ -213,7 +243,7 @@ async function appendRowToExcel(
 			const address = `A${nextRow}:S${nextRow}`;
 
 		// Skriv raden inn i riktig område på riktig ark
-		const patchRes = await fetch(
+			const patchRes = await fetchGraphExcelWithRetry(
 			`${baseUrl}/worksheets('${encodeURIComponent(sheetName)}')/range(address='${address}')`,
 			{
 				method: "PATCH",
@@ -223,6 +253,7 @@ async function appendRowToExcel(
 				},
 				body: JSON.stringify({ values: [row] }),
 			},
+				`skriving av rad ${address} for arket ${sheetName}`,
 		);
 
 		if (!patchRes.ok) {
