@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAccess } from "../../../../lib/adminAccess";
+import { requireApiAccess } from "../../../../lib/apiAccess";
 import { getDb } from "../../../../lib/firebaseAdmin";
 import { touchLosBookingsMeta } from "../../../../lib/losBookingsMeta";
 
@@ -43,7 +43,7 @@ async function upsertManualBooking() {
 }
 
 export async function GET(req: Request) {
-	const accessError = await requireAdminAccess();
+	const accessError = await requireApiAccess();
 	if (accessError) return accessError;
 
 	const url = new URL(req.url);
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST() {
-	const accessError = await requireAdminAccess();
+	const accessError = await requireApiAccess();
 	if (accessError) return accessError;
 
 	const result = await upsertManualBooking();
