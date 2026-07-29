@@ -19,6 +19,7 @@ const CREW_SUBMISSION_ENABLED = true;
 const DEFAULT_WATCH_PHONE = "Tromsø: 479 04 276";
 
 type CrewPayload = {
+	clientSubmissionId?: string;
 	base?: string;
 	periodFrom?: string;
 	periodFromDate?: string;
@@ -50,6 +51,11 @@ function formatDateTime(date: string | undefined, time: string | undefined) {
 
 function valueOrDash(value: string | undefined) {
 	return value?.trim() || "-";
+}
+
+function cleanClientSubmissionId(value: unknown) {
+	const text = typeof value === "string" ? value : "";
+	return /^[A-Za-z0-9_-]{8,80}$/.test(text) ? text : "";
 }
 
 function extractCrewCode(value: string | undefined) {
@@ -123,7 +129,24 @@ export async function POST(req: Request) {
 
 	const createdAt = Date.now();
 	const db = getDb();
-	const ref = db.collection("policeCrewForms").doc();
+	const clientSubmissionId = cleanClientSubmissionId(payload.clientSubmissionId);
+	const ref = clientSubmissionId
+		? db.collection("policeCrewForms").doc(clientSubmissionId)
+		: db.collection("policeCrewForms").doc();
+
+	if (clientSubmissionId) {
+		const claim = await db.runTransaction(async (transaction) => {
+			const snapshot = await transaction.get(ref);
+			if (snapshot.exists) return { exists: true, data: snapshot.data() as { delivery?: unknown } | undefined };
+			transaction.set(ref, { id: ref.id, createdAt, processingStartedAt: createdAt });
+			return { exists: false, data: null };
+		});
+		if (claim.exists) {
+			const delivery = claim.data?.delivery && typeof claim.data.delivery === "object" ? claim.data.delivery : {};
+			return NextResponse.json({ ok: true, id: ref.id, duplicate: true, delivery: { database: { ok: true }, ...delivery } });
+		}
+	}
+
 	const crewEntries = await getCrewDirectoryEntries();
 	const periodFromDate = payload.periodFromDate || payload.periodFrom;
 	const periodToDate = payload.periodToDate || payload.periodTo;
@@ -154,7 +177,7 @@ export async function POST(req: Request) {
 		"Oppnås ikke kontakt på vakttelefon kan direkte telefonnummer til crew benyttes. Flyr helikopteret, ring direkte til helikopteret på GSM eller Iridium.",
 	].join("\n");
 
-	await ref.set({ ...payload, base, id: ref.id, fileName, createdAt, sentAt: createdAt });
+	await ref.set({ ...payload, base, id: ref.id, fileName, createdAt, sentAt: createdAt }, { merge: true });
 	const year = Number((periodFromDate ?? "").slice(0, 4)) || new Date().getFullYear();
 	const delivery = await deliverPoliceSubmission("crew", title, body, fileName, year);
 	await ref.set({ delivery }, { merge: true });

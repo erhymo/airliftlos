@@ -492,6 +492,7 @@ function HelicopterSelect({ value, onChange }: { value: Maskin | ""; onChange: (
 
 function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const router = useRouter();
+	const [clientSubmissionId] = useState(createClientSubmissionId);
 	const [periodFromDate, setPeriodFromDate] = useState(todayISO());
 	const [periodFromTime, setPeriodFromTime] = useState("14:00");
 	const [periodToDate, setPeriodToDate] = useState(() => addDaysISO(7));
@@ -515,7 +516,7 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		}
 		setStatus({ type: "sending", message: "Sender crew-skjema..." });
 		try {
-			await submitJson("/api/police/crew", { base: watchPhoneBase, periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone, captain, firstOfficer, technician, helicopter });
+			await submitJson("/api/police/crew", { clientSubmissionId, base: watchPhoneBase, periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone, captain, firstOfficer, technician, helicopter });
 			setStatus({ type: "success", message: "Crewliste er sendt til Politiet." });
 			setShowSentReceipt(true);
 		} catch (error) {
@@ -582,6 +583,7 @@ function SubmissionReceiptModal({ title, message, onOk }: { title: string; messa
 
 function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 	const router = useRouter();
+	const [clientSubmissionId] = useState(createClientSubmissionId);
 	const [reason, setReason] = useState("");
 	const [reasonDetails, setReasonDetails] = useState("");
 	const [date, setDate] = useState(todayISO());
@@ -597,7 +599,7 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		event.preventDefault();
 		setStatus({ type: "sending", message: "Sender utmelding..." });
 		try {
-			await submitJson("/api/police/utmelding", { base: "Tromsø", reason, reasonDetails, date, time, durationHours, durationText, mitigatingAction, mitigatingActionDetails, sender, watchPhone: DEFAULT_WATCH_PHONE });
+			await submitJson("/api/police/utmelding", { clientSubmissionId, base: "Tromsø", reason, reasonDetails, date, time, durationHours, durationText, mitigatingAction, mitigatingActionDetails, sender, watchPhone: DEFAULT_WATCH_PHONE });
 			setStatus({ type: "success", message: "Utmelding er sendt og lagret." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });

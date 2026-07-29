@@ -6,6 +6,7 @@ import { deliverPoliceSubmission } from "../../../../lib/policeDelivery";
 export const runtime = "nodejs";
 
 type UtmeldingPayload = Record<string, unknown> & {
+	clientSubmissionId?: string;
 	base?: string;
 	date?: string;
 	time?: string;
@@ -42,6 +43,11 @@ function valueOrDash(value: string | number | undefined) {
 	return String(value ?? "").trim() || "-";
 }
 
+function cleanClientSubmissionId(value: unknown) {
+	const text = typeof value === "string" ? value : "";
+	return /^[A-Za-z0-9_-]{8,80}$/.test(text) ? text : "";
+}
+
 export async function POST(req: Request) {
 	const accessError = await requireApiAccess();
 	if (accessError) return accessError;
@@ -55,7 +61,24 @@ export async function POST(req: Request) {
 
 	const createdAt = Date.now();
 	const db = getDb();
-	const ref = db.collection("policeUtmeldinger").doc();
+	const clientSubmissionId = cleanClientSubmissionId(payload.clientSubmissionId);
+	const ref = clientSubmissionId
+		? db.collection("policeUtmeldinger").doc(clientSubmissionId)
+		: db.collection("policeUtmeldinger").doc();
+
+	if (clientSubmissionId) {
+		const claim = await db.runTransaction(async (transaction) => {
+			const snapshot = await transaction.get(ref);
+			if (snapshot.exists) return { exists: true, data: snapshot.data() as { delivery?: unknown } | undefined };
+			transaction.set(ref, { id: ref.id, createdAt, processingStartedAt: createdAt });
+			return { exists: false, data: null };
+		});
+		if (claim.exists) {
+			const delivery = claim.data?.delivery && typeof claim.data.delivery === "object" ? claim.data.delivery : {};
+			return NextResponse.json({ ok: true, id: ref.id, duplicate: true, delivery: { database: { ok: true }, ...delivery } });
+		}
+	}
+
 	const fileName = `Politiet_Utmelding_${payload.date ?? new Date().toISOString().slice(0, 10)}_${ref.id}.pdf`;
 	const base = payload.base === "Hammerfest" ? "Hammerfest" : "Tromsø";
 	const title = `Utmelding Airlift Politiberedskap – ${base} – ${formatDate(payload.date)}`.trim();
@@ -90,7 +113,7 @@ export async function POST(req: Request) {
 		line("Vakttelefon", valueOrDash(payload.watchPhone)),
 	].join("\n");
 
-	await ref.set({ ...payload, base, id: ref.id, fileName, createdAt, sentAt: createdAt });
+	await ref.set({ ...payload, base, id: ref.id, fileName, createdAt, sentAt: createdAt }, { merge: true });
 	const year = Number((payload.date ?? "").slice(0, 4)) || new Date().getFullYear();
 	const delivery = await deliverPoliceSubmission("utmelding", title, body, fileName, year);
 	await ref.set({ delivery }, { merge: true });
