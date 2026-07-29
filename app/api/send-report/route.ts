@@ -705,7 +705,7 @@ export async function POST(req: Request) {
   const accessCode = process.env.ACCESS_CODE;
 
   // Hvis ACCESS_CODE er satt, krever vi at brukeren har en gyldig tilgangs-cookie
-  if (accessCode) {
+  if (accessCode || process.env.NODE_ENV === "production") {
     const cookieStore = await cookies();
     const accessCookie = cookieStore.get("airliftlos_access");
     if (!accessCookie || accessCookie.value !== "ok") {
@@ -932,7 +932,7 @@ export async function DELETE(req: Request) {
 	const accessCode = process.env.ACCESS_CODE;
 
 	// Hvis ACCESS_CODE er satt, krever vi at brukeren har en gyldig tilgangs-cookie
-	if (accessCode) {
+	if (accessCode || process.env.NODE_ENV === "production") {
 		const cookieStore = await cookies();
 		const accessCookie = cookieStore.get("airliftlos_access");
 		if (!accessCookie || accessCookie.value !== "ok") {

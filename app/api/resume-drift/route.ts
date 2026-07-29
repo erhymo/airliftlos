@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (accessCode) {
+  if (accessCode || process.env.NODE_ENV === "production") {
     const cookieStore = await cookies();
     const accessCookie = cookieStore.get("airliftlos_access");
     if (!accessCookie || accessCookie.value !== "ok") {

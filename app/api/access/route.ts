@@ -5,10 +5,14 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const accessCode = process.env.ACCESS_CODE;
 
-  // Hvis ACCESS_CODE ikke er satt i miljøet, lar vi tilgang være pen
-  // slik at vi ikke lser appen utilsiktet i utvikling.
+  // Hvis ACCESS_CODE ikke er satt i miljøet, lar vi tilgang være åpen
+  // slik at vi ikke låser appen utilsiktet i lokal utvikling. I produksjon/preview
+  // skal en manglende ACCESS_CODE derimot nekte alle, ikke slippe alle inn.
   if (!accessCode) {
-    return NextResponse.json({ ok: true, warning: "ACCESS_CODE not configured" });
+    if (process.env.NODE_ENV !== "production") {
+      return NextResponse.json({ ok: true, warning: "ACCESS_CODE not configured" });
+    }
+    return NextResponse.json({ error: "Invalid code" }, { status: 401 });
   }
 
   let body: { code?: string };
