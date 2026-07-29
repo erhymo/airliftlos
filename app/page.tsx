@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import { getDb } from "../lib/firebaseAdmin";
 import { getOrCreateLosBookingsMeta } from "../lib/losBookingsMeta";
 import DriftsforstyrrelseForsideClient from "./DriftsforstyrrelseForsideClient";
@@ -7,17 +8,29 @@ import PoliceEntryClient from "./PoliceEntryClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  let openLosCount = 0;
+// Hentes i en egen Suspense-grense slik at resten av forsiden kan vises med
+// en gang, uten å vente på Firestore-oppslaget for antall åpne bookinger.
+async function OpenLosCountBadge() {
+	let openLosCount = 0;
 
-  try {
-    const db = getDb();
+	try {
+		const db = getDb();
 		const meta = await getOrCreateLosBookingsMeta(db);
 		openLosCount = meta.openCount;
-  } catch (error) {
-    console.error("Klarte ikke å hente åpne LOS-bookinger for forsiden", error);
-  }
+	} catch (error) {
+		console.error("Klarte ikke å hente åpne LOS-bookinger for forsiden", error);
+	}
 
+	if (openLosCount <= 0) return null;
+
+	return (
+		<span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+			{openLosCount}
+		</span>
+	);
+}
+
+export default function Home() {
 	  return (
 	    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col items-center justify-center p-4 space-y-4">
 	      <div className="w-full max-w-md space-y-2">
@@ -64,11 +77,9 @@ export default async function Home() {
 	              className="block w-full rounded-lg bg-gray-100 text-gray-900 text-center py-4 px-4 text-base font-medium border border-gray-300 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
 	            >
 	              <div className="flex items-center justify-center gap-2">
-	                {openLosCount > 0 && (
-	                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
-	                    {openLosCount}
-	                  </span>
-	                )}
+	                <Suspense fallback={null}>
+	                  <OpenLosCountBadge />
+	                </Suspense>
 	                <span>LOS-logg</span>
 	              </div>
 	            </Link>
