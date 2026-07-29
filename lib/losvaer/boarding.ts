@@ -11,6 +11,23 @@ export type LosvaerWeatherPoint = {
 	thunderProbabilityPercent: number | null;
 	seaSurfaceWaveHeightM: number | null;
 	waveFromDeg: number | null;
+	airTemperatureC: number | null;
+	dewPointTemperatureC: number | null;
+	lowCloudCoverPercent: number | null;
+	precipitationMm: number | null;
+};
+
+export type CloudBaseEstimate = {
+	status: "estimate" | "fog-risk" | "unknown";
+	heightFt: number | null;
+	lowCloudCoverPercent: number | null;
+	label: string;
+};
+
+export type FlyingWindowResult = {
+	status: "best-time" | "no-good-window" | "unknown";
+	time: string | null;
+	reason: string;
 };
 
 export type BoardingHeadingRecommendation = {
@@ -43,6 +60,128 @@ export function msToKnots(ms: number) {
 export function compassDirection(deg: number) {
 	const labels = ["N", "NNØ", "NØ", "ØNØ", "Ø", "ØSØ", "SØ", "SSØ", "S", "SSV", "SV", "VSV", "V", "VNV", "NV", "NNV"];
 	return labels[Math.round(normalizeDeg(deg) / 22.5) % labels.length];
+}
+
+const FOG_RISK_SPREAD_C = 0.5;
+// Grov tommelfingerregel brukt i luftfart: skybase (fot) ≈ (temperatur − duggpunkt i °C) × 400.
+const FT_PER_DEGREE_C_SPREAD = 400;
+
+/**
+ * Anslår skybase ut fra forskjellen mellom temperatur og duggpunkt fra samme
+ * værmodell-data som vind/svell hentes fra. Ikke en målt verdi, kun et
+ * meteorologisk anslag. `lowCloudCoverPercent` (modellens eget anslag for
+ * lavskydekke) tas med som et ekstra, uavhengig signal for å vurdere hvor
+ * mye man bør stole på anslaget.
+ */
+export function estimateCloudBase(point: LosvaerWeatherPoint | null): CloudBaseEstimate {
+	const lowCloudCoverPercent = point?.lowCloudCoverPercent ?? null;
+
+	if (!point || point.airTemperatureC == null || point.dewPointTemperatureC == null) {
+		return { status: "unknown", heightFt: null, lowCloudCoverPercent, label: "Mangler temperatur-/duggpunktsdata" };
+	}
+
+	const spreadC = point.airTemperatureC - point.dewPointTemperatureC;
+
+	if (spreadC <= FOG_RISK_SPREAD_C) {
+		return { status: "fog-risk", heightFt: null, lowCloudCoverPercent, label: "Tåkefare (liten temperatur-/duggpunktsforskjell)" };
+	}
+
+	const heightFt = Math.round((spreadC * FT_PER_DEGREE_C_SPREAD) / 100) * 100;
+	return { status: "estimate", heightFt, lowCloudCoverPercent, label: "Anslag basert på temperatur-/duggpunktsforskjell" };
+}
+
+const FLYING_WINDOW_HOURS = 10;
+
+function meanWindMs(point: LosvaerWeatherPoint) {
+	if (point.windSpeedMs == null && point.gustMs == null) return null;
+	if (point.windSpeedMs == null) return point.gustMs;
+	if (point.gustMs == null) return point.windSpeedMs;
+	return (point.windSpeedMs + point.gustMs) / 2;
+}
+
+// Rangerer punktene mot hverandre i stedet for mot faste grenser, siden vi
+// bare trenger å si "hvilket tidspunkt er best i perioden", ikke gi et presist tall.
+function normalizedScore(values: Array<number | null>, index: number, higherIsBetter: boolean) {
+	const value = values[index];
+	if (value == null) return 0.5; // nøytral score når data mangler for dette tidspunktet
+
+	const known = values.filter((v): v is number => v != null);
+	const min = Math.min(...known);
+	const max = Math.max(...known);
+	if (max === min) return 1;
+
+	const fraction = (value - min) / (max - min);
+	return higherIsBetter ? fraction : 1 - fraction;
+}
+
+// Skybase trenger egen scoring: "tåkefare" og "mangler data" ser like ut som
+// heightFt (begge null), men er ikke det samme – tåkefare er det dårligste
+// utfallet for denne parameteren, ikke et nøytralt "vet ikke".
+function cloudBaseScores(points: LosvaerWeatherPoint[]) {
+	const estimates = points.map((point) => estimateCloudBase(point));
+	const knownHeights = estimates
+		.map((estimate) => (estimate.status === "estimate" ? estimate.heightFt : null))
+		.filter((height): height is number => height != null);
+	const min = knownHeights.length ? Math.min(...knownHeights) : null;
+	const max = knownHeights.length ? Math.max(...knownHeights) : null;
+
+	return estimates.map((estimate) => {
+		if (estimate.status === "fog-risk") return 0;
+		if (estimate.status === "unknown") return 0.5;
+		if (min == null || max == null || max === min) return 1;
+		return (estimate.heightFt! - min) / (max - min);
+	});
+}
+
+/**
+ * Finner tidspunktet med best kombinasjon av høy skybase, lite vind, lite
+ * bølger og lite nedbør de neste FLYING_WINDOW_HOURS timene. Utelater
+ * tidspunkt som uansett er "no-go" (for høyt svell/vind), og rangerer
+ * resten relativt til hverandre i perioden – ikke mot et absolutt fasit-tall.
+ */
+export function findBestFlyingWindow(points: LosvaerWeatherPoint[]): FlyingWindowResult {
+	const now = Date.now();
+	const horizon = now + FLYING_WINDOW_HOURS * 60 * 60 * 1000;
+
+	const candidates = points.filter((point) => {
+		const time = Date.parse(point.time);
+		return Number.isFinite(time) && time >= now && time <= horizon;
+	});
+
+	if (candidates.length === 0) {
+		return { status: "unknown", time: null, reason: `Mangler værdata for de neste ${FLYING_WINDOW_HOURS} timene.` };
+	}
+
+	const flyable = candidates.filter((point) => calculateBoardingHeading(point).status !== "no-go");
+
+	if (flyable.length === 0) {
+		return { status: "no-good-window", time: null, reason: `Ingen gode flyvinduer de neste ${FLYING_WINDOW_HOURS} timene.` };
+	}
+
+	const cloudBase = cloudBaseScores(flyable);
+	const windMs = flyable.map(meanWindMs);
+	const waveM = flyable.map((point) => point.seaSurfaceWaveHeightM);
+	const precipMm = flyable.map((point) => point.precipitationMm);
+
+	let bestIndex = 0;
+	let bestScore = Number.NEGATIVE_INFINITY;
+	flyable.forEach((_, index) => {
+		const score =
+			cloudBase[index] +
+			normalizedScore(windMs, index, false) +
+			normalizedScore(waveM, index, false) +
+			normalizedScore(precipMm, index, false);
+		if (score > bestScore) {
+			bestScore = score;
+			bestIndex = index;
+		}
+	});
+
+	return {
+		status: "best-time",
+		time: flyable[bestIndex].time,
+		reason: "Beste kombinasjon av skybase, vind, bølger og nedbør i perioden.",
+	};
 }
 
 export function calculateBoardingHeading(point: LosvaerWeatherPoint | null): BoardingHeadingRecommendation {

@@ -54,8 +54,8 @@ function combineForecasts(location: MetResponse, ocean: MetResponse | null): Los
 	const now = Date.now();
 	const windPoints = toWindPoints(location, now);
 	const swellPoints = toSwellPoints(ocean, now);
-	if (swellPoints.length === 0) return windPoints.slice(0, 12);
-	return swellPoints.slice(0, 12).map((swellPoint) => {
+	if (swellPoints.length === 0) return windPoints.slice(0, 14);
+	return swellPoints.slice(0, 14).map((swellPoint) => {
 		const windPoint = nearestPoint(windPoints, swellPoint.time);
 		return {
 			...swellPoint,
@@ -63,6 +63,10 @@ function combineForecasts(location: MetResponse, ocean: MetResponse | null): Los
 			gustMs: windPoint?.gustMs ?? null,
 			windFromDeg: windPoint?.windFromDeg ?? null,
 				thunderProbabilityPercent: windPoint?.thunderProbabilityPercent ?? null,
+				airTemperatureC: windPoint?.airTemperatureC ?? null,
+				dewPointTemperatureC: windPoint?.dewPointTemperatureC ?? null,
+				lowCloudCoverPercent: windPoint?.lowCloudCoverPercent ?? null,
+				precipitationMm: windPoint?.precipitationMm ?? null,
 		};
 	});
 }
@@ -82,6 +86,10 @@ function toWindPoints(location: MetResponse, now: number): LosvaerWeatherPoint[]
 				thunderProbabilityPercent: thunderProbability(entry),
 			seaSurfaceWaveHeightM: null,
 			waveFromDeg: null,
+				airTemperatureC: numberOrNull(details.air_temperature),
+				dewPointTemperatureC: numberOrNull(details.dew_point_temperature),
+				lowCloudCoverPercent: numberOrNull(details.cloud_area_fraction_low),
+				precipitationMm: precipitationAmount(entry),
 		};
 	});
 }
@@ -100,6 +108,10 @@ function toSwellPoints(ocean: MetResponse | null, now: number): LosvaerWeatherPo
 			thunderProbabilityPercent: null,
 			seaSurfaceWaveHeightM: heightM,
 			waveFromDeg: waveFromDeg == null ? null : normalizeDeg(waveFromDeg),
+			airTemperatureC: null,
+			dewPointTemperatureC: null,
+			lowCloudCoverPercent: null,
+			precipitationMm: null,
 		};
 	});
 }
@@ -108,6 +120,12 @@ function thunderProbability(entry: ForecastEntry) {
 	return numberOrNull(entry.data?.next_1_hours?.details?.probability_of_thunder)
 		?? numberOrNull(entry.data?.next_6_hours?.details?.probability_of_thunder)
 		?? numberOrNull(entry.data?.next_12_hours?.details?.probability_of_thunder);
+}
+
+function precipitationAmount(entry: ForecastEntry) {
+	return numberOrNull(entry.data?.next_1_hours?.details?.precipitation_amount)
+		?? numberOrNull(entry.data?.next_6_hours?.details?.precipitation_amount)
+		?? numberOrNull(entry.data?.next_12_hours?.details?.precipitation_amount);
 }
 
 function nearestPoint(points: LosvaerWeatherPoint[], isoTime: string) {

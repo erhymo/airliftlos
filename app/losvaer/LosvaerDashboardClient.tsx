@@ -6,10 +6,14 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
 	calculateBoardingHeading,
 	compassDirection,
+	estimateCloudBase,
+	findBestFlyingWindow,
 	flowDirectionFrom,
 	msToKnots,
 	normalizeDeg,
 	type BoardingHeadingRecommendation,
+	type CloudBaseEstimate,
+	type FlyingWindowResult,
 	type LosvaerWeatherPoint,
 } from "@/lib/losvaer/boarding";
 import type { LosvaerPlace } from "@/lib/losvaer/places";
@@ -67,6 +71,7 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 	const [lightningMaps, setLightningMaps] = useState<LightningMap[] | null>(null);
 	const [lightningLoading, setLightningLoading] = useState(false);
 	const [lightningError, setLightningError] = useState<string | null>(null);
+	const [flyingWindow, setFlyingWindow] = useState<FlyingWindowResult | null>(null);
 
 	useEffect(() => {
 		let ignore = false;
@@ -89,6 +94,7 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 
 	const current = data?.current ?? null;
 	const recommendation = useMemo(() => calculateBoardingHeading(current), [current]);
+	const cloudBase = useMemo(() => estimateCloudBase(current), [current]);
 	const loading = !data && !error;
 	const waveState = current?.seaSurfaceWaveHeightM == null ? null : waveStateFor(current.seaSurfaceWaveHeightM);
 	const accent = error ? "#ef4444" : recommendation.color;
@@ -102,6 +108,10 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 		setData(null);
 		setError(null);
 		setRefreshToken((value) => value + 1);
+	}
+
+	function checkFlyingWindow() {
+		setFlyingWindow(findBestFlyingWindow(data?.points ?? []));
 	}
 
 	function openLightningMaps() {
@@ -160,11 +170,24 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 						<Metric label="Kast" value={windText(current?.gustMs, current?.windFromDeg)} />
 						<Metric label="Svell" value={swellText(current)} sub={waveState?.label ?? "svelldata"} />
 						<LightningRiskButton risk={lightningRisk} percent={thunderPercent} onClick={openLightningMaps} />
+						<Metric className="col-span-2" label="Skybase (anslag)" value={cloudBaseValueText(cloudBase)} sub={cloudBaseSubText(cloudBase)} />
 				</dl>
 
-				<div className="mt-4 grid gap-3 sm:grid-cols-[8rem_1fr]">
+				<div className="mt-4 grid gap-3 sm:grid-cols-[9.5rem_1fr]">
 					<MiniDirectionCompass windFromDeg={current?.windFromDeg ?? null} waveFromDeg={current?.waveFromDeg ?? null} />
 					<TrendBars points={data?.points.slice(0, 8) ?? []} />
+				</div>
+
+				<div className="mt-4">
+					<button
+						type="button"
+						onClick={checkFlyingWindow}
+						disabled={!data}
+						className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+					>
+						Finn beste flyvindu (neste 10 timer)
+					</button>
+					{flyingWindow && <FlyingWindowPanel result={flyingWindow} />}
 				</div>
 
 				<div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
@@ -201,7 +224,7 @@ function MiniDirectionCompass({ windFromDeg, waveFromDeg }: { windFromDeg: numbe
 	return (
 		<div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-center">
 			<p className="text-[11px] font-semibold text-gray-500">N</p>
-			<svg className="mx-auto h-20 w-20" viewBox="0 0 100 100" role="img" aria-label="Retning for vind og svell">
+			<svg className="mx-auto h-24 w-24" viewBox="0 0 100 100" role="img" aria-label="Retning for vind og svell">
 				<circle cx="50" cy="50" r="43" fill="#ffffff" stroke="#d1d5db" strokeWidth="2" />
 				<path d="M50 8V92M8 50H92" stroke="#d1d5db" strokeLinecap="round" strokeWidth="1.5" />
 				{waveToDeg != null && <CompassArrow deg={waveToDeg} color="#10b981" wide />}
@@ -255,6 +278,23 @@ function Bar({ color, width }: { color: string; width: number }) {
 
 function Metric({ label, value, sub, className = "" }: { label: string; value: ReactNode; sub?: string; className?: string }) {
 	return <div className={`rounded-lg bg-gray-50 p-3 ${className}`}><dt className="text-xs font-medium text-gray-500">{label}</dt><dd className="mt-1 text-base font-semibold text-gray-900">{value}</dd>{sub && <p className="mt-1 text-xs text-gray-500">{sub}</p>}</div>;
+}
+
+function FlyingWindowPanel({ result }: { result: FlyingWindowResult }) {
+	if (result.status === "best-time") {
+		return (
+			<div className="mt-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm">
+				<p className="font-semibold text-sky-900">Beste tidspunkt: {formatWindowTime(result.time)}</p>
+				<p className="mt-1 text-xs text-sky-800">{result.reason}</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+			{result.reason}
+		</div>
+	);
 }
 
 function LightningRiskButton({ risk, percent, onClick }: { risk: LightningRisk; percent: number | null; onClick: () => void }) {
@@ -326,9 +366,27 @@ function swellText(point: LosvaerWeatherPoint | null) {
 	return point.waveFromDeg == null ? swell : `${swell} fra ${point.waveFromDeg.toFixed(0)}°`;
 }
 
+function cloudBaseValueText(cloudBase: CloudBaseEstimate) {
+	if (cloudBase.status === "estimate" && cloudBase.heightFt != null) return `ca ${cloudBase.heightFt} fot`;
+	if (cloudBase.status === "fog-risk") return "Tåkefare";
+	return "—";
+}
+
+function cloudBaseSubText(cloudBase: CloudBaseEstimate) {
+	const modelNote = cloudBase.lowCloudCoverPercent != null ? `Lavskydekke (modell): ${Math.round(cloudBase.lowCloudCoverPercent)} %` : "Ikke målt, kun anslag";
+	return cloudBase.status === "unknown" ? "Mangler data" : modelNote;
+}
+
 function formatHour(value: string) {
 	const date = new Date(value);
 	return Number.isNaN(date.getTime()) ? "—" : date.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatWindowTime(value: string | null) {
+	if (!value) return "—";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "—";
+	return date.toLocaleString("nb-NO", { weekday: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatTime(value: string | null | undefined) {
