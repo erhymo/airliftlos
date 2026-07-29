@@ -36,9 +36,9 @@ export async function GET() {
 
     snapshot.forEach((doc) => {
 	      const data = doc.data() as { status?: string | null };
-	      if (isOpenLosBooking(data)) {
-	        closedOpenCount += 1;
-	      }
+	      if (!isOpenLosBooking(data)) return;
+
+	      closedOpenCount += 1;
 
       batch.set(
         doc.ref,
