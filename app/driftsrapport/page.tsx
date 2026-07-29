@@ -50,6 +50,14 @@ interface DriftsReport {
 	gjenopptattSendtAt?: number;
 	/** Markert ferdig lokalt (uten at «drift gjenopptatt»-melding er sendt) */
 	locallyClosed?: boolean;
+	/** Ny antatt dato for gjenopptakelse, satt ved forlengelse av driftsforstyrrelsen */
+	forlengetTilDato?: string;
+	/** Nytt antatt tidspunkt for gjenopptakelse, satt ved forlengelse */
+	forlengetTilTid?: string;
+	/** Kommentar som ble sendt ved forlengelse */
+	forlengetKommentar?: string;
+	/** Når e-posten om forlenget driftsforstyrrelse sist ble sendt (ms since epoch) */
+	forlengetSendtAt?: number;
 }
 
 type DraftDriftsReport = Omit<DriftsReport, "createdAt">;
@@ -358,6 +366,24 @@ function Section(props: { title: string; children: React.ReactNode }) {
 									typeof server.gjenopptattSendtAt === "number"
 										? server.gjenopptattSendtAt
 										: existing?.gjenopptattSendtAt,
+								// Samme prinsipp for forlengelse: behold lokal forlenget-info
+								// hvis serveren ikke har rukket å lagre den ennå.
+								forlengetTilDato:
+									typeof server.forlengetTilDato === "string"
+										? server.forlengetTilDato
+										: existing?.forlengetTilDato,
+								forlengetTilTid:
+									typeof server.forlengetTilTid === "string"
+										? server.forlengetTilTid
+										: existing?.forlengetTilTid,
+								forlengetKommentar:
+									typeof server.forlengetKommentar === "string"
+										? server.forlengetKommentar
+										: existing?.forlengetKommentar,
+								forlengetSendtAt:
+									typeof server.forlengetSendtAt === "number"
+										? server.forlengetSendtAt
+										: existing?.forlengetSendtAt,
 							};
 								byId.set(r.id, merged);
 							}
@@ -2057,6 +2083,11 @@ function Section(props: { title: string; children: React.ReactNode }) {
 		                                r.gjenopptattSendtAt
 		                              ).toLocaleString()})`
 		                            : ""}
+		                        </div>
+		                      )}
+		                      {!treatedAsResumed && r.forlengetSendtAt && r.forlengetTilDato && r.forlengetTilTid && (
+		                        <div className="mt-1 text-xs text-gray-700">
+		                          Forlenget – ny estimert gjenopptakelse: {r.forlengetTilDato} kl {r.forlengetTilTid}
 		                        </div>
 		                      )}
 		                    </div>
