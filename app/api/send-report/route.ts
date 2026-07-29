@@ -196,6 +196,16 @@ export async function createPdf(
 
 	    for (const url of urls) {
 	      try {
+	        let parsed: URL;
+	        try {
+	          parsed = new URL(url);
+	        } catch {
+	          continue;
+	        }
+	        if (parsed.protocol !== "https:" || parsed.hostname !== "api.met.no") {
+	          continue;
+	        }
+
 	        const res = await fetch(url, {
 	          headers: {
 	            "User-Agent": "airliftlos/1.0 (kontakt: myhre.oyvind@gmail.com)",
