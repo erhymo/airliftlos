@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../lib/apiAccess";
 import { getDb } from "../../../lib/firebaseAdmin";
+import { withExcelWriteLock } from "../../../lib/excelWriteLock";
 
 export const runtime = "nodejs";
 
@@ -116,39 +117,44 @@ async function appendCrewChangeRow(row: (string | number | null)[], sheetName: s
 
 	const baseUrl = workbookBaseUrl(siteId, excelPath);
 	const worksheetName = await resolveWorksheetName(baseUrl, token, sheetName);
-	const rangeRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(worksheetName)}')/range(address='A1:X500')`, { headers: { Authorization: `Bearer ${token}` } });
-	if (!rangeRes.ok) throw new Error(`Klarte ikke å lese Crew change-arket ${worksheetName} (status ${rangeRes.status}).`);
 
-	const rangeData = (await rangeRes.json()) as { values?: unknown[][] };
-	const values = (rangeData.values ?? []) as (string | number | null)[][];
-	let startIndex = 3;
-	for (let i = 0; i < values.length; i += 1) {
-		const cell = values[i]?.[2];
-		if (typeof cell === "string" && cell.trim().toLowerCase().startsWith("sign")) {
-			startIndex = i + 2;
-			break;
+	// Hele les-så-skriv-operasjonen låses per ark, slik at to samtidige
+	// innsendinger ikke kan lese samme tomme rad og overskrive hverandre.
+	await withExcelWriteLock(`crewChange:${excelPath}:${sheetName}`, async () => {
+		const rangeRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(worksheetName)}')/range(address='A1:X500')`, { headers: { Authorization: `Bearer ${token}` } });
+		if (!rangeRes.ok) throw new Error(`Klarte ikke å lese Crew change-arket ${worksheetName} (status ${rangeRes.status}).`);
+
+		const rangeData = (await rangeRes.json()) as { values?: unknown[][] };
+		const values = (rangeData.values ?? []) as (string | number | null)[][];
+		let startIndex = 3;
+		for (let i = 0; i < values.length; i += 1) {
+			const cell = values[i]?.[2];
+			if (typeof cell === "string" && cell.trim().toLowerCase().startsWith("sign")) {
+				startIndex = i + 2;
+				break;
+			}
 		}
-	}
 
-	let nextRow = values.length + 1;
-	for (let i = startIndex; i < values.length; i += 1) {
-		const rowValues = values[i] ?? [];
-		const isEmpty = [rowValues[2], rowValues[3], rowValues[5], rowValues[6], rowValues[7]].every((v) => v === null || v === "" || typeof v === "undefined");
-		if (isEmpty) {
-			nextRow = i + 1;
-			break;
+		let nextRow = values.length + 1;
+		for (let i = startIndex; i < values.length; i += 1) {
+			const rowValues = values[i] ?? [];
+			const isEmpty = [rowValues[2], rowValues[3], rowValues[5], rowValues[6], rowValues[7]].every((v) => v === null || v === "" || typeof v === "undefined");
+			if (isEmpty) {
+				nextRow = i + 1;
+				break;
+			}
 		}
-	}
 
-	const patchRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(worksheetName)}')/range(address='A${nextRow}:X${nextRow}')`, {
-		method: "PATCH",
-		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-		body: JSON.stringify({ values: [row] }),
+		const patchRes = await fetch(`${baseUrl}/worksheets('${encodeURIComponent(worksheetName)}')/range(address='A${nextRow}:X${nextRow}')`, {
+			method: "PATCH",
+			headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+			body: JSON.stringify({ values: [row] }),
+		});
+		if (!patchRes.ok) {
+			const text = await patchRes.text().catch(() => "");
+			throw new Error(`Klarte ikke å skrive Crew change til Excel (status ${patchRes.status}). ${text.slice(0, 250)}`);
+		}
 	});
-	if (!patchRes.ok) {
-		const text = await patchRes.text().catch(() => "");
-		throw new Error(`Klarte ikke å skrive Crew change til Excel (status ${patchRes.status}). ${text.slice(0, 250)}`);
-	}
 }
 
 async function getLatestLosTechlogNumber() {

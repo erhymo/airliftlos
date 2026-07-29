@@ -5,6 +5,7 @@ import { resolveLosNames } from "../../../lib/losNames";
 import { isOpenLosBooking } from "../../../lib/losBookings";
 import { touchLosBookingsMeta } from "../../../lib/losBookingsMeta";
 import { saveGtForVessel } from "../../../lib/vesselGt";
+import { withExcelWriteLock } from "../../../lib/excelWriteLock";
 
 const MONTH_SHEETS = [
 	"Januar",
@@ -190,6 +191,10 @@ async function appendRowToExcel(
 			.join("/");
 		const baseUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodedPath}:/workbook`;
 
+		// Hele les-så-skriv-operasjonen låses per ark, slik at to samtidige
+		// innsendinger ikke kan lese samme tomme rad og overskrive hverandre.
+		await withExcelWriteLock(`losLogg:${excelPath}:${sheetName}`, async () => {
+
 		// Finn neste ledige rad i selve LOS-griden ved å se etter første "tomme" rad
 		// under header-raden (der kolonne C har teksten "Sign"). En rad regnes som
 		// tom hvis nøkkelfeltene vi fyller (Sign, Ordrenummer, Navn på fartøy) er
@@ -278,6 +283,7 @@ async function appendRowToExcel(
 
 			throw new Error(combined);
 		}
+		});
 }
 
 async function acquireLosLogSendLock(

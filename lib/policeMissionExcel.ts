@@ -1,3 +1,5 @@
+import { withExcelWriteLock } from "./excelWriteLock";
+
 export type PoliceMissionExcelLog = {
 	sign: string;
 	date: string;
@@ -158,18 +160,23 @@ export async function appendPoliceMissionLogToExcel(log: PoliceMissionExcelLog):
 
 	const baseUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${encodeDrivePath(excelPath)}:/workbook`;
 	const worksheetName = await getWorksheetName(baseUrl, token);
-	const rowNumber = await findNextRow(baseUrl, worksheetName, token);
-	const sheet = encodeURIComponent(escapeWorksheetName(worksheetName));
-	const address = `C${rowNumber}:Y${rowNumber}`;
-	const patchRes = await fetch(`${baseUrl}/worksheets('${sheet}')/range(address='${address}')`, {
-		method: "PATCH",
-		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-		body: JSON.stringify({ values: [buildExcelRow(log)] }),
-	});
 
-	if (!patchRes.ok) {
-		const text = await patchRes.text().catch(() => "");
-		return { ok: false, error: `Klarte ikke å skrive Politiet-logg til Excel (status ${patchRes.status}). ${text}`.trim() };
-	}
-	return { ok: true, row: rowNumber };
+	// Hele les-så-skriv-operasjonen låses per ark, slik at to samtidige
+	// innsendinger ikke kan lese samme tomme rad og overskrive hverandre.
+	return withExcelWriteLock(`policeMission:${excelPath}:${worksheetName}`, async () => {
+		const rowNumber = await findNextRow(baseUrl, worksheetName, token);
+		const sheet = encodeURIComponent(escapeWorksheetName(worksheetName));
+		const address = `C${rowNumber}:Y${rowNumber}`;
+		const patchRes = await fetch(`${baseUrl}/worksheets('${sheet}')/range(address='${address}')`, {
+			method: "PATCH",
+			headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+			body: JSON.stringify({ values: [buildExcelRow(log)] }),
+		});
+
+		if (!patchRes.ok) {
+			const text = await patchRes.text().catch(() => "");
+			return { ok: false, error: `Klarte ikke å skrive Politiet-logg til Excel (status ${patchRes.status}). ${text}`.trim() };
+		}
+		return { ok: true, row: rowNumber };
+	});
 }
