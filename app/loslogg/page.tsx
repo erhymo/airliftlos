@@ -4,10 +4,7 @@ import { getOpenLosBookingsSnapshot, isOpenLosBooking } from "../../lib/losBooki
 import { getOrCreateLosBookingsMeta } from "../../lib/losBookingsMeta";
 import LosLoggClient from "./LosLoggClient";
 
-// Kort mellomlagring: klienten sjekker uansett versjonsnummer rett etter
-// innlasting (LosLoggClient) og henter fersk liste med en gang hvis noe er
-// endret, så en liten forsinkelse her merkes ikke som utdatert i praksis.
-export const revalidate = 15;
+export const dynamic = "force-dynamic";
 
 type DisplayBooking = {
 	id: string;
