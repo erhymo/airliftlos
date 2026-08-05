@@ -16,6 +16,7 @@ import {
 	type FlyingWindowResult,
 	type LosvaerWeatherPoint,
 } from "@/lib/losvaer/boarding";
+import { estimateNvgLightPercent, getMoonState } from "@/lib/losvaer/moon";
 import type { LosvaerPlace } from "@/lib/losvaer/places";
 
 type LosvaerApiResponse = {
@@ -95,6 +96,11 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 	const current = data?.current ?? null;
 	const recommendation = useMemo(() => calculateBoardingHeading(current), [current]);
 	const cloudBase = useMemo(() => estimateCloudBase(current), [current]);
+	const nvgLightPercent = useMemo(() => {
+		if (!current) return null;
+		const moon = getMoonState(new Date(current.time), place.lat, place.lon);
+		return estimateNvgLightPercent(moon, current.totalCloudCoverPercent);
+	}, [current, place.lat, place.lon]);
 	const loading = !data && !error;
 	const waveState = current?.seaSurfaceWaveHeightM == null ? null : waveStateFor(current.seaSurfaceWaveHeightM);
 	const accent = error ? "#ef4444" : recommendation.color;
@@ -171,6 +177,7 @@ function LosvaerPlaceCard({ place }: { place: LosvaerPlace }) {
 						<Metric label="Svell" value={swellText(current)} sub={waveState?.label ?? "svelldata"} />
 						<LightningRiskButton risk={lightningRisk} percent={thunderPercent} onClick={openLightningMaps} />
 						<Metric className="col-span-2" label="Skybase (anslag)" value={cloudBaseValueText(cloudBase)} sub={cloudBaseSubText(cloudBase)} />
+						<Metric className="col-span-2" label="NVG-lysanslag" value={nvgLightPercent == null ? "—" : `${nvgLightPercent} %`} sub="Måne, høyde over horisont og skydekke" />
 				</dl>
 
 				<div className="mt-4 grid gap-3 sm:grid-cols-[9.5rem_1fr]">

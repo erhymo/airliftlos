@@ -14,6 +14,7 @@ export type LosvaerWeatherPoint = {
 	airTemperatureC: number | null;
 	dewPointTemperatureC: number | null;
 	lowCloudCoverPercent: number | null;
+	totalCloudCoverPercent: number | null;
 	precipitationMm: number | null;
 };
 

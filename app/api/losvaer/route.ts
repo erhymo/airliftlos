@@ -66,6 +66,7 @@ function combineForecasts(location: MetResponse, ocean: MetResponse | null): Los
 				airTemperatureC: windPoint?.airTemperatureC ?? null,
 				dewPointTemperatureC: windPoint?.dewPointTemperatureC ?? null,
 				lowCloudCoverPercent: windPoint?.lowCloudCoverPercent ?? null,
+				totalCloudCoverPercent: windPoint?.totalCloudCoverPercent ?? null,
 				precipitationMm: windPoint?.precipitationMm ?? null,
 		};
 	});
@@ -89,6 +90,7 @@ function toWindPoints(location: MetResponse, now: number): LosvaerWeatherPoint[]
 				airTemperatureC: numberOrNull(details.air_temperature),
 				dewPointTemperatureC: numberOrNull(details.dew_point_temperature),
 				lowCloudCoverPercent: numberOrNull(details.cloud_area_fraction_low),
+				totalCloudCoverPercent: numberOrNull(details.cloud_area_fraction),
 				precipitationMm: precipitationAmount(entry),
 		};
 	});
@@ -111,6 +113,7 @@ function toSwellPoints(ocean: MetResponse | null, now: number): LosvaerWeatherPo
 			airTemperatureC: null,
 			dewPointTemperatureC: null,
 			lowCloudCoverPercent: null,
+			totalCloudCoverPercent: null,
 			precipitationMm: null,
 		};
 	});
