@@ -60,9 +60,13 @@ function lightningMapProxyUrl(area: string, time: string) {
 }
 
 function lightningAreaForPlace(placeId: string) {
-	return placeId === "fruholmen" ? "northern_norway" : "western_norway";
+	if (placeId === "fruholmen") return "northern_norway";
+	if (placeId === "ona") return "central_norway";
+	return "western_norway";
 }
 
 function lightningAreaLabel(area: string) {
-	return area === "northern_norway" ? "Nord-Norge" : "Vest-Norge";
+	if (area === "northern_norway") return "Nord-Norge";
+	if (area === "central_norway") return "Midt-Norge";
+	return "Vest-Norge";
 }
