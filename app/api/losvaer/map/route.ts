@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const USER_AGENT = "airliftlos-losvaer/1.0 https://airlift.no";
-const VALID_AREAS = new Set(["western_norway", "northern_norway"]);
+const VALID_AREAS = new Set(["western_norway", "northern_norway", "central_norway"]);
 
 export async function GET(req: Request) {
 	const params = new URL(req.url).searchParams;
