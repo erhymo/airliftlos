@@ -32,6 +32,14 @@ export const losvaerPlaces: LosvaerPlace[] = [
 		coordinateLabel: "59.033300°N 005.166600°E",
 		description: "Vurdering av vind, svell og anbefalt skipsretning for boarding.",
 	},
+	{
+		id: "ona",
+		name: "Ona Losbordingspunkt",
+		lat: 62.917214,
+		lon: 6.456635,
+		coordinateLabel: "62.917214°N 006.456635°E",
+		description: "Vurdering av vind, svell og anbefalt skipsretning for boarding.",
+	},
 ];
 
 export function getLosvaerPlaceById(id: string) {
