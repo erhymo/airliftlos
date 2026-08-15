@@ -22,7 +22,6 @@ type GraphAttachment = {
 };
 
 const MAILBOX = "politiberedskap@airlift.no";
-const SUBJECT_PREFIX = "airlift bestilling";
 const MESSAGE_PAGE_SIZE = 50;
 const MAX_MESSAGE_PAGES = 4;
 
@@ -106,11 +105,25 @@ async function findLatestPoliceOrderMessageFromUrl(token: string, url: URL, erro
 		const res = await fetch(nextUrl, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
 		if (!res.ok) throw new PoliceOrderError(`${errorPrefix} (HTTP ${res.status}).`, 502);
 		const data = (await res.json().catch(() => ({}))) as { value?: GraphMessage[]; "@odata.nextLink"?: string };
-		const match = (data.value ?? []).find((message) => subjectMatches(message.subject) && message.hasAttachments);
-		if (match) return match;
+		// Emnefeltet følger ikke en fast mal (Politiet navngir e-postene etter saken/oppdraget,
+		// f.eks. "Savnet person Storslett"), så vi kan ikke stole på det. Det pålitelige
+		// kjennetegnet er at bestillingen kommer som et vedlagt bestillingsskjema.
+		for (const message of data.value ?? []) {
+			if (!message.hasAttachments) continue;
+			if (await messageHasOrderAttachment(token, message.id)) return message;
+		}
 		nextUrl = data["@odata.nextLink"] ?? null;
 	}
 	return null;
+}
+
+async function messageHasOrderAttachment(token: string, messageId: string) {
+	const url = new URL(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(MAILBOX)}/messages/${encodeURIComponent(messageId)}/attachments`);
+	url.search = new URLSearchParams({ $select: "name,contentType" }).toString();
+	const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+	if (!res.ok) return false;
+	const data = (await res.json().catch(() => ({}))) as { value?: GraphAttachment[] };
+	return (data.value ?? []).some((attachment) => isDocxAttachment(attachment) && isOrderFormName(attachment.name));
 }
 
 async function findDocxAttachment(token: string, messageId: string) {
@@ -127,19 +140,19 @@ async function findDocxAttachment(token: string, messageId: string) {
 	return (await attachmentRes.json().catch(() => attachment)) as GraphAttachment;
 }
 
-function subjectMatches(subject: string | null | undefined) {
-	return normalizedSubject(subject).includes(SUBJECT_PREFIX);
-}
-
 function isDocxAttachment(attachment: GraphAttachment) {
 	const name = (attachment.name ?? "").toLocaleLowerCase("nb-NO");
 	const contentType = (attachment.contentType ?? "").toLocaleLowerCase("nb-NO");
 	return name.endsWith(".docx") || contentType.includes("wordprocessingml.document");
 }
 
+function isOrderFormName(name: string | null | undefined) {
+	return (name ?? "").toLocaleLowerCase("nb-NO").includes("bestillingsskjema");
+}
+
 function selectDocxAttachment(attachments: GraphAttachment[]) {
 	const docxAttachments = attachments.filter(isDocxAttachment);
-	return docxAttachments.find((attachment) => (attachment.name ?? "").toLocaleLowerCase("nb-NO").includes("bestillingsskjema")) ?? docxAttachments[0] ?? null;
+	return docxAttachments.find((attachment) => isOrderFormName(attachment.name)) ?? docxAttachments[0] ?? null;
 }
 
 function parsePoliceOrderDocx(docx: Buffer) {
@@ -234,10 +247,6 @@ function extractRequester(value: string) {
 
 function extractBid(value: string) {
 	return extractAfter(value, /\bBID\s*:/i).match(/[A-Za-z0-9_-]+/)?.[0] ?? "";
-}
-
-function normalizedSubject(subject: string | null | undefined) {
-	return (subject ?? "").trim().replace(/^((re|fw|sv|vs):\s*)+/i, "").toLocaleLowerCase("nb-NO");
 }
 
 function findSignatureBackwards(buffer: Buffer, signature: number) {
