@@ -516,7 +516,20 @@ function CrewForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		}
 		setStatus({ type: "sending", message: "Sender crew-skjema..." });
 		try {
-			await submitJson("/api/police/crew", { clientSubmissionId, base: watchPhoneBase, periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone, captain, firstOfficer, technician, helicopter });
+			const response = await submitJson("/api/police/crew", { clientSubmissionId, base: watchPhoneBase, periodFromDate, periodFromTime, periodToDate, periodToTime, watchPhone, captain, firstOfficer, technician, helicopter });
+			const email = response.delivery?.email;
+			const sharepoint = response.delivery?.sharepoint;
+			const problems: string[] = [];
+			if (email?.ok === false) problems.push(`e-post til Politiet feilet: ${email.error || "ukjent feil"}`);
+			else if (email?.skipped) problems.push(`e-post til Politiet ble ikke sendt (${email.error || "ikke satt opp"})`);
+			if (sharepoint?.ok === false) problems.push(`lagring i SharePoint feilet: ${sharepoint.error || "ukjent feil"}`);
+			else if (sharepoint?.skipped) problems.push(`lagring i SharePoint ble ikke gjort (${sharepoint.error || "ikke satt opp"})`);
+
+			if (problems.length > 0) {
+				setStatus({ type: "error", message: `Crewliste ble lagret, men ${problems.join(" og ")}.` });
+				return;
+			}
+
 			setStatus({ type: "success", message: "Crewliste er sendt til Politiet." });
 			setShowSentReceipt(true);
 		} catch (error) {
