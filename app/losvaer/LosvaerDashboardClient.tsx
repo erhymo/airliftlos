@@ -355,10 +355,15 @@ function formatPercent(percent: number | null) {
 	return `${percent > 0 && percent < 10 ? percent.toFixed(1) : percent.toFixed(0)} %`;
 }
 
+// Rødt er reservert for den absolutte 6 m-grensen (samme grense og farge som
+// "Ikke heis" i anbefalt skipsretning), slik at rødt betyr det samme overalt
+// på siden. 4–6 m vises oransje: forhøyet risiko/sannsynlig sjøsprøyt, men
+// ikke over grensen ennå.
 function waveStateFor(heightM: number) {
 	if (heightM < 2.5) return { label: "Lav risiko", color: "#22c55e" };
-	if (heightM <= 4.5) return { label: "Moderat risiko", color: "#facc15" };
-	return { label: "Høy risiko", color: "#ef4444" };
+	if (heightM < 4) return { label: "Moderat risiko", color: "#facc15" };
+	if (heightM <= 6) return { label: "Høy risiko", color: "#f97316" };
+	return { label: "Over grense", color: "#ef4444" };
 }
 
 function windText(speedMs: number | null | undefined, fromDeg: number | null | undefined) {
