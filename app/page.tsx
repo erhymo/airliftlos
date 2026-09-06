@@ -14,7 +14,7 @@ export default function Home() {
 	        <main className="w-full bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
 	          <header className="space-y-1">
 	            <div className="flex items-center justify-between gap-3">
-	              <h1 className="text-xl font-semibold">LOS Helikopter</h1>
+	              <h1 className="text-xl font-semibold"><Link href="/rapporter">LOS Helikopter</Link></h1>
 		              <Link href="/losvaer" aria-label="Åpne LOS-vær">
 		                <Image
 		                  src="/Airlift-logo.png"

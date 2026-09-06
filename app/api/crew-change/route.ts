@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../lib/apiAccess";
 import { getDb } from "../../../lib/firebaseAdmin";
 import { withExcelWriteLock } from "../../../lib/excelWriteLock";
+import { CREW_CHANGE_EVENTS_COLLECTION, type CrewChangeBase, type CrewChangeEvent } from "../../../lib/crewChangeEvents";
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,30 @@ type CrewChangePayload = {
 
 function isPlaceType(value: unknown): value is PlaceType {
 	return typeof value === "string" && PLACE_TYPES.includes(value as PlaceType);
+}
+
+function baseFromPlaceType(placeType: PlaceType): CrewChangeBase {
+	return placeType.includes("Hammerfest") ? "Hammerfest" : "Bergen";
+}
+
+// Legger igjen en lett, usynlig registrering i erfaringsrapport-grunnlaget hver
+// gang et gjennomført Crew Change-oppdrag sendes inn, slik at statistikksiden
+// kan telle "gjennomført" uten å måtte lese selve Excel-loggen. Skal aldri
+// kunne påvirke selve innsendingen – feiler kun stille i loggen.
+async function recordCompletedCrewChangeEvent(placeType: PlaceType) {
+	try {
+		const db = getDb();
+		const ref = db.collection(CREW_CHANGE_EVENTS_COLLECTION).doc();
+		const event: CrewChangeEvent = {
+			id: ref.id,
+			createdAt: Date.now(),
+			base: baseFromPlaceType(placeType),
+			outcome: "completed",
+		};
+		await ref.set(event);
+	} catch (error) {
+		console.error("Crew change: klarte ikke å registrere gjennomført-hendelse for statistikk", error);
+	}
 }
 
 function cleanText(value: unknown) {
@@ -229,6 +254,7 @@ export async function POST(req: Request) {
 
 	try {
 		await appendCrewChangeRow(row, sheetName, excelYear);
+		await recordCompletedCrewChangeEvent(payload.placeType);
 		return NextResponse.json({ ok: true });
 	} catch (error) {
 		console.error("Crew change: feil ved innsending", error);
