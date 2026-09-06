@@ -10,6 +10,7 @@ import {
 	type CrewChangeEvent,
 	type CrewChangeReason,
 } from "../../../lib/crewChangeEvents";
+import { EventTimeline } from "./EventTimeline";
 
 type StatsResponse = { ok?: boolean; events?: CrewChangeEvent[]; error?: string };
 
@@ -97,6 +98,11 @@ function CrewChangeStatsDashboard({ events }: { events: CrewChangeEvent[] }) {
 	const postponedReasons = reasonCounts(postponed);
 	const cancelledReasons = reasonCounts(cancelled);
 	const incidents = [...postponed, ...cancelled].sort((a, b) => b.createdAt - a.createdAt);
+	// Tidslinjen skal alltid vise hele dispensasjonsperioden, uavhengig av månedsfilteret over.
+	const allIncidents = useMemo(
+		() => events.filter((e) => e.outcome === "postponed" || e.outcome === "cancelled"),
+		[events],
+	);
 
 	const periodLabel = monthFilter
 		? new Date(`${monthFilter}-01`).toLocaleDateString("nb-NO", { month: "long", year: "numeric" })
@@ -158,6 +164,8 @@ function CrewChangeStatsDashboard({ events }: { events: CrewChangeEvent[] }) {
 						Eksporter PDF-rapport
 					</button>
 				</section>
+
+				<EventTimeline incidents={allIncidents} />
 
 				<ReasonBarChart title="Utsatt – årsak" counts={postponedReasons} color="#d97706" />
 				<ReasonBarChart title="Kansellert – årsak" counts={cancelledReasons} color="#dc2626" />
