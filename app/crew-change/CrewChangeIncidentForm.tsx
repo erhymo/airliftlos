@@ -78,7 +78,12 @@ export default function CrewChangeIncidentForm({ outcome }: { outcome: "postpone
 			{sent && <IncidentReceiptModal label={label} onOk={() => router.push("/")} />}
 			<main className="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-5 sm:p-6">
 				<header className="space-y-1">
-					<h1 className="text-lg font-semibold">Crew change – {label}</h1>
+					<div className="flex items-center justify-between gap-3">
+						<h1 className="text-lg font-semibold">Crew change – {label}</h1>
+						<Link href="/crew-change" className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+							← Tilbake
+						</Link>
+					</div>
 					<p className="text-sm text-gray-600">Registrer base og årsak. Vær hentes automatisk.</p>
 				</header>
 
