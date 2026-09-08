@@ -164,7 +164,7 @@ export default function UtmeldingForsideClient() {
 				{activeReports.map((report) => (
 					<div key={report.id} className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-sm text-gray-900 shadow-md">
 						<div className="mb-1.5 flex items-baseline gap-2">
-							<span className="font-medium">Utmelding</span>
+							<span className="font-medium">Utmelding Politiet</span>
 							<span className="text-xs text-gray-700">{formatDate(report.date)} kl {report.time}</span>
 						</div>
 						<button

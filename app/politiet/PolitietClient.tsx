@@ -39,7 +39,7 @@ type PoliceCrewOptions = { captains: string[]; firstOfficers: string[]; technici
 
 type UtmeldingMonthStat = { month: number; label: string; total: number; tromso: number; hammerfest: number };
 type UtmeldingReasonStat = { reason: string; count: number };
-type UtmeldingRecentItem = { id: string; dateTime: string; base: string; reason: string; duration: string; sender: string };
+type UtmeldingRecentItem = { id: string; dateTime: string; base: string; reason: string; duration: string; sender: string; innmeldt: string | null };
 type PoliceLiveArchiveSettings = { isLive: boolean; liveFrom: number | null; liveFromIso: string | null };
 type UtmeldingArchiveData = { ok?: boolean; year: number; live?: PoliceLiveArchiveSettings; total: number; months: UtmeldingMonthStat[]; byReason: UtmeldingReasonStat[]; recent: UtmeldingRecentItem[]; error?: string };
 type ArchiveSection = "utmelding" | "reports";
@@ -413,6 +413,11 @@ function PoliceArchiveModal({ onClose }: { onClose: () => void }) {
 											<div className="font-medium text-gray-900">{item.dateTime} · {item.base}</div>
 											<div className="text-gray-700">{item.reason} · {item.duration}</div>
 											<div className="text-xs text-gray-500">Avsender: {item.sender}</div>
+											{item.innmeldt ? (
+												<div className="mt-1 text-xs font-medium text-green-700">Innmeldt {item.innmeldt}</div>
+											) : (
+												<div className="mt-1 text-xs font-medium text-red-600">Ikke innmeldt ennå</div>
+											)}
 										</div>
 									))}
 								</div>

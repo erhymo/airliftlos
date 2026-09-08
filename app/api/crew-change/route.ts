@@ -3,6 +3,7 @@ import { requireApiAccess } from "../../../lib/apiAccess";
 import { getDb } from "../../../lib/firebaseAdmin";
 import { withExcelWriteLock } from "../../../lib/excelWriteLock";
 import { CREW_CHANGE_EVENTS_COLLECTION, type CrewChangeBase, type CrewChangeEvent } from "../../../lib/crewChangeEvents";
+import { cleanClientSubmissionId } from "../../../lib/clientSubmissionId";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,7 @@ const PLACE_TYPES = ["Crew Change Bergen", "Crew Change Hammerfest", "Other Berg
 type PlaceType = (typeof PLACE_TYPES)[number];
 
 type CrewChangePayload = {
+	clientSubmissionId?: string;
 	date?: string;
 	techlogNumber?: number;
 	vesselName?: string;
@@ -232,6 +234,24 @@ export async function POST(req: Request) {
 	const weatherComment = cleanText(payload.weatherComment);
 	if (requiresWeatherComment(date) && !weatherComment) {
 		return NextResponse.json({ error: "Kommentarer om værforhold må fylles ut mellom 1. september og 1. mai." }, { status: 400 });
+	}
+
+	// Krev innsendings-ID i en transaksjon før noe arbeid gjøres, slik at et
+	// gjentatt forsøk (nettverksfeil, dobbelttrykk) ikke lager en ekstra rad i
+	// Excel-loggen eller teller dobbelt i erfaringsrapport-statistikken.
+	const clientSubmissionId = cleanClientSubmissionId(payload.clientSubmissionId);
+	if (clientSubmissionId) {
+		const db = getDb();
+		const claimRef = db.collection("crewChangeSubmissionClaims").doc(clientSubmissionId);
+		const claim = await db.runTransaction(async (transaction) => {
+			const snapshot = await transaction.get(claimRef);
+			if (snapshot.exists) return { exists: true };
+			transaction.set(claimRef, { createdAt: Date.now() });
+			return { exists: false };
+		});
+		if (claim.exists) {
+			return NextResponse.json({ ok: true, duplicate: true });
+		}
 	}
 
 	const { excelDate, sheetName, excelYear } = getExcelDateAndSheet(date);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { activeCrewCodesByRoles, DEFAULT_CREW_DIRECTORY, type CrewDirectoryEntry } from "../../../lib/crewDirectory";
+import { createClientSubmissionId } from "../../../lib/clientSubmissionId";
 
 const LAST_TECHLOG_STORAGE_KEY = "loslogg_last_techlog_number";
 const PLACE_TYPES = ["Crew Change Bergen", "Crew Change Hammerfest", "Other Bergen", "Other Hammerfest"] as const;
@@ -47,6 +48,7 @@ function CompactNumberField({ label, children }: { label: string; children: Reac
 
 export default function CrewChangePage() {
 	const router = useRouter();
+	const [clientSubmissionId] = useState(() => createClientSubmissionId("crewchange"));
 	const [date, setDate] = useState(todayISO());
 	const [techlogNumber, setTechlogNumber] = useState("");
 	const [vesselName, setVesselName] = useState("");
@@ -120,7 +122,7 @@ export default function CrewChangePage() {
 			const res = await fetch("/api/crew-change", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ date, techlogNumber: Number(techlogNumber), vesselName, placeType, isCrewChange, totalFlightDistance: totalFlightDistance ? Number(totalFlightDistance) : null, pax: pax ? Number(pax) : null, helideckIdleTime: helideckIdleTime ? Number(helideckIdleTime) : null, reposMinutes: reposMinutes ? Number(reposMinutes) : null, comment, weatherComment, weatherDelayComment, sign }),
+				body: JSON.stringify({ clientSubmissionId, date, techlogNumber: Number(techlogNumber), vesselName, placeType, isCrewChange, totalFlightDistance: totalFlightDistance ? Number(totalFlightDistance) : null, pax: pax ? Number(pax) : null, helideckIdleTime: helideckIdleTime ? Number(helideckIdleTime) : null, reposMinutes: reposMinutes ? Number(reposMinutes) : null, comment, weatherComment, weatherDelayComment, sign }),
 			});
 			const data = (await res.json().catch(() => ({}))) as { error?: string };
 			if (!res.ok) throw new Error(data.error || "Klarte ikke å sende Crew change.");

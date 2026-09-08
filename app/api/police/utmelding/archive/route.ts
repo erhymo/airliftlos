@@ -17,6 +17,9 @@ type UtmeldingArchiveDoc = {
 	durationHours?: unknown;
 	sender?: unknown;
 	createdAt?: unknown;
+	innmeldtSendtAt?: unknown;
+	innmeldtDato?: unknown;
+	innmeldtTid?: unknown;
 };
 
 function asString(value: unknown) {
@@ -51,7 +54,7 @@ export async function GET(req: Request) {
 	const liveSettings = await getPoliceLiveSettings();
 	const months = MONTH_LABELS.map((label, index) => ({ month: index + 1, label, total: 0, tromso: 0, hammerfest: 0 }));
 	const byReason: Record<string, number> = {};
-	const recent: Array<{ id: string; dateTime: string; base: string; reason: string; duration: string; sender: string; sortKey: number }> = [];
+	const recent: Array<{ id: string; dateTime: string; base: string; reason: string; duration: string; sender: string; innmeldt: string | null; sortKey: number }> = [];
 
 	try {
 		const snapshot = await getDb().collection("policeUtmeldinger").get();
@@ -71,6 +74,10 @@ export async function GET(req: Request) {
 			const sender = stripCrewCode(asString(data.sender)) || "-";
 			const time = asString(data.time);
 			const createdAt = asNumber(data.createdAt);
+			const innmeldtSendtAt = asNumber(data.innmeldtSendtAt);
+			const innmeldt = innmeldtSendtAt > 0
+				? formatDisplayDate(asString(data.innmeldtDato) || date, asString(data.innmeldtTid))
+				: null;
 
 			monthStat.total += 1;
 			if (base === "Hammerfest") monthStat.hammerfest += 1;
@@ -84,6 +91,7 @@ export async function GET(req: Request) {
 				reason,
 				duration,
 				sender,
+				innmeldt,
 				sortKey: createdAt || new Date(`${date}T${time || "00:00"}`).getTime() || 0,
 			});
 		});
@@ -96,7 +104,7 @@ export async function GET(req: Request) {
 			total: months.reduce((sum, month) => sum + month.total, 0),
 			months,
 			byReason: Object.entries(byReason).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason, "nb-NO")),
-			recent: recent.slice(0, 20).map((item) => ({ id: item.id, dateTime: item.dateTime, base: item.base, reason: item.reason, duration: item.duration, sender: item.sender })),
+			recent: recent.slice(0, 20).map((item) => ({ id: item.id, dateTime: item.dateTime, base: item.base, reason: item.reason, duration: item.duration, sender: item.sender, innmeldt: item.innmeldt })),
 		});
 	} catch (error) {
 		console.error("Politiet utmelding arkiv: klarte ikke å hente statistikk", error);
