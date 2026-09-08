@@ -21,6 +21,7 @@ export default function UtmeldingForsideClient() {
 	const [innmeldError, setInnmeldError] = useState<string | null>(null);
 	const [fetchingLatest, setFetchingLatest] = useState(false);
 	const [fetchLatestError, setFetchLatestError] = useState<string | null>(null);
+	const [deleteConfirmReport, setDeleteConfirmReport] = useState<PoliceUtmeldingLite | null>(null);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -29,8 +30,22 @@ export default function UtmeldingForsideClient() {
 	}, []);
 
 	const activeReports = reports.filter(
-		(r) => r.createdOnDeviceId === deviceId && !r.innmeldtSendtAt,
+		(r) => r.createdOnDeviceId === deviceId && !r.innmeldtSendtAt && !r.locallyClosed,
 	);
+
+	function openDeleteConfirm(report: PoliceUtmeldingLite) {
+		setDeleteConfirmReport(report);
+	}
+
+	function handleDeleteConfirmed() {
+		if (!deleteConfirmReport) return;
+		setReports((prev) => {
+			const next = prev.map((r) => (r.id === deleteConfirmReport.id ? { ...r, locallyClosed: true } : r));
+			saveLocalUtmeldinger(next);
+			return next;
+		});
+		setDeleteConfirmReport(null);
+	}
 
 	function startInnmelding(report: PoliceUtmeldingLite) {
 		if (sending) return;
@@ -175,6 +190,14 @@ export default function UtmeldingForsideClient() {
 						>
 							{sending && innmeldReport?.id === report.id ? "Sender..." : "Send innmelding"}
 						</button>
+						<button
+							type="button"
+							onClick={() => openDeleteConfirm(report)}
+							disabled={sending}
+							className="mt-1.5 w-full text-center text-xs text-gray-500 underline disabled:opacity-60"
+						>
+							Slett
+						</button>
 					</div>
 				))}
 
@@ -225,6 +248,27 @@ export default function UtmeldingForsideClient() {
 								className="px-3 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white border border-red-700 disabled:opacity-60"
 							>
 								{sending ? "Sender..." : "Send"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{deleteConfirmReport && (
+				<div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+					<div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg space-y-4">
+						<h2 className="text-base font-semibold text-gray-900">Slett varsel?</h2>
+						<p className="text-sm text-gray-700">
+							Dette fjerner varselet om utmeldingen sendt {formatDate(deleteConfirmReport.date)} kl {deleteConfirmReport.time} fra denne telefonen.
+							Bruk dette hvis Politiet allerede er varslet om at beredskapen er tilbake på annen måte (f.eks. muntlig).
+							Ingen e-post sendes, og ingenting registreres.
+						</p>
+						<div className="flex justify-end gap-2">
+							<button type="button" onClick={() => setDeleteConfirmReport(null)} className="px-3 py-2 rounded-xl border border-gray-300 text-sm text-gray-900 bg-white">
+								Avbryt
+							</button>
+							<button type="button" onClick={handleDeleteConfirmed} className="px-3 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white border border-red-700">
+								OK, slett
 							</button>
 						</div>
 					</div>

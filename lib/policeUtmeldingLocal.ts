@@ -13,6 +13,8 @@ export interface PoliceUtmeldingLite {
 	innmeldtDato?: string;
 	innmeldtTid?: string;
 	innmeldtKommentar?: string;
+	/** Boblen skjult lokalt (f.eks. innmeldt manuelt utenom appen) – ingenting sendes, ingenting registreres. */
+	locallyClosed?: boolean;
 }
 
 export const POLICE_UTMELDING_STORAGE_KEY = "politiet_utmelding_reports_v1";
