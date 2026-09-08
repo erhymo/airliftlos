@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_MASKIN, MASKINER, type Maskin } from "../../lib/aviationOptions";
 import { CREW_ROLE_LABELS, DEFAULT_CREW_DIRECTORY, formatCrewDirectoryEntry, mergeCrewDirectoryEntries, sortCrewDirectoryEntries, type CrewDirectoryEntry, type CrewRole } from "../../lib/crewDirectory";
+import { getOrCreateDeviceId } from "../../lib/deviceId";
+import { loadLocalUtmeldinger, saveLocalUtmeldinger } from "../../lib/policeUtmeldingLocal";
 import PoliceMapPicker from "./PoliceMapPicker";
 import type { ApiSubmitResponse, PolicePin, PoliceReportType, PoliceTab, SubmitStatus } from "./types";
 
@@ -612,7 +614,15 @@ function UtmeldingForm({ crewOptions }: { crewOptions: PoliceCrewOptions }) {
 		event.preventDefault();
 		setStatus({ type: "sending", message: "Sender utmelding..." });
 		try {
-			await submitJson("/api/police/utmelding", { clientSubmissionId, base: "Tromsø", reason, reasonDetails, date, time, durationHours, durationText, mitigatingAction, mitigatingActionDetails, sender, watchPhone: DEFAULT_WATCH_PHONE });
+			const deviceId = getOrCreateDeviceId();
+			const response = await submitJson("/api/police/utmelding", { clientSubmissionId, base: "Tromsø", reason, reasonDetails, date, time, durationHours, durationText, mitigatingAction, mitigatingActionDetails, sender, watchPhone: DEFAULT_WATCH_PHONE, createdOnDeviceId: deviceId });
+			if (response.id) {
+				const existing = loadLocalUtmeldinger();
+				saveLocalUtmeldinger([
+					{ id: response.id, base: "Tromsø", date, time, createdAt: Date.now(), createdOnDeviceId: deviceId },
+					...existing.filter((r) => r.id !== response.id),
+				]);
+			}
 			setStatus({ type: "success", message: "Utmelding er sendt og lagret." });
 		} catch (error) {
 			setStatus({ type: "error", message: (error as Error).message });

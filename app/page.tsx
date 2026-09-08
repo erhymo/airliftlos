@@ -3,6 +3,7 @@ import Image from "next/image";
 import DriftsforstyrrelseForsideClient from "./DriftsforstyrrelseForsideClient";
 import OpenLosCountBadge from "./OpenLosCountBadge";
 import PoliceEntryClient from "./PoliceEntryClient";
+import UtmeldingForsideClient from "./UtmeldingForsideClient";
 
 export default function Home() {
 	  return (
@@ -10,6 +11,8 @@ export default function Home() {
 	      <div className="w-full max-w-md space-y-2">
 	        {/* Aktiv driftsforstyrrelse-boble rett over hovedboblen */}
 	        <DriftsforstyrrelseForsideClient />
+	        {/* Utmelding til Politiet som venter på innmelding */}
+	        <UtmeldingForsideClient />
 
 	        <main className="w-full bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
 	          <header className="space-y-1">
