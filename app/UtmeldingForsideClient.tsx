@@ -19,8 +19,6 @@ export default function UtmeldingForsideClient() {
 	const [innmeldTime, setInnmeldTime] = useState("");
 	const [innmeldComment, setInnmeldComment] = useState("");
 	const [innmeldError, setInnmeldError] = useState<string | null>(null);
-	const [fetchingLatest, setFetchingLatest] = useState(false);
-	const [fetchLatestError, setFetchLatestError] = useState<string | null>(null);
 	const [deleteConfirmReport, setDeleteConfirmReport] = useState<PoliceUtmeldingLite | null>(null);
 
 	useEffect(() => {
@@ -61,41 +59,6 @@ export default function UtmeldingForsideClient() {
 		setInnmeldTime(`${hourLabel}:${minuteLabel}`);
 		setInnmeldComment("");
 		setInnmeldError(null);
-	}
-
-	async function handleFetchLatest() {
-		setFetchingLatest(true);
-		setFetchLatestError(null);
-		try {
-			const res = await fetch("/api/police/utmelding/latest", { cache: "no-store" });
-			const data = (await res.json().catch(() => ({}))) as {
-				ok?: boolean;
-				report?: { id: string; base: string; date: string; time: string; createdAt: number } | null;
-				error?: string;
-			};
-			if (!res.ok || !data.ok) throw new Error(data.error || "Fant ingen utmelding å hente.");
-			if (!data.report) {
-				setFetchLatestError("Fant ingen utmeldinger som venter på innmelding.");
-				return;
-			}
-			const next: PoliceUtmeldingLite = {
-				id: data.report.id,
-				base: data.report.base,
-				date: data.report.date,
-				time: data.report.time,
-				createdAt: data.report.createdAt,
-				createdOnDeviceId: deviceId ?? undefined,
-			};
-			setReports((prev) => {
-				const merged = [next, ...prev.filter((r) => r.id !== next.id)];
-				saveLocalUtmeldinger(merged);
-				return merged;
-			});
-		} catch (error) {
-			setFetchLatestError((error as Error).message);
-		} finally {
-			setFetchingLatest(false);
-		}
 	}
 
 	async function handleInnmeldConfirm() {
@@ -200,15 +163,6 @@ export default function UtmeldingForsideClient() {
 						</button>
 					</div>
 				))}
-
-				{activeReports.length === 0 && (
-					<div className="text-right">
-						<button type="button" onClick={handleFetchLatest} disabled={fetchingLatest} className="text-xs text-gray-400 underline disabled:opacity-60">
-							{fetchingLatest ? "Henter..." : "Har dere en utmelding ute som ikke vises her? Hent den"}
-						</button>
-						{fetchLatestError && <p className="mt-1 text-xs text-red-600">{fetchLatestError}</p>}
-					</div>
-				)}
 			</div>
 
 			{innmeldReport && (
