@@ -2,14 +2,16 @@ import { NextResponse } from "next/server";
 import { requireApiAccess } from "../../../../lib/apiAccess";
 import { getDb } from "../../../../lib/firebaseAdmin";
 
-// Samme mottakerliste som selve utmeldingen går til (se lib/policeDelivery.ts).
+// Samme mottakere og avsender som selve utmeldingen bruker (se lib/policeDelivery.ts),
+// slik at innmeldingen kommer fra samme adresse Politiet allerede kjenner igjen.
 const TO_EMAILS = ["ops211@politiet.no"];
 const CC_EMAILS = ["tom.ostrem@airlift.no", "erlend.haugsbo@airlift.no"];
+const DEFAULT_POLICE_FROM_EMAIL = "politiberedskap@airlift.no";
+const DEFAULT_POLICE_FROM_NAME = "Airlift Politiberedskap";
 
 interface InnmeldingPayload {
 	subject?: string;
 	body?: string;
-	fromName?: string;
 	/** ID til utmeldingen i Firestore (policeUtmeldinger/{id}). */
 	reportId?: string;
 	innmeldtDato?: string;
@@ -30,9 +32,10 @@ export async function POST(req: Request) {
 	if (accessError) return accessError;
 
 	const apiKey = process.env.SENDGRID_API_KEY;
-	const fromEmail = process.env.SENDGRID_FROM;
-	if (!apiKey || !fromEmail) {
-		return NextResponse.json({ error: "Missing SENDGRID_API_KEY or SENDGRID_FROM" }, { status: 500 });
+	const fromEmail = process.env.POLICE_SENDGRID_FROM_EMAIL || DEFAULT_POLICE_FROM_EMAIL;
+	const fromName = process.env.POLICE_SENDGRID_FROM_NAME || DEFAULT_POLICE_FROM_NAME;
+	if (!apiKey) {
+		return NextResponse.json({ error: "Missing SENDGRID_API_KEY" }, { status: 500 });
 	}
 
 	let payload: InnmeldingPayload;
@@ -42,7 +45,7 @@ export async function POST(req: Request) {
 		return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 	}
 
-	const { subject, body: emailBody, fromName, reportId, innmeldtDato, innmeldtTid, innmeldtKommentar } = payload;
+	const { subject, body: emailBody, reportId, innmeldtDato, innmeldtTid, innmeldtKommentar } = payload;
 
 	if (!subject || !emailBody) {
 		return NextResponse.json({ error: "subject and body are required" }, { status: 400 });
@@ -76,7 +79,7 @@ export async function POST(req: Request) {
 			headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
 			body: JSON.stringify({
 				personalizations: [{ to: TO_EMAILS.map((email) => ({ email })), cc: CC_EMAILS.map((email) => ({ email })), subject }],
-				from: { email: fromEmail, name: fromName || "Airlift Politiberedskap" },
+				from: { email: fromEmail, name: fromName },
 				content: [{ type: "text/plain", value: emailBody }],
 			}),
 		});

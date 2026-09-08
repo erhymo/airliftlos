@@ -125,7 +125,6 @@ export default function UtmeldingForsideClient() {
 				body: JSON.stringify({
 					subject,
 					body: plainText,
-					fromName: "Airlift Politiberedskap",
 					reportId: innmeldReport.id,
 					innmeldtDato: innmeldDate,
 					innmeldtTid: `${hourLabel}:${minuteLabel}`,
